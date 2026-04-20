@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.ine.es)",
+      "Bash(python fetch_ine_data.py:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "WebFetch(domain:servicios.ine.es)",
+      "Bash(curl:*)",
+      "Bash(powershell -Command \"Invoke-RestMethod -Uri ''https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/30024'' | ConvertTo-Json -Depth 10\")",
+      "Bash(powershell -Command \"\\(Invoke-WebRequest -Uri ''https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/30024''\\).Content\")",
+      "Bash(ping:*)",
+      "WebFetch(domain:www.bde.es)",
+      "WebFetch(domain:app.bde.es)",
+      "Bash(timeout:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill /F /PID 16528)",
+      "Bash(cmd /c \"taskkill /F /PID 16528\")",
+      "Bash(powershell -Command \"Stop-Process -Id 16528 -Force\")",
+      "Bash(powershell -Command \"Get-Process python -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(powershell -Command \"Get-Process -Id 16528 | Select-Object ProcessName, Id, Path\")",
+      "Bash(tasklist:*)",
+      "Bash(copy /Y \"industrial_production_new.csv\" \"industrial_production.csv\")",
+      "Bash(taskkill:*)",
+      "Bash(dir:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)"
+    ]
+  }
+}
