@@ -190,6 +190,54 @@ BDE_INDICATORS: Dict[str, Dict[str, Any]] = {
     },
 
     # ==========================================================================
+    # INTERNATIONAL GOVERNMENT BONDS (10Y) - MONTHLY
+    # ==========================================================================
+
+    "spain_10y_bond_monthly": {
+        "series_code": "D_1NBBO320",
+        "name": "Spain 10Y Government Bond Yield (Monthly)",
+        "category": "interest_rates",
+        "description": "10-year government bond yield - Spain (Monthly average)",
+        "unit": "%",
+        "frequency": "M",
+        "source": "Banco de Espana",
+        "priority": "high"
+    },
+
+    "germany_10y_bond": {
+        "series_code": "D_1NBBO308",
+        "name": "Germany 10Y Government Bond Yield",
+        "category": "interest_rates",
+        "description": "10-year government bond yield - Germany (Bund)",
+        "unit": "%",
+        "frequency": "M",
+        "source": "Banco de Espana / ECB",
+        "priority": "high"
+    },
+
+    "france_10y_bond": {
+        "series_code": "D_1NBBO314",
+        "name": "France 10Y Government Bond Yield",
+        "category": "interest_rates",
+        "description": "10-year government bond yield - France (OAT)",
+        "unit": "%",
+        "frequency": "M",
+        "source": "Banco de Espana / ECB",
+        "priority": "high"
+    },
+
+    "italy_10y_bond": {
+        "series_code": "D_1NBBO316",
+        "name": "Italy 10Y Government Bond Yield",
+        "category": "interest_rates",
+        "description": "10-year government bond yield - Italy (BTP)",
+        "unit": "%",
+        "frequency": "M",
+        "source": "Banco de Espana / ECB",
+        "priority": "high"
+    },
+
+    # ==========================================================================
     # CREDIT AND BANKING
     # ==========================================================================
 
@@ -330,7 +378,8 @@ INDICATOR_GROUPS = {
         "euribor_12m_monthly", "euribor_3m_daily", "euribor_12m_daily",
         "ester_daily", "euribor_1w_daily", "euribor_1m_daily", "euribor_6m_daily",
         "spain_10y_bond", "spain_2y_bond", "spain_3y_bond", "spain_5y_bond",
-        "spain_15y_bond", "spain_tbill_3m", "spain_tbill_6m", "spain_tbill_1y"
+        "spain_15y_bond", "spain_tbill_3m", "spain_tbill_6m", "spain_tbill_1y",
+        "germany_10y_bond", "france_10y_bond", "italy_10y_bond"
     ],
     "credit_banking": [
         "mortgage_rate", "consumer_credit_rate", "corporate_lending_rate",
@@ -364,7 +413,8 @@ INDICATOR_GROUPS = {
     # Government bond yields
     "bond_yields": [
         "spain_10y_bond", "spain_2y_bond", "spain_3y_bond", "spain_5y_bond",
-        "spain_15y_bond", "spain_tbill_3m", "spain_tbill_6m", "spain_tbill_1y"
+        "spain_15y_bond", "spain_tbill_3m", "spain_tbill_6m", "spain_tbill_1y",
+        "germany_10y_bond", "france_10y_bond", "italy_10y_bond"
     ],
     # Bank lending rates
     "lending_rates": [

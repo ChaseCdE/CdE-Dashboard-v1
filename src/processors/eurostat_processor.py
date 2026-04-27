@@ -265,6 +265,63 @@ class EurostatProcessor:
         self._create_comparison_dataset(df, "esi", "economic_sentiment")
         return self._split_by_geography(df, "esi", "economic_sentiment")
 
+    def process_gdp_index_comparison(self) -> pd.DataFrame:
+        """
+        Process GDP index comparison (ES, FR, IT, DE, EU27).
+        Rebases each country's GDP to 2019Q1 = 100.
+        """
+        print("Processing GDP Index Comparison...")
+        df = self._load_raw("gdp_index_comparison_raw.csv")
+
+        if df.empty:
+            return pd.DataFrame()
+
+        df = df.rename(columns={"value": "gdp_level"})
+        df = df.sort_values(["geo", "date"]).reset_index(drop=True)
+
+        # Rebase each country to 2019Q1 = 100
+        geo_mapping = {
+            'ES': 'spain',
+            'FR': 'france',
+            'IT': 'italy',
+            'DE': 'germany',
+            'EU27_2020': 'eu27'
+        }
+
+        result_dfs = []
+        for geo_code, geo_name in geo_mapping.items():
+            geo_df = df[df["geo"] == geo_code].copy()
+            if geo_df.empty:
+                continue
+
+            # Find 2019Q1 value for rebasing
+            base_mask = (geo_df["date"].dt.year == 2019) & (geo_df["date"].dt.quarter == 1)
+            base_val = geo_df.loc[base_mask, "gdp_level"].values
+            if len(base_val) == 0 or pd.isna(base_val[0]) or base_val[0] == 0:
+                print(f"  Warning: No 2019Q1 data for {geo_code}, skipping")
+                continue
+
+            # Rebase to 2019Q1 = 100
+            geo_df[f"gdp_index_{geo_name}"] = (geo_df["gdp_level"] / base_val[0] * 100).round(2)
+            geo_df = geo_df[["date", f"gdp_index_{geo_name}"]].copy()
+            result_dfs.append(geo_df)
+
+        if not result_dfs:
+            return pd.DataFrame()
+
+        # Merge all countries on date
+        merged = result_dfs[0]
+        for rdf in result_dfs[1:]:
+            merged = merged.merge(rdf, on="date", how="outer")
+
+        merged = merged.sort_values("date").reset_index(drop=True)
+
+        # Filter from 2019 onward
+        merged = merged[merged["date"] >= "2019-01-01"]
+
+        self._save_processed(merged, "gdp_index_comparison.csv")
+        return merged
+
     # === Labor Market Indicators ===
 
     def process_unemployment(self) -> Dict[str, pd.DataFrame]:
@@ -519,6 +576,7 @@ class EurostatProcessor:
         # Economic Activity
         print("\n[Economic Activity]")
         results["gdp_growth"] = self.process_gdp_growth()
+        results["gdp_index_comparison"] = self.process_gdp_index_comparison()
         results["industrial_production"] = self.process_industrial_production()
         results["economic_sentiment"] = self.process_economic_sentiment()
 

@@ -1046,6 +1046,7 @@ MARKET_COLORS = {
     "ibex_35": "#1e2d3d",       # Spain - Dark slate-navy
     "euro_stoxx_50": "#3d6b8e", # Eurozone - Steel blue
     "sp_500": "#2d8659",        # US - Muted green
+    "nasdaq_composite": "#5a7fb8",  # US Tech - Blue
     "dax": "#b94a48",           # Germany - Muted red
     "ftse_100": "#6b5b8a",      # UK - Muted purple
     "gold": "#b8963e",          # Gold - Warm amber
@@ -1410,6 +1411,17 @@ def create_volatility_chart(
     if df.empty:
         return fig
 
+    # Spanish month names for hover
+    MESES = {1: "ene", 2: "feb", 3: "mar", 4: "abr", 5: "may", 6: "jun",
+             7: "jul", 8: "ago", 9: "sep", 10: "oct", 11: "nov", 12: "dic"}
+
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    # Create Spanish formatted date for hover
+    df["date_es"] = df["date"].apply(
+        lambda d: f"{d.day} {MESES.get(d.month, '')} {d.year}"
+    )
+
     x_dates = df["date"].astype(str).tolist()
 
     # Add colored zones for fear levels
@@ -1425,7 +1437,8 @@ def create_volatility_chart(
             mode="lines",
             name="VIX",
             line=dict(color=color, width=2),
-            hovertemplate="<b>%{x}</b><br>VIX: %{y:.2f}<extra></extra>",
+            customdata=df["date_es"],
+            hovertemplate="<b>%{customdata}</b><br>VIX: %{y:.2f}<extra></extra>",
         )
     )
 
@@ -1435,7 +1448,7 @@ def create_volatility_chart(
 
     fig.update_layout(
         **COMMON_LAYOUT,
-        title=dict(text=title_text, x=0, xanchor="left", font=dict(size=16)),
+        title=dict(text=title_text, x=0, xanchor="left", font=dict(size=16)) if title_text.strip() else None,
         xaxis=dict(
             title="",
             type="date",
@@ -1452,17 +1465,17 @@ def create_volatility_chart(
             range=[0, max(40, df["Close"].max() * 1.1) if not df.empty else 40],
         ),
         showlegend=False,
-        margin=dict(l=50, r=30, t=70, b=40),
+        margin=dict(l=50, r=30, t=20, b=30),
     )
 
-    # Add level annotations
-    fig.add_annotation(x=1, xref="paper", y=6, text="Low Fear", showarrow=False,
+    # Add level annotations in Spanish
+    fig.add_annotation(x=1, xref="paper", y=6, text="Baja volatilidad", showarrow=False,
                        font=dict(size=9, color=COLORS["positive"]), xanchor="right")
-    fig.add_annotation(x=1, xref="paper", y=16, text="Moderate", showarrow=False,
+    fig.add_annotation(x=1, xref="paper", y=16, text="Moderada", showarrow=False,
                        font=dict(size=9, color="#ffc107"), xanchor="right")
-    fig.add_annotation(x=1, xref="paper", y=25, text="Elevated", showarrow=False,
+    fig.add_annotation(x=1, xref="paper", y=25, text="Elevada", showarrow=False,
                        font=dict(size=9, color="#ff9800"), xanchor="right")
-    fig.add_annotation(x=1, xref="paper", y=35, text="High Fear", showarrow=False,
+    fig.add_annotation(x=1, xref="paper", y=35, text="Alta volatilidad", showarrow=False,
                        font=dict(size=9, color=COLORS["negative"]), xanchor="right")
 
     return fig

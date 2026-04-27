@@ -37,9 +37,22 @@ TABLE_IDS = {
     # Prices
     "cpi": 50904,              # IPC Índices nacionales por clases
     "cpi_special_groups": 76130,  # IPC Índices nacionales de grupos especiales
+    "cpi_ecoicop_groups": 76125,  # IPC Índices nacionales de grupos ECOICOP ver.2
+    "cpi_weights": 76156,      # IPC Ponderaciones de grupos ECOICOP ver.2
+    "cpi_special_weights": 76161,  # IPC Ponderaciones de grupos especiales
     # Consumer
     "retail_sales": 75809,     # ICM Índice nacional
     "house_prices": 25171,     # IPV Índices por CCAA
+    # Industrial Prices
+    "ipri": 76655,             # IPRI Índices nacionales: general y por destino económico
+    # CNTR Employment and Productivity
+    "cntr_employment": 67201,  # CNTR Empleo por ramas de actividad (includes hours worked, FTE)
+    # Population by age (EPA)
+    "population_age": 65061,   # EPA Población por sexo y grupo de edad
+    # IPC by CCAA
+    "cpi_ccaa": 76136,         # IPC por CCAA y grupos ECOICOP
+    # Business Confidence
+    "business_confidence": 8027,  # Índice de Confianza Empresarial Armonizado (ICEA)
 }
 
 # Series filtering: use seasonally adjusted data where available
@@ -324,6 +337,57 @@ class INEIndicatorFetcher:
         self._save_csv(df, "cpi_special_groups_raw.csv")
         return df
 
+    def fetch_cpi_ecoicop_groups(self, nult: int = 60) -> pd.DataFrame:
+        """
+        Fetch CPI ECOICOP groups data (monthly).
+        Includes 12 main product groups with indices and variations.
+
+        Args:
+            nult: Number of months to fetch (default: 60 = 5 years)
+
+        Returns:
+            DataFrame with CPI ECOICOP groups data
+        """
+        logger.info("Fetching CPI ECOICOP groups...")
+        raw_data = self.client.get_table_data(TABLE_IDS["cpi_ecoicop_groups"], nult=nult)
+        df = parse_ine_data(raw_data)
+        self._save_csv(df, "cpi_ecoicop_groups_raw.csv")
+        return df
+
+    def fetch_cpi_weights(self, nult: int = 12) -> pd.DataFrame:
+        """
+        Fetch CPI weights for ECOICOP groups (annual).
+        Weights show the importance of each group in the CPI basket.
+
+        Args:
+            nult: Number of periods to fetch (default: 12)
+
+        Returns:
+            DataFrame with CPI weights data
+        """
+        logger.info("Fetching CPI weights...")
+        raw_data = self.client.get_table_data(TABLE_IDS["cpi_weights"], nult=nult)
+        df = parse_ine_data(raw_data)
+        self._save_csv(df, "cpi_weights_raw.csv")
+        return df
+
+    def fetch_cpi_special_weights(self, nult: int = 12) -> pd.DataFrame:
+        """
+        Fetch CPI weights for special groups (annual).
+        Used for inflation decomposition (Alimentos, Energía, Servicios, Bienes industriales).
+
+        Args:
+            nult: Number of periods to fetch (default: 12)
+
+        Returns:
+            DataFrame with CPI special weights data
+        """
+        logger.info("Fetching CPI special weights...")
+        raw_data = self.client.get_table_data(TABLE_IDS["cpi_special_weights"], nult=nult)
+        df = parse_ine_data(raw_data)
+        self._save_csv(df, "cpi_special_weights_raw.csv")
+        return df
+
     def fetch_retail_sales(self, nult: int = 60) -> pd.DataFrame:
         """
         Fetch Retail Sales Index (monthly ICM).
@@ -408,6 +472,126 @@ class INEIndicatorFetcher:
         self._save_csv(df, "services_production_raw.csv")
         return df
 
+    def fetch_ipri(self, nult: int = 60) -> pd.DataFrame:
+        """
+        Fetch Industrial Price Index (IPRI) - Índice de Precios Industriales.
+        National data only, by economic destination of goods.
+
+        Categories:
+        - Total industria (General)
+        - Total industria sin energía (General without energy)
+        - Bienes de consumo (Consumer goods)
+        - Bienes de equipo (Capital goods)
+        - Bienes intermedios (Intermediate goods)
+        - Energía (Energy)
+
+        Args:
+            nult: Number of months to fetch (default: 60 = 5 years)
+
+        Returns:
+            DataFrame with IPRI data (index, yoy_change, mom_change)
+        """
+        logger.info("Fetching Industrial Price Index (IPRI)...")
+        raw_data = self.client.get_table_data(TABLE_IDS["ipri"], nult=nult)
+        df = parse_ine_data(raw_data)
+
+        # Filter only national data (Total Nacional)
+        df = df[df["series_name"].str.contains("Total Nacional", case=False, na=False)]
+
+        self._save_csv(df, "ipri_raw.csv")
+        return df
+
+    def fetch_cntr_employment(self, nult: int = 40) -> pd.DataFrame:
+        """
+        Fetch CNTR employment data (quarterly).
+        Includes: Ocupados (persons), Puestos de trabajo equivalentes a tiempo completo (FTE),
+        and Horas trabajadas (hours worked).
+
+        Args:
+            nult: Number of quarters to fetch (default: 40 = 10 years)
+
+        Returns:
+            DataFrame with employment data
+        """
+        logger.info("Fetching CNTR Employment data...")
+        raw_data = self.client.get_table_data(TABLE_IDS["cntr_employment"], nult=nult)
+        df = parse_ine_data(raw_data)
+
+        # Filter only the key series we need (seasonally adjusted, Total CNAE)
+        key_series = [
+            "CNTR7659",  # Ocupados - Personas - Ajustados - Total CNAE
+            "CNTR7818",  # Ocupados - Puestos FTE - Ajustados - Total CNAE
+            "CNTR7896",  # Ocupados - Horas trabajadas - Ajustados - Total CNAE
+        ]
+        df = df[df["series_code"].isin(key_series)]
+
+        self._save_csv(df, "cntr_employment_raw.csv")
+        return df
+
+    def fetch_population_age(self, nult: int = 40) -> pd.DataFrame:
+        """
+        Fetch EPA population by age (quarterly).
+        Used for calculating GDP per capita and per working-age population.
+
+        Args:
+            nult: Number of quarters to fetch (default: 40 = 10 years)
+
+        Returns:
+            DataFrame with population data by age groups
+        """
+        logger.info("Fetching EPA Population by age...")
+        raw_data = self.client.get_table_data(TABLE_IDS["population_age"], nult=nult)
+        df = parse_ine_data(raw_data)
+
+        # Filter national totals (Ambos sexos, Personas - not percentages)
+        df = df[
+            (df["series_name"].str.contains("Ambos sexos", case=False, na=False)) &
+            (df["series_name"].str.contains("Personas", case=False, na=False)) &
+            (~df["series_name"].str.contains("Porcentaje", case=False, na=False))
+        ]
+
+        self._save_csv(df, "population_age_raw.csv")
+        return df
+
+    def fetch_cpi_ccaa(self, nult: int = 24) -> pd.DataFrame:
+        """
+        Fetch CPI data by Autonomous Community (CCAA).
+        Table 76136: IPC por CCAA y grupos ECOICOP.
+
+        Args:
+            nult: Number of months to fetch (default: 24 = 2 years)
+
+        Returns:
+            DataFrame with CPI data by CCAA
+        """
+        logger.info("Fetching CPI by CCAA...")
+        raw_data = self.client.get_table_data(TABLE_IDS["cpi_ccaa"], nult=nult)
+        df = parse_ine_data(raw_data)
+
+        # Filter for "Índice general" only (not individual product categories)
+        df = df[df["series_name"].str.contains("ndice general", case=False, na=False)]
+
+        self._save_csv(df, "cpi_ccaa_raw.csv")
+        return df
+
+    def fetch_business_confidence(self, nult: int = 24) -> pd.DataFrame:
+        """
+        Fetch Business Confidence Index (Índice de Confianza Empresarial Armonizado).
+        Table 8027: ICEA - Índice de Confianza Empresarial Armonizado.
+
+        Args:
+            nult: Number of quarters to fetch (default: 24 = 6 years)
+
+        Returns:
+            DataFrame with business confidence data
+        """
+        logger.info("Fetching Business Confidence Index...")
+        raw_data = self.client.get_table_data(TABLE_IDS["business_confidence"], nult=nult)
+        df = parse_ine_data(raw_data)
+
+        self._save_csv(df, "business_confidence_raw.csv")
+        return df
+
     def fetch_all(self) -> dict:
         """
         Fetch all available indicators.
@@ -438,8 +622,15 @@ class INEIndicatorFetcher:
         results["labor_cost_hour"] = self.fetch_labor_cost_hour()
         results["cpi"] = self.fetch_cpi()
         results["cpi_special_groups"] = self.fetch_cpi_special_groups()
+        results["cpi_ecoicop_groups"] = self.fetch_cpi_ecoicop_groups()
+        results["cpi_weights"] = self.fetch_cpi_weights()
+        results["cpi_special_weights"] = self.fetch_cpi_special_weights()
         results["retail_sales"] = self.fetch_retail_sales()
         results["house_prices"] = self.fetch_house_prices()
+        results["ipri"] = self.fetch_ipri()
+        results["cntr_employment"] = self.fetch_cntr_employment()
+        results["population_age"] = self.fetch_population_age()
+        results["cpi_ccaa"] = self.fetch_cpi_ccaa()
 
         logger.info("=" * 50)
         logger.info("All indicators fetched successfully!")

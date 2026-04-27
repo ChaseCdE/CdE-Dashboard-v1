@@ -27,7 +27,9 @@
       "Bash(dir:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "WebFetch(domain:ropenspain.github.io)",
+      "Bash(powershell -Command \"Get-Content ''data\\\\raw\\\\ine\\\\gdp_raw.csv'' | ForEach-Object { \\($_-split '',''\\)[3] } | Sort-Object -Unique\")"
     ]
   }
 }

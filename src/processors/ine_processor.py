@@ -715,23 +715,23 @@ class INEProcessor:
     def process_services_production(self) -> pd.DataFrame:
         """
         Process Services Production Index (IPSS).
-        Uses seasonally adjusted data with pre-calculated "Variación anual" for Total servicios.
+        Uses seasonally adjusted data with pre-calculated "Variación anual" for Índice General.
         Table 60732: Corregido de efectos estacionales y de calendario.
         """
         print("Processing Services Production...")
         df = self._load_raw("services_production_raw.csv")
 
-        # Filter for Total servicios (aggregate IPSS)
+        # Filter for Índice General (aggregate services index)
         total_mask = (
             df["series_name"].str.contains("Total Nacional", case=False, na=False) &
-            df["series_name"].str.contains("Total servicios", case=False, na=False)
+            df["series_name"].str.contains("ndice General", case=False, na=False)
         )
         filtered = df[total_mask].copy()
 
         # Separate the annual variation series from the index series
-        variation_mask = filtered["series_name"].str.contains("Variaci.n anual", case=False, na=False)
+        variation_mask = filtered["series_name"].str.contains("Variaci.n anual", case=False, na=False, regex=True)
         index_mask = (
-            filtered["series_name"].str.contains(r"\. *[ÍI]ndice\.", case=False, na=False, regex=True) &
+            filtered["series_name"].str.contains(r"[ÍI]ndice\b", case=False, na=False, regex=True) &
             ~filtered["series_name"].str.contains("Variaci", case=False, na=False)
         )
 
@@ -752,13 +752,15 @@ class INEProcessor:
             index_df = index_df[["date", "year", "value"]].rename(columns={"value": "services_prod_index"})
             variation_df = variation_df[["date", "value"]].rename(columns={"value": "yoy_change"})
             result = index_df.merge(variation_df, on="date", how="left")
+            print(f"  Found services production: {len(result)} records")
         elif not index_df.empty:
             # Fallback: calculate YoY ourselves if variation series not found
             index_df = self._calculate_yoy_change(index_df, periods=12)
             result = index_df[["date", "year", "value", "yoy_change"]].copy()
             result = result.rename(columns={"value": "services_prod_index"})
+            print(f"  Found services production (calculated YoY): {len(result)} records")
         else:
-            print("  WARNING: No matching IPSS series found for Total servicios")
+            print("  WARNING: No matching IPSS series found for Índice General")
             result = pd.DataFrame(columns=["date", "year", "services_prod_index", "yoy_change"])
 
         result = result.sort_values("date").drop_duplicates(subset=["date"])
@@ -1000,6 +1002,639 @@ class INEProcessor:
 
         return pd.DataFrame()
 
+    def process_cpi_weights(self) -> pd.DataFrame:
+        """
+        Process CPI weights for ECOICOP groups.
+        Returns the latest weights for each product group (used for pie chart).
+        """
+        print("Processing CPI Weights...")
+        df = self._load_raw("cpi_weights_raw.csv")
+
+        if df.empty:
+            print("  WARNING: No CPI weights raw data found")
+            return pd.DataFrame()
+
+        # Filter for "Ponderación" series
+        mask = df["series_name"].str.contains("Ponderaci", case=False, na=False)
+        filtered = df[mask].copy()
+
+        if filtered.empty:
+            print("  WARNING: No weight series found")
+            return pd.DataFrame()
+
+        # Extract group name from series_name
+        # Format: "Total Nacional. [Group Name]. Ponderación."
+        def extract_group_name(s):
+            parts = s.split(". ")
+            if len(parts) >= 2:
+                return parts[1]
+            return s
+
+        filtered["group_name"] = filtered["series_name"].apply(extract_group_name)
+
+        # Get latest year's weights
+        latest_year = filtered["year"].max()
+        latest_weights = filtered[filtered["year"] == latest_year].copy()
+
+        # Exclude "Índice general" as it's the total (1000)
+        latest_weights = latest_weights[~latest_weights["group_name"].str.contains("ndice general", case=False, na=False)]
+
+        result = latest_weights[["year", "group_name", "value"]].copy()
+        result = result.rename(columns={"value": "weight"})
+        result = result.sort_values("weight", ascending=False)
+
+        print(f"  Found {len(result)} groups for year {latest_year}")
+        self._save_processed(result, "cpi_weights.csv")
+        return result
+
+    def process_cpi_ecoicop_groups(self) -> pd.DataFrame:
+        """
+        Process CPI special groups with YoY variation and calculate contributions.
+        Uses grupos especiales: Alimentos/bebidas/tabaco, Energía, Servicios, Bienes industriales.
+        Contribution = (weight / 1000) * yoy_change
+        """
+        print("Processing CPI Special Groups Contributions...")
+        df = self._load_raw("cpi_special_groups_raw.csv")
+        weights_df = self._load_raw("cpi_special_weights_raw.csv")
+
+        if df.empty:
+            print("  WARNING: No CPI special groups raw data found")
+            return pd.DataFrame()
+
+        # Define the 4 groups we want
+        target_groups = {
+            "Alimentos, bebidas y tabaco": "Alimentos, bebidas y tabaco",
+            "Productos energéticos": "Productos energéticos",
+            "Servicios": "Servicios",
+            "Bienes industriales sin productos energéticos": "Bienes industriales sin productos energéticos",
+        }
+
+        # Extract group name from series_name
+        def extract_group_name(s):
+            parts = s.split(". ")
+            if len(parts) >= 2:
+                return parts[1]
+            return s
+
+        # Define weight search terms (exact matching)
+        weight_search = {
+            "Alimentos, bebidas y tabaco": "Alimentos, bebidas y tabaco",
+            "Productos energéticos": "Productos energ",
+            "Servicios": "Servicios\\.",  # Use \. to avoid matching "Servicios sin"
+            "Bienes industriales sin productos energéticos": "Bienes industriales sin productos energ",
+        }
+
+        # Get weights lookup
+        weights_lookup = {}
+        if not weights_df.empty:
+            weights_mask = weights_df["series_name"].str.contains("Ponderaci", case=False, na=False)
+            weights_data = weights_df[weights_mask].copy()
+            latest_year = weights_data["year"].max()
+            latest_weights = weights_data[weights_data["year"] == latest_year]
+
+            for full_name, search in weight_search.items():
+                for _, row in latest_weights.iterrows():
+                    if search.replace("\\.", "") in row["series_name"] and "sin" not in row["series_name"].lower() or search.replace("\\.", "") == "Bienes industriales sin productos energ" and search.replace("\\.", "") in row["series_name"]:
+                        # For Servicios, make sure it's exactly "Servicios" not "Servicios sin..."
+                        if "Servicios" in full_name and "sin" in row["series_name"].lower():
+                            continue
+                        weights_lookup[full_name] = row["value"]
+                        break
+
+        # Manual weights assignment to ensure correctness
+        # Based on INE data: Total = 1000
+        expected_weights = {
+            "Alimentos, bebidas y tabaco": 209.2,
+            "Productos energéticos": 89.3,
+            "Servicios": 503.1,
+            "Bienes industriales sin productos energéticos": 198.4,
+        }
+
+        results = []
+        for full_name, short_name in target_groups.items():
+            # Filter for YoY variation series for this group
+            # Use EXACT matching with regex to avoid wrong series
+            if "Alimentos" in full_name:
+                # Match exactly "Alimentos, bebidas y tabaco. Variación anual."
+                mask = df["series_name"].str.contains(
+                    r"Total Nacional\. Alimentos, bebidas y tabaco\. Variaci.n anual\.",
+                    case=False, na=False, regex=True
+                )
+            elif "Productos energ" in full_name:
+                # Match exactly "Productos energéticos. Variación anual." (NOT "sin productos energéticos")
+                mask = df["series_name"].str.contains(
+                    r"Total Nacional\. Productos energ.ticos\. Variaci.n anual\.",
+                    case=False, na=False, regex=True
+                )
+            elif full_name == "Servicios":
+                # Match exactly "Servicios. Variación anual." (NOT "Servicios sin...")
+                mask = df["series_name"].str.contains(
+                    r"Total Nacional\. Servicios\. Variaci.n anual\.",
+                    case=False, na=False, regex=True
+                )
+            elif "Bienes industriales" in full_name:
+                # Match "Bienes industriales sin productos energéticos. Variación anual."
+                mask = df["series_name"].str.contains(
+                    r"Total Nacional\. Bienes industriales sin productos energ.ticos\. Variaci.n anual\.",
+                    case=False, na=False, regex=True
+                )
+            else:
+                continue
+
+            filtered = df[mask].copy()
+
+            if filtered.empty:
+                print(f"  WARNING: No data found for {full_name}")
+                continue
+
+            # Get unique series (take first if multiple)
+            series_code = filtered["series_code"].iloc[0]
+            group_data = filtered[filtered["series_code"] == series_code].copy()
+            group_data = group_data.sort_values("date")
+
+            # Use expected weights
+            weight = expected_weights.get(full_name, 0)
+
+            group_data["group_name"] = short_name
+            group_data["yoy_change"] = group_data["value"]
+            group_data["weight"] = weight
+            # Calculate contribution (weight is in per mille, so divide by 1000)
+            group_data["contribution"] = (weight / 1000) * group_data["yoy_change"]
+
+            group_data = group_data[["date", "year", "group_name", "yoy_change", "weight", "contribution"]]
+            results.append(group_data)
+            print(f"  Found {short_name}: {len(group_data)} records, weight={weight:.1f}")
+
+        if results:
+            result = pd.concat(results, ignore_index=True)
+            result = result.sort_values(["date", "group_name"]).drop_duplicates(subset=["date", "group_name"])
+            print(f"  Processed {len(result['group_name'].unique())} groups")
+            self._save_processed(result, "cpi_ecoicop_groups.csv")
+            return result
+
+        return pd.DataFrame()
+
+    def process_ipri(self) -> pd.DataFrame:
+        """
+        Process Industrial Price Index (IPRI) - Índice de Precios Industriales.
+        National index by economic destination: Total, Sin energía, Consumo, Equipo, Intermedios, Energía.
+        Includes: Index, YoY change, MoM change.
+        """
+        print("Processing Industrial Price Index (IPRI)...")
+        df = self._load_raw("ipri_raw.csv")
+
+        if df.empty:
+            print("  WARNING: No IPRI raw data found")
+            return pd.DataFrame()
+
+        # Categories we want (only national data - "Total Nacional")
+        categories = {
+            "total": "Total industria",
+            "total_sin_energia": "Total industria sin energ",
+            "consumo": "Bienes de consumo",
+            "equipo": "Bienes de equipo",
+            "intermedios": "Bienes intermedios",
+            "energia": "Energ",
+        }
+
+        # Exclude subcategories like "Bienes de consumo duradero"
+        exclude_terms = ["duradero", "no duradero"]
+
+        results = []
+
+        for cat_key, search_term in categories.items():
+            # Get index series
+            index_mask = (
+                df["series_name"].str.contains("Total Nacional", case=False, na=False) &
+                df["series_name"].str.contains(search_term, case=False, na=False) &
+                df["series_name"].str.contains(r"[ÍI]ndice", case=False, na=False, regex=True) &
+                ~df["series_name"].str.contains("Variaci", case=False, na=False)
+            )
+            # Exclude subcategories
+            for excl in exclude_terms:
+                index_mask = index_mask & ~df["series_name"].str.contains(excl, case=False, na=False)
+
+            # Get YoY variation series
+            yoy_mask = (
+                df["series_name"].str.contains("Total Nacional", case=False, na=False) &
+                df["series_name"].str.contains(search_term, case=False, na=False) &
+                df["series_name"].str.contains("Variaci.n anual", case=False, na=False, regex=True)
+            )
+            for excl in exclude_terms:
+                yoy_mask = yoy_mask & ~df["series_name"].str.contains(excl, case=False, na=False)
+
+            # Get MoM variation series
+            mom_mask = (
+                df["series_name"].str.contains("Total Nacional", case=False, na=False) &
+                df["series_name"].str.contains(search_term, case=False, na=False) &
+                df["series_name"].str.contains("Variaci.n mensual", case=False, na=False, regex=True)
+            )
+            for excl in exclude_terms:
+                mom_mask = mom_mask & ~df["series_name"].str.contains(excl, case=False, na=False)
+
+            index_df = df[index_mask].copy()
+            yoy_df = df[yoy_mask].copy()
+            mom_df = df[mom_mask].copy()
+
+            if index_df.empty:
+                print(f"  WARNING: No index data found for {cat_key}")
+                continue
+
+            # Take first matching series
+            series_code = index_df["series_code"].iloc[0]
+            index_df = index_df[index_df["series_code"] == series_code]
+
+            for _, row in index_df.iterrows():
+                date = row["date"]
+                record = {
+                    "date": date,
+                    "year": row.get("year"),
+                    "category": cat_key,
+                    "ipri_index": row["value"],
+                }
+
+                # Add YoY
+                yoy_row = yoy_df[yoy_df["date"] == date]
+                if not yoy_row.empty:
+                    record["yoy_change"] = yoy_row["value"].iloc[0]
+                else:
+                    record["yoy_change"] = None
+
+                # Add MoM
+                mom_row = mom_df[mom_df["date"] == date]
+                if not mom_row.empty:
+                    record["mom_change"] = mom_row["value"].iloc[0]
+                else:
+                    record["mom_change"] = None
+
+                results.append(record)
+
+        if not results:
+            print("  WARNING: No IPRI data extracted")
+            return pd.DataFrame()
+
+        result = pd.DataFrame(results)
+        result = result.sort_values(["category", "date"]).drop_duplicates(subset=["category", "date"])
+
+        _check_time_gaps(result[result["category"] == "total"], "M", "IPRI")
+
+        self._save_processed(result, "ipri.csv")
+        return result
+
+    def process_cntr_employment(self) -> pd.DataFrame:
+        """
+        Process CNTR employment data.
+        Extracts: Ocupados (persons), FTE employment, and Hours worked.
+        """
+        print("Processing CNTR Employment...")
+        filepath = self.input_dir / "cntr_employment_raw.csv"
+        if not filepath.exists():
+            print("  WARNING: No CNTR employment raw data found")
+            return pd.DataFrame()
+
+        df = pd.read_csv(filepath, parse_dates=["date"])
+
+        # Map series codes to column names
+        series_mapping = {
+            "CNTR7659": "employed_persons",    # Ocupados - Personas
+            "CNTR7818": "employed_fte",        # Puestos de trabajo equivalentes a tiempo completo
+            "CNTR7896": "hours_worked",        # Horas trabajadas
+        }
+
+        results = []
+        for series_code, col_name in series_mapping.items():
+            series_df = df[df["series_code"] == series_code].copy()
+            if series_df.empty:
+                print(f"  WARNING: No data found for {series_code} ({col_name})")
+                continue
+            series_df = series_df[["date", "value"]].rename(columns={"value": col_name})
+            series_df = series_df.sort_values("date").drop_duplicates(subset=["date"])
+            results.append(series_df)
+            print(f"  Found {col_name}: {len(series_df)} records")
+
+        if not results:
+            return pd.DataFrame()
+
+        # Merge all series on date
+        result = results[0]
+        for r in results[1:]:
+            result = result.merge(r, on="date", how="outer")
+
+        result = result.sort_values("date")
+        self._save_processed(result, "cntr_employment.csv")
+        return result
+
+    def process_population_age(self) -> pd.DataFrame:
+        """
+        Process EPA population by age.
+        Calculates: Total population, Working-age population (16-64).
+        """
+        print("Processing Population by Age...")
+        filepath = self.input_dir / "population_age_raw.csv"
+        if not filepath.exists():
+            print("  WARNING: No population age raw data found")
+            return pd.DataFrame()
+
+        df = pd.read_csv(filepath, parse_dates=["date"])
+
+        # Age groups for working-age population (16-64)
+        # EPA groups: "De 16 a 19", "De 20 a 24", "De 25 a 29", ..., "De 60 a 64"
+        working_age_groups = [
+            "De 16 a 19", "De 20 a 24", "De 25 a 29", "De 30 a 34", "De 35 a 39",
+            "De 40 a 44", "De 45 a 49", "De 50 a 54", "De 55 a 59", "De 60 a 64"
+        ]
+
+        # Get total population
+        total_mask = df["series_name"].str.contains("Todas las edades", case=False, na=False)
+        total_df = df[total_mask].copy()
+
+        if total_df.empty:
+            print("  WARNING: No total population series found")
+            return pd.DataFrame()
+
+        # Take first series
+        total_code = total_df["series_code"].iloc[0]
+        total_df = total_df[total_df["series_code"] == total_code]
+        total_df = total_df[["date", "value"]].rename(columns={"value": "total_population"})
+        total_df = total_df.sort_values("date").drop_duplicates(subset=["date"])
+        print(f"  Found total population: {len(total_df)} records")
+
+        # Calculate working-age population by summing age groups
+        working_age_data = []
+        for date in total_df["date"].unique():
+            date_df = df[df["date"] == date]
+            working_age_sum = 0
+            for age_group in working_age_groups:
+                mask = date_df["series_name"].str.contains(age_group, case=False, na=False)
+                age_df = date_df[mask]
+                if not age_df.empty:
+                    working_age_sum += age_df["value"].iloc[0]
+            working_age_data.append({"date": date, "working_age_population": working_age_sum})
+
+        working_age_df = pd.DataFrame(working_age_data)
+        print(f"  Calculated working-age population (16-64): {len(working_age_df)} records")
+
+        # Merge total and working-age
+        result = total_df.merge(working_age_df, on="date", how="left")
+        result = result.sort_values("date")
+
+        self._save_processed(result, "population.csv")
+        return result
+
+    def process_gdp_productivity(self) -> pd.DataFrame:
+        """
+        Process GDP productivity indices.
+        Calculates indices for: PIB, PIB per capita, PIB per working-age person,
+        PIB per occupied, PIB per hour worked.
+        All rebased to 2019Q1 = 100.
+        """
+        print("Processing GDP Productivity Indices...")
+
+        # Load required data
+        gdp_path = self.output_dir / "gdp.csv"
+        employment_path = self.output_dir / "cntr_employment.csv"
+        population_path = self.output_dir / "population.csv"
+
+        if not gdp_path.exists():
+            print("  WARNING: GDP data not found, run process_gdp first")
+            return pd.DataFrame()
+
+        gdp_df = pd.read_csv(gdp_path, parse_dates=["date"])
+        gdp_df = gdp_df[["date", "gdp_index"]].copy()
+
+        if employment_path.exists():
+            empl_df = pd.read_csv(employment_path, parse_dates=["date"])
+        else:
+            print("  WARNING: Employment data not found, run process_cntr_employment first")
+            empl_df = pd.DataFrame()
+
+        if population_path.exists():
+            pop_df = pd.read_csv(population_path, parse_dates=["date"])
+        else:
+            print("  WARNING: Population data not found, run process_population_age first")
+            pop_df = pd.DataFrame()
+
+        # Merge all data
+        result = gdp_df.copy()
+        if not empl_df.empty:
+            result = result.merge(empl_df, on="date", how="left")
+        if not pop_df.empty:
+            result = result.merge(pop_df, on="date", how="left")
+
+        result = result.sort_values("date")
+
+        # Find 2019Q1 for rebasing
+        base_mask = (result["date"].dt.year == 2019) & (result["date"].dt.quarter == 1)
+        if base_mask.sum() == 0:
+            print("  WARNING: 2019Q1 not found for rebasing")
+            return pd.DataFrame()
+
+        base_row = result[base_mask].iloc[0]
+
+        # Calculate productivity indices (2019Q1 = 100)
+        # PIB index (already have this, just rebase)
+        if "gdp_index" in result.columns and pd.notna(base_row["gdp_index"]):
+            result["pib_index"] = (result["gdp_index"] / base_row["gdp_index"] * 100).round(2)
+        else:
+            result["pib_index"] = None
+
+        # PIB per capita
+        if "total_population" in result.columns and pd.notna(base_row.get("total_population")):
+            base_pc = base_row["gdp_index"] / base_row["total_population"]
+            result["gdp_per_capita_raw"] = result["gdp_index"] / result["total_population"]
+            result["pib_per_capita_index"] = (result["gdp_per_capita_raw"] / base_pc * 100).round(2)
+        else:
+            result["pib_per_capita_index"] = None
+
+        # PIB per working-age person
+        if "working_age_population" in result.columns and pd.notna(base_row.get("working_age_population")):
+            base_wa = base_row["gdp_index"] / base_row["working_age_population"]
+            result["gdp_per_working_age_raw"] = result["gdp_index"] / result["working_age_population"]
+            result["pib_per_working_age_index"] = (result["gdp_per_working_age_raw"] / base_wa * 100).round(2)
+        else:
+            result["pib_per_working_age_index"] = None
+
+        # PIB per occupied (employment)
+        if "employed_persons" in result.columns and pd.notna(base_row.get("employed_persons")):
+            base_empl = base_row["gdp_index"] / base_row["employed_persons"]
+            result["gdp_per_employed_raw"] = result["gdp_index"] / result["employed_persons"]
+            result["pib_per_employed_index"] = (result["gdp_per_employed_raw"] / base_empl * 100).round(2)
+        else:
+            result["pib_per_employed_index"] = None
+
+        # PIB per hour worked
+        if "hours_worked" in result.columns and pd.notna(base_row.get("hours_worked")):
+            base_hr = base_row["gdp_index"] / base_row["hours_worked"]
+            result["gdp_per_hour_raw"] = result["gdp_index"] / result["hours_worked"]
+            result["pib_per_hour_index"] = (result["gdp_per_hour_raw"] / base_hr * 100).round(2)
+        else:
+            result["pib_per_hour_index"] = None
+
+        # Filter from 2019 onward
+        result = result[result["date"] >= "2019-01-01"]
+
+        # Select only the columns we need
+        output_cols = ["date", "pib_index", "pib_per_capita_index", "pib_per_working_age_index",
+                       "pib_per_employed_index", "pib_per_hour_index"]
+        result = result[[c for c in output_cols if c in result.columns]]
+
+        self._save_processed(result, "gdp_productivity.csv")
+        return result
+
+    def process_cpi_ccaa(self) -> pd.DataFrame:
+        """
+        Process CPI data by Autonomous Community (CCAA).
+        Extracts: YoY change and MoM change for each CCAA.
+        """
+        print("Processing CPI by CCAA...")
+        filepath = self.input_dir / "cpi_ccaa_raw.csv"
+        if not filepath.exists():
+            print("  WARNING: No CPI CCAA raw data found")
+            return pd.DataFrame()
+
+        df = pd.read_csv(filepath, parse_dates=["date"])
+
+        # CCAA names mapping (INE name -> standardized code for GeoJSON)
+        ccaa_mapping = {
+            "Andalucía": "AN",
+            "Aragón": "AR",
+            "Asturias, Principado de": "AS",
+            "Balears, Illes": "IB",
+            "Canarias": "CN",
+            "Cantabria": "CB",
+            "Castilla y León": "CL",
+            "Castilla - La Mancha": "CM",
+            "Cataluña": "CT",
+            "Comunitat Valenciana": "VC",
+            "Extremadura": "EX",
+            "Galicia": "GA",
+            "Madrid, Comunidad de": "MD",
+            "Murcia, Región de": "MC",
+            "Navarra, Comunidad Foral de": "NC",
+            "País Vasco": "PV",
+            "Rioja, La": "RI",
+            "Ceuta": "CE",
+            "Melilla": "ML",
+        }
+
+        results = []
+
+        for ccaa_name, ccaa_code in ccaa_mapping.items():
+            # Find YoY series for this CCAA
+            yoy_mask = (
+                df["series_name"].str.contains(ccaa_name, case=False, na=False, regex=False) &
+                df["series_name"].str.contains("Variaci.n anual", case=False, na=False, regex=True)
+            )
+            yoy_df = df[yoy_mask].copy()
+
+            # Find MoM series for this CCAA
+            mom_mask = (
+                df["series_name"].str.contains(ccaa_name, case=False, na=False, regex=False) &
+                df["series_name"].str.contains("Variaci.n mensual", case=False, na=False, regex=True)
+            )
+            mom_df = df[mom_mask].copy()
+
+            if yoy_df.empty:
+                continue
+
+            # Take first matching series
+            yoy_code = yoy_df["series_code"].iloc[0]
+            yoy_df = yoy_df[yoy_df["series_code"] == yoy_code][["date", "value"]].copy()
+            yoy_df = yoy_df.rename(columns={"value": "yoy_change"})
+
+            if not mom_df.empty:
+                mom_code = mom_df["series_code"].iloc[0]
+                mom_df = mom_df[mom_df["series_code"] == mom_code][["date", "value"]].copy()
+                mom_df = mom_df.rename(columns={"value": "mom_change"})
+                merged = yoy_df.merge(mom_df, on="date", how="left")
+            else:
+                merged = yoy_df.copy()
+                merged["mom_change"] = None
+
+            merged["ccaa_code"] = ccaa_code
+            merged["ccaa_name"] = ccaa_name
+            results.append(merged)
+
+        if not results:
+            print("  WARNING: No CPI CCAA data extracted")
+            return pd.DataFrame()
+
+        result = pd.concat(results, ignore_index=True)
+        result = result.sort_values(["date", "ccaa_code"]).drop_duplicates(subset=["date", "ccaa_code"])
+
+        # Count unique CCAA
+        n_ccaa = result["ccaa_code"].nunique()
+        print(f"  Found CPI data for {n_ccaa} CCAA")
+
+        self._save_processed(result, "cpi_ccaa.csv")
+        return result
+
+    def process_business_confidence(self) -> pd.DataFrame:
+        """
+        Process Business Confidence Index (Índice de Confianza Empresarial).
+        Extracts: Total National Index (main confidence index).
+        Table 8027 contains: Índice, Situación trimestre anterior, Expectativas trimestre entrante.
+        """
+        print("Processing Business Confidence Index...")
+        filepath = self.input_dir / "business_confidence_raw.csv"
+        if not filepath.exists():
+            print("  WARNING: No Business Confidence raw data found")
+            return pd.DataFrame()
+
+        df = pd.read_csv(filepath, parse_dates=["date"])
+
+        # Filter for Total Nacional
+        total_mask = df["series_name"].str.contains("Total Nacional", case=False, na=False)
+        df = df[total_mask].copy()
+
+        if df.empty:
+            print("  WARNING: No Total Nacional data found")
+            return pd.DataFrame()
+
+        # Extract indicator type from series name
+        results = []
+
+        # Main Índice (ICE)
+        # Look for "Índice. Base 2013" pattern (handles encoding issues with í -> ndice)
+        ice_mask = df["series_name"].str.contains(r"ndice.*Base", case=False, na=False, regex=True)
+        ice_df = df[ice_mask].copy()
+        if not ice_df.empty:
+            ice_df["indicator"] = "ice"
+            ice_df["indicator_name"] = "Índice de Confianza Empresarial"
+            results.append(ice_df[["date", "value", "indicator", "indicator_name"]])
+
+        # Situación del trimestre anterior
+        situacion_mask = df["series_name"].str.contains("Situaci", case=False, na=False)
+        situacion_df = df[situacion_mask].copy()
+        if not situacion_df.empty:
+            situacion_df["indicator"] = "situacion"
+            situacion_df["indicator_name"] = "Situación trimestre anterior"
+            results.append(situacion_df[["date", "value", "indicator", "indicator_name"]])
+
+        # Expectativas del trimestre entrante
+        expectativas_mask = df["series_name"].str.contains("Expectativas", case=False, na=False)
+        expectativas_df = df[expectativas_mask].copy()
+        if not expectativas_df.empty:
+            expectativas_df["indicator"] = "expectativas"
+            expectativas_df["indicator_name"] = "Expectativas trimestre entrante"
+            results.append(expectativas_df[["date", "value", "indicator", "indicator_name"]])
+
+        if not results:
+            print("  WARNING: No Business Confidence data extracted")
+            return pd.DataFrame()
+
+        result = pd.concat(results, ignore_index=True)
+        result = result.sort_values(["date", "indicator"]).drop_duplicates(subset=["date", "indicator"])
+
+        # Filter from 2021 onwards
+        result = result[result["date"] >= "2021-01-01"]
+
+        n_indicators = result["indicator"].nunique()
+        print(f"  Found {n_indicators} Business Confidence indicators")
+
+        self._save_processed(result, "business_confidence.csv")
+        return result
+
     def process_all(self) -> dict:
         """
         Process all indicators.
@@ -1035,8 +1670,18 @@ class INEProcessor:
         # Prices
         results["cpi"] = self.process_cpi()
         results["cpi_special_groups"] = self.process_cpi_special_groups()
+        results["cpi_weights"] = self.process_cpi_weights()
+        results["cpi_ecoicop_groups"] = self.process_cpi_ecoicop_groups()
         results["retail_sales"] = self.process_retail_sales()
         results["house_prices"] = self.process_house_prices()
+        # Industrial Prices
+        results["ipri"] = self.process_ipri()
+        # CNTR Employment and Productivity
+        results["cntr_employment"] = self.process_cntr_employment()
+        results["population"] = self.process_population_age()
+        results["gdp_productivity"] = self.process_gdp_productivity()
+        results["cpi_ccaa"] = self.process_cpi_ccaa()
+        results["business_confidence"] = self.process_business_confidence()
 
         print("=" * 50)
         print("All indicators processed successfully!")

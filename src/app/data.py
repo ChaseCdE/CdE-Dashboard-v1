@@ -69,8 +69,18 @@ def load_all_indicators() -> dict:
         # Prices
         "cpi": load_indicator("cpi.csv"),
         "cpi_special_groups": load_indicator("cpi_special_groups.csv"),
+        "cpi_weights": load_indicator("cpi_weights.csv", date_col=None),
+        "cpi_ecoicop_groups": load_indicator("cpi_ecoicop_groups.csv"),
         "retail_sales": load_indicator("retail_sales.csv"),
         "house_prices": load_indicator("house_prices.csv"),
+        # Industrial Prices
+        "ipri": load_indicator("ipri.csv"),
+        # Productivity
+        "gdp_productivity": load_indicator("gdp_productivity.csv"),
+        # CPI by CCAA
+        "cpi_ccaa": load_indicator("cpi_ccaa.csv"),
+        # Business Confidence
+        "business_confidence": load_indicator("business_confidence.csv"),
     }
 
 
@@ -81,6 +91,7 @@ def load_eurostat_indicators() -> dict:
         "gdp_growth_spain": load_indicator("gdp_growth_spain.csv", "eurostat"),
         "gdp_growth_eu27": load_indicator("gdp_growth_eu27.csv", "eurostat"),
         "gdp_growth_comparison": load_indicator("gdp_growth_comparison.csv", "eurostat"),
+        "gdp_index_comparison": load_indicator("gdp_index_comparison.csv", "eurostat"),
         "ipi_spain": load_indicator("industrial_production_spain.csv", "eurostat"),
         "ipi_eu27": load_indicator("industrial_production_eu27.csv", "eurostat"),
         "ipi_comparison": load_indicator("industrial_production_comparison.csv", "eurostat"),
@@ -137,6 +148,7 @@ def load_yahoo_indicators() -> dict:
         "ibex_35": load_indicator("ibex_35_processed.csv", "yahoo"),
         "euro_stoxx_50": load_indicator("euro_stoxx_50_processed.csv", "yahoo"),
         "sp_500": load_indicator("sp_500_processed.csv", "yahoo"),
+        "nasdaq_composite": load_indicator("nasdaq_composite_processed.csv", "yahoo"),
         "dax": load_indicator("dax_processed.csv", "yahoo"),
         "ftse_100": load_indicator("ftse_100_processed.csv", "yahoo"),
 
@@ -158,6 +170,11 @@ def load_yahoo_indicators() -> dict:
         # Bonds (ETFs)
         "spain_govt_bond_etf": load_indicator("spain_govt_bond_etf_processed.csv", "yahoo"),
         "us_treasury_20y_etf": load_indicator("us_treasury_20y_etf_processed.csv", "yahoo"),
+
+        # US Treasury Yields
+        "us_treasury_5y": load_indicator("us_treasury_5y_processed.csv", "yahoo"),
+        "us_treasury_10y": load_indicator("us_treasury_10y_processed.csv", "yahoo"),
+        "us_treasury_30y": load_indicator("us_treasury_30y_processed.csv", "yahoo"),
 
         # Sector ETFs
         "spanish_banks_etf": load_indicator("spanish_banks_etf_processed.csv", "yahoo"),
@@ -209,7 +226,7 @@ def load_bde_interest_rates() -> dict:
         "euribor_1w_daily": load_bde_indicator("euribor_1w_daily_processed.csv"),
         "euribor_1m_daily": load_bde_indicator("euribor_1m_daily_processed.csv"),
         "euribor_6m_daily": load_bde_indicator("euribor_6m_daily_processed.csv"),
-        # Government bond yields
+        # Government bond yields - Spain
         "spain_10y_bond": load_bde_indicator("spain_10y_bond_processed.csv"),
         "spain_2y_bond": load_bde_indicator("spain_2y_bond_processed.csv"),
         "spain_3y_bond": load_bde_indicator("spain_3y_bond_processed.csv"),
@@ -218,6 +235,11 @@ def load_bde_interest_rates() -> dict:
         "spain_tbill_3m": load_bde_indicator("spain_tbill_3m_processed.csv"),
         "spain_tbill_6m": load_bde_indicator("spain_tbill_6m_processed.csv"),
         "spain_tbill_1y": load_bde_indicator("spain_tbill_1y_processed.csv"),
+        # Government bond yields - European (10Y) - Monthly
+        "spain_10y_bond_monthly": load_bde_indicator("spain_10y_bond_monthly_processed.csv"),
+        "germany_10y_bond": load_bde_indicator("germany_10y_bond_processed.csv"),
+        "france_10y_bond": load_bde_indicator("france_10y_bond_processed.csv"),
+        "italy_10y_bond": load_bde_indicator("italy_10y_bond_processed.csv"),
         # Comparison datasets
         "euribor_comparison": load_bde_indicator("euribor_comparison.csv"),
         "yield_curve": load_bde_indicator("yield_curve.csv"),

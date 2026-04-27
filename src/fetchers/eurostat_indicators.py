@@ -388,6 +388,28 @@ class EurostatIndicatorFetcher:
         self._save_csv(df, "house_prices_raw.csv")
         return df
 
+    def fetch_gdp_index_comparison(self) -> pd.DataFrame:
+        """
+        Fetch GDP index data for European comparison (ES, FR, IT, DE, EU27).
+        Uses chain-linked volumes (2010 prices) for level comparison.
+
+        Returns:
+            DataFrame with GDP index data for multiple countries
+        """
+        logger.info("Fetching GDP Index Comparison (ES, FR, IT, DE, EU27)...")
+        comparison_geos = ['ES', 'FR', 'IT', 'DE', 'EU27_2020']
+        filter_pars = {
+            'geo': comparison_geos,
+            'unit': ['CLV10_MNAC'],  # Chain linked volumes (2010), million units of national currency
+            's_adj': ['SCA'],  # Seasonally and calendar adjusted
+            'na_item': ['B1GQ']  # GDP at market prices
+        }
+        df = self.client.get_data(DATASET_CODES["gdp_growth"], filter_pars)
+        df = melt_eurostat_data(df)
+        df = parse_eurostat_data(df, comparison_geos)
+        self._save_csv(df, "gdp_index_comparison_raw.csv")
+        return df
+
     def fetch_all(self) -> dict:
         """
         Fetch all available indicators.
@@ -404,6 +426,7 @@ class EurostatIndicatorFetcher:
         # Economic Activity
         logger.info("[Economic Activity]")
         results["gdp_growth"] = self.fetch_gdp_growth()
+        results["gdp_index_comparison"] = self.fetch_gdp_index_comparison()
         results["industrial_production"] = self.fetch_industrial_production()
         results["economic_sentiment"] = self.fetch_economic_sentiment()
 

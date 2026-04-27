@@ -100,6 +100,40 @@ YAHOO_INDICATORS: Dict[str, Dict[str, Any]] = {
     },
 
     # ==========================================================================
+    # US TREASURY YIELDS
+    # ==========================================================================
+
+    "us_treasury_10y": {
+        "ticker": "^TNX",
+        "name": "US Treasury 10Y Yield",
+        "category": "interest_rates",
+        "description": "10-year US Treasury yield",
+        "geography": "US",
+        "currency": "%",
+        "frequency": "daily"
+    },
+
+    "us_treasury_5y": {
+        "ticker": "^FVX",
+        "name": "US Treasury 5Y Yield",
+        "category": "interest_rates",
+        "description": "5-year US Treasury yield",
+        "geography": "US",
+        "currency": "%",
+        "frequency": "daily"
+    },
+
+    "us_treasury_30y": {
+        "ticker": "^TYX",
+        "name": "US Treasury 30Y Yield",
+        "category": "interest_rates",
+        "description": "30-year US Treasury yield",
+        "geography": "US",
+        "currency": "%",
+        "frequency": "daily"
+    },
+
+    # ==========================================================================
     # CURRENCY EXCHANGE RATES
     # ==========================================================================
 
@@ -306,6 +340,9 @@ INDICATOR_GROUPS = {
     "stock_indices": [
         "ibex_35", "euro_stoxx_50", "stoxx_600", "sp_500",
         "nasdaq_composite", "dax", "cac_40", "ftse_100"
+    ],
+    "interest_rates": [
+        "us_treasury_5y", "us_treasury_10y", "us_treasury_30y"
     ],
     "currencies": [
         "eur_usd", "eur_gbp", "eur_jpy", "eur_chf", "dxy"

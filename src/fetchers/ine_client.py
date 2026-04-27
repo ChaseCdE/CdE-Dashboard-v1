@@ -158,7 +158,15 @@ def parse_ine_data(raw_data: List[Dict]) -> pd.DataFrame:
     """
     records = []
 
+    # Handle case where raw_data might be wrapped or have unexpected format
+    if isinstance(raw_data, dict):
+        raw_data = [raw_data]
+
     for item in raw_data:
+        # Skip non-dictionary items (e.g., strings from malformed responses)
+        if not isinstance(item, dict):
+            continue
+
         # Extract series metadata
         series_code = item.get("COD", "")
         series_name = item.get("Nombre", "").strip()

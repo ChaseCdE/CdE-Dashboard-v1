@@ -223,11 +223,12 @@ def filter_by_period(df: pd.DataFrame, period: str) -> pd.DataFrame:
 
 
 def filter_market_by_period(df: pd.DataFrame, period: str) -> pd.DataFrame:
-    """Filter market data with more granular options (1y / 6m / 3m / 1m)."""
+    """Filter market data with more granular options (3y / 1y / 6m / 3m / 1m)."""
     if df.empty or period == "all":
         return df
     now = pd.Timestamp.now()
     offsets = {
+        "3y": pd.DateOffset(years=3),
         "1y": pd.DateOffset(years=1),
         "6m": pd.DateOffset(months=6),
         "3m": pd.DateOffset(months=3),

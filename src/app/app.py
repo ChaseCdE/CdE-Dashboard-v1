@@ -10,7 +10,7 @@ from shiny import App, ui
 
 from data import load_data_store, get_last_update_time
 from styles import CUSTOM_CSS
-from pages import activity, prices
+from pages import activity, prices, markets
 
 # Static assets directory
 WWW_DIR = Path(__file__).parent / "www"
@@ -40,6 +40,7 @@ app_ui = ui.page_navbar(
     # Tabs
     activity.page_ui(data_store),
     prices.page_ui(data_store),
+    markets.page_ui(data_store),
 
     # Spacer pushes logo to the right
     ui.nav_spacer(),
@@ -75,6 +76,7 @@ app_ui = ui.page_navbar(
 def server(input, output, session):
     activity.page_server(input, output, session, data_store)
     prices.page_server(input, output, session, data_store)
+    markets.page_server(input, output, session, data_store)
 
 
 app = App(app_ui, server, static_assets=WWW_DIR)
