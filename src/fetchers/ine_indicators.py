@@ -35,14 +35,14 @@ TABLE_IDS = {
     "labor_cost": 6030,        # ETCL Coste laboral por trabajador por sectores (current, 2008+)
     "labor_cost_hour": 6034,   # ETCL Coste laboral por hora efectiva por sectores (current, 2008+)
     # Prices
-    "cpi": 50904,              # IPC Índices nacionales por clases
+    "cpi": 79181,              # IPC Índices nacionales: general y grupos ECOICOP ver.2 (base 2026; replaces frozen 50904, base 2021)
     "cpi_special_groups": 76130,  # IPC Índices nacionales de grupos especiales
     "cpi_ecoicop_groups": 76125,  # IPC Índices nacionales de grupos ECOICOP ver.2
     "cpi_weights": 76156,      # IPC Ponderaciones de grupos ECOICOP ver.2
     "cpi_special_weights": 76161,  # IPC Ponderaciones de grupos especiales
     # Consumer
     "retail_sales": 75809,     # ICM Índice nacional
-    "house_prices": 25171,     # IPV Índices por CCAA
+    "house_prices": 80270,     # IPV Índices por CCAA trimestrales (replaces frozen 25171)
     # Industrial Prices
     "ipri": 76655,             # IPRI Índices nacionales: general y por destino económico
     # CNTR Employment and Productivity

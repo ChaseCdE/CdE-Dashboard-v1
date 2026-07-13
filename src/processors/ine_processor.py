@@ -520,6 +520,67 @@ class INEProcessor:
         self._save_processed(result, "labor_cost.csv")
         return result
 
+    def process_labor_cost_components(self) -> pd.DataFrame:
+        """
+        Process Spanish labor cost (ETCL) split by component:
+        Total (Coste laboral total) and Coste salarial total subcomponent.
+        Output is long format with QoQ, YoY and an index rebased to 2019Q1=100.
+        """
+        print("Processing Labor Cost Components (Total + Coste Salarial)...")
+        df = self._load_raw("labor_cost_raw.csv")
+
+        # Sector aggregate: "Industria, construcción y servicios..."
+        sector_prefix = "Industria, construcción y servicios"
+        component_map = {
+            "total": "Coste laboral total",
+            "salarial": "Coste salarial total",
+        }
+
+        frames = []
+        for component_key, component_label in component_map.items():
+            mask = (
+                df["series_name"].str.startswith(sector_prefix, na=False) &
+                df["series_name"].str.contains(component_label, case=False, na=False, regex=False) &
+                ~df["series_name"].str.contains("Variaci", case=False, na=False)
+            )
+            sub = df[mask].copy()
+            if sub.empty:
+                continue
+
+            # Pick the canonical series_code (one row per quarter)
+            series_code = sub["series_code"].iloc[0]
+            sub = sub[sub["series_code"] == series_code].copy()
+            sub = sub.sort_values("date").drop_duplicates(subset=["date"])
+
+            # YoY (4 quarters) and QoQ (1 quarter)
+            sub["yoy_change"] = sub["value"].pct_change(periods=4) * 100
+            sub["qoq_change"] = sub["value"].pct_change(periods=1) * 100
+
+            # Index, base = 2019Q1 (date 2019-01-01)
+            base_row = sub[sub["date"] == pd.Timestamp("2019-01-01")]
+            if not base_row.empty:
+                base_val = base_row["value"].iloc[0]
+                if base_val and base_val != 0:
+                    sub["index_2019q1"] = (sub["value"] / base_val) * 100
+                else:
+                    sub["index_2019q1"] = pd.NA
+            else:
+                sub["index_2019q1"] = pd.NA
+
+            sub["component"] = component_key
+            frames.append(sub[["date", "year", "component", "value",
+                               "yoy_change", "qoq_change", "index_2019q1"]])
+
+        if not frames:
+            result = pd.DataFrame(columns=["date", "year", "component", "value",
+                                           "yoy_change", "qoq_change", "index_2019q1"])
+        else:
+            result = pd.concat(frames, ignore_index=True)
+            result = result.sort_values(["component", "date"]).reset_index(drop=True)
+
+        self._save_processed(result, "labor_cost_components.csv")
+        return result
+
     def process_labor_cost_hour(self) -> pd.DataFrame:
         """
         Process labor cost per hour worked (ETCL).
@@ -561,7 +622,8 @@ class INEProcessor:
 
         # Filter for general index
         mask = (
-            df["series_name"].str.contains("Total Nacional", case=False, na=False) &
+            # INE base-2026 tables renamed "Total Nacional" -> "Nacional"; accept both
+            df["series_name"].str.contains(r"^(?:Total )?Nacional\.", case=False, na=False, regex=True) &
             df["series_name"].str.contains("ndice general", case=False, na=False) &  # Índice general
             df["series_name"].str.endswith("ndice.", na=False)  # Ends with "Índice."
         )
@@ -627,7 +689,8 @@ class INEProcessor:
 
         # Filter for general index
         mask = (
-            df["series_name"].str.contains("Total Nacional", case=False, na=False) &
+            # INE 2026 tables renamed "Total Nacional" -> "Nacional"; accept both
+            df["series_name"].str.contains(r"(?:Total )?Nacional\.", case=False, na=False, regex=True) &
             df["series_name"].str.contains("General", case=False, na=False) &
             df["series_name"].str.endswith("ndice.", na=False)
         )
@@ -660,7 +723,8 @@ class INEProcessor:
         # Filter for annual variation of total industry
         # Series ICN2412: Total Nacional. Total industria. Variación anual.
         mask = (
-            df["series_name"].str.contains("Total Nacional", case=False, na=False) &
+            # INE 2026 tables renamed "Total Nacional" -> "Nacional"; accept both
+            df["series_name"].str.contains(r"(?:Total )?Nacional\.", case=False, na=False, regex=True) &
             df["series_name"].str.contains("Total industria", case=False, na=False) &
             df["series_name"].str.contains("Variaci", case=False, na=False) &
             df["series_name"].str.contains("anual", case=False, na=False)
@@ -691,8 +755,13 @@ class INEProcessor:
         # Filter for annual variation of total services turnover
         # Series IAS3856: Cifra de negocio... Total servicios. Total Nacional. Variación anual.
         mask = (
-            df["series_name"].str.contains("Total Nacional", case=False, na=False) &
-            df["series_name"].str.contains("Total servicios", case=False, na=False) &
+            # INE 2026 tables renamed "Total Nacional" -> "Nacional" and
+            # "Total servicios" -> "Índice General"; accept both namings
+            df["series_name"].str.contains(r"(?:Total )?Nacional\.", case=False, na=False, regex=True) &
+            (
+                df["series_name"].str.contains("Total servicios", case=False, na=False) |
+                df["series_name"].str.contains("ndice General", case=False, na=False)
+            ) &
             df["series_name"].str.contains("Variaci", case=False, na=False) &
             df["series_name"].str.contains("anual", case=False, na=False) &
             ~df["series_name"].str.contains("mensual", case=False, na=False) &
@@ -976,7 +1045,8 @@ class INEProcessor:
             # Filter for YoY variation series specifically
             mask = (
                 df["series_name"].str.contains(search_term, case=False, na=False) &
-                df["series_name"].str.contains("Total Nacional", case=False, na=False) &
+                # INE base-2026 tables renamed "Total Nacional" -> "Nacional"; accept both
+                df["series_name"].str.contains(r"^(?:Total )?Nacional\.", case=False, na=False, regex=True) &
                 df["series_name"].str.contains("Variaci.n anual", case=False, na=False)
             )
             filtered = df[mask].copy()
@@ -1117,25 +1187,25 @@ class INEProcessor:
             if "Alimentos" in full_name:
                 # Match exactly "Alimentos, bebidas y tabaco. Variación anual."
                 mask = df["series_name"].str.contains(
-                    r"Total Nacional\. Alimentos, bebidas y tabaco\. Variaci.n anual\.",
+                    r"(?:Total )?Nacional\. Alimentos, bebidas y tabaco\. Variaci.n anual\.",
                     case=False, na=False, regex=True
                 )
             elif "Productos energ" in full_name:
                 # Match exactly "Productos energéticos. Variación anual." (NOT "sin productos energéticos")
                 mask = df["series_name"].str.contains(
-                    r"Total Nacional\. Productos energ.ticos\. Variaci.n anual\.",
+                    r"(?:Total )?Nacional\. Productos energ.ticos\. Variaci.n anual\.",
                     case=False, na=False, regex=True
                 )
             elif full_name == "Servicios":
                 # Match exactly "Servicios. Variación anual." (NOT "Servicios sin...")
                 mask = df["series_name"].str.contains(
-                    r"Total Nacional\. Servicios\. Variaci.n anual\.",
+                    r"(?:Total )?Nacional\. Servicios\. Variaci.n anual\.",
                     case=False, na=False, regex=True
                 )
             elif "Bienes industriales" in full_name:
                 # Match "Bienes industriales sin productos energéticos. Variación anual."
                 mask = df["series_name"].str.contains(
-                    r"Total Nacional\. Bienes industriales sin productos energ.ticos\. Variaci.n anual\.",
+                    r"(?:Total )?Nacional\. Bienes industriales sin productos energ.ticos\. Variaci.n anual\.",
                     case=False, na=False, regex=True
                 )
             else:
@@ -1667,6 +1737,7 @@ class INEProcessor:
         # Labor Market - Labor Costs
         results["labor_cost"] = self.process_labor_cost()
         results["labor_cost_hour"] = self.process_labor_cost_hour()
+        results["labor_cost_components"] = self.process_labor_cost_components()
         # Prices
         results["cpi"] = self.process_cpi()
         results["cpi_special_groups"] = self.process_cpi_special_groups()
@@ -1717,20 +1788,4 @@ class INEProcessor:
                 df = pd.read_csv(filepath, parse_dates=["date"])
                 if df.empty:
                     continue
-                # Skip if required columns are missing
-                if value_col not in df.columns:
-                    continue
-                df = df.sort_values("date", ascending=False)
-                latest = df.iloc[0]
-
-                summary_data.append({
-                    "indicator": name,
-                    "latest_date": latest["date"],
-                    "latest_value": latest[value_col],
-                    "yoy_change": latest[change_col] if change_col in df.columns and pd.notna(latest.get(change_col)) else None,
-                    "frequency": frequency,
-                })
-
-        summary_df = pd.DataFrame(summary_data)
-        self._save_processed(summary_df, "summary.csv")
-        return summary_df
+     
