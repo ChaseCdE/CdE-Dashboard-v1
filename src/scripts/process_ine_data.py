@@ -64,18 +64,14 @@ def main():
         print("\nSummary:")
         print("-" * 40)
         for name, df in results.items():
-            if not df.empty:
+            if not df.empty and "date" in df.columns:
                 latest = df.sort_values("date").iloc[-1]
                 print(f"{name}: {len(df)} records, latest: {latest['date'].strftime('%Y-%m-%d') if hasattr(latest['date'], 'strftime') else latest['date']}")
+            elif not df.empty:
+                print(f"{name}: {len(df)} records (no date column)")
             else:
                 print(f"{name}: No data after filtering")
 
         # Create summary dataset
         print("\n")
-        summary = processor.create_summary_dataset()
-        print("\nLatest values:")
-        print(summary.to_string())
-
-
-if __name__ == "__main__":
-    main()
+        summary = processor.create_su
