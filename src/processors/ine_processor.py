@@ -33,6 +33,35 @@ def _check_time_gaps(df: pd.DataFrame, expected_freq: str, indicator_name: str):
         )
 
 
+# INE renamed "Total Nacional" -> "Nacional" in the 2026 rebased tables; accept both.
+NACIONAL_RE = r"^(?:Total )?Nacional\."
+
+
+def _value_months_earlier(df: pd.DataFrame, col: str, months: int) -> pd.Series:
+    """
+    Value of `col` exactly `months` calendar months before each row's date.
+
+    Gaps are handled deliberately: if the comparison period is missing the
+    result is NaN. Positional shifts (pct_change(periods=n)) would silently
+    compare against the wrong period when an observation is missing, and the
+    default fill_method='pad' of pct_change would fill the gap with stale data.
+    """
+    base = df.drop_duplicates(subset=["date"], keep="last").set_index("date")[col]
+    prior = pd.Series(base.values, index=base.index + pd.DateOffset(months=months))
+    return df["date"].map(prior)
+
+
+def pct_change_by_date(df: pd.DataFrame, col: str, months: int) -> pd.Series:
+    """Percent change of `col` versus `months` calendar months earlier (NaN if that period is missing)."""
+    prev = _value_months_earlier(df, col, months).replace(0, float("nan"))
+    return (df[col] / prev - 1) * 100
+
+
+def diff_by_date(df: pd.DataFrame, col: str, months: int) -> pd.Series:
+    """Difference of `col` versus `months` calendar months earlier (percentage points for rates)."""
+    return df[col] - _value_months_earlier(df, col, months)
+
+
 class INEProcessor:
     """Processor for INE economic indicators."""
 
@@ -64,23 +93,26 @@ class INEProcessor:
         print(f"Saved: {filepath}")
         return filepath
 
-    def _calculate_yoy_change(self, df: pd.DataFrame, periods: int = 4) -> pd.DataFrame:
+    def _calculate_yoy_change(self, df: pd.DataFrame, periods: int = None) -> pd.DataFrame:
         """
-        Calculate Year-over-Year change.
+        Calculate year-over-year % change of the 'value' column.
 
-        Args:
-            df: DataFrame with 'date' and 'value' columns
-            periods: Number of periods for YoY (4 for quarterly, 12 for monthly)
+        The comparison is by calendar date (12 months earlier), independent of
+        frequency, so quarterly, monthly and annual series are all handled the
+        same way and a missing period gives NaN instead of a wrong comparison.
+        `periods` is accepted for backwards compatibility and ignored.
 
         Returns:
             DataFrame with added 'yoy_change' column
         """
         df = df.sort_values("date").copy()
-        nan_before = df["value"].isna().sum() if "value" in df.columns else 0
-        df["yoy_change"] = df["value"].pct_change(periods=periods) * 100
-        nan_after = df["yoy_change"].isna().sum() if "yoy_change" in df.columns else 0
-        if nan_after > nan_before + periods:
-            logger.warning(f"YoY calculation: NaN count went from {nan_before} to {nan_after} (expected increase: {periods})")
+        df["yoy_change"] = pct_change_by_date(df, "value", 12)
+        return df
+
+    def _add_yoy_pp(self, df: pd.DataFrame, col: str) -> pd.DataFrame:
+        """Add 'yoy_pp': year-over-year change of a rate in percentage points (rate minus rate 12 months earlier)."""
+        df = df.sort_values("date").copy()
+        df["yoy_pp"] = diff_by_date(df, col, 12)
         return df
 
     def process_gdp(self) -> pd.DataFrame:
@@ -128,6 +160,7 @@ class INEProcessor:
         result = result.rename(columns={"value": "gdp_index"})
         result = result.sort_values("date").drop_duplicates(subset=["date"])
 
+        result["qoq_change"] = pct_change_by_date(result, "gdp_index", 3)
         self._save_processed(result, "gdp.csv")
         return result
 
@@ -191,6 +224,7 @@ class INEProcessor:
 
         result = result.sort_values("date").drop_duplicates(subset=["date"])
 
+        result["mom_change"] = pct_change_by_date(result, "ipi_index", 1) if result["ipi_index"].notna().any() else float("nan")
         self._save_processed(result, "industrial_production.csv")
         return result
 
@@ -230,6 +264,7 @@ class INEProcessor:
         result = result.rename(columns={"value": "unemployment_rate"})
         result = result.sort_values("date").drop_duplicates(subset=["date"])
 
+        result = self._add_yoy_pp(result, "unemployment_rate")
         self._save_processed(result, "unemployment.csv")
         return result
 
@@ -269,6 +304,7 @@ class INEProcessor:
         result = result.rename(columns={"value": "employment_rate"})
         result = result.sort_values("date").drop_duplicates(subset=["date"])
 
+        result = self._add_yoy_pp(result, "employment_rate")
         self._save_processed(result, "employment_rate.csv")
         return result
 
@@ -308,6 +344,7 @@ class INEProcessor:
         result = result.rename(columns={"value": "activity_rate"})
         result = result.sort_values("date").drop_duplicates(subset=["date"])
 
+        result = self._add_yoy_pp(result, "activity_rate")
         self._save_processed(result, "activity_rate.csv")
         return result
 
@@ -381,6 +418,7 @@ class INEProcessor:
         result = result.rename(columns={"value": "temporary_rate"})
         result = result.sort_values("date").drop_duplicates(subset=["date"])
 
+        result = self._add_yoy_pp(result, "temporary_rate")
         self._save_processed(result, "temporary_rate.csv")
         return result
 
@@ -393,22 +431,23 @@ class INEProcessor:
         print("Processing Part-time Rate...")
         df = self._load_raw("parttime_rate_raw.csv")
 
+        # EPA table 65148 (quarterly). Series names: "Ocupados. Total Nacional. Ambos sexos.
+        # Total. Total. Valor absoluto." and "... Total. Jornada a tiempo parcial. Valor absoluto."
+        # (the former annual table 65970 used "16 y más años" and "Personas"; accepted too).
+        age = r"Ambos sexos\. (?:Total|16 y más años)\. "
+        absolute = r"(?:Personas|Valor absoluto)"
+
         # Get total employed persons
         total_mask = (
             df["series_name"].str.contains("Total Nacional", case=False, na=False) &
-            df["series_name"].str.contains("Ambos sexos", case=False, na=False) &
-            df["series_name"].str.contains("Total\\.", case=False, na=False) &
-            df["series_name"].str.contains("Personas", case=False, na=False) &
-            ~df["series_name"].str.contains("parcial|completo", case=False, na=False)
+            df["series_name"].str.contains(age + r"Total\. " + absolute, case=False, na=False, regex=True)
         )
         total_df = df[total_mask].copy()
 
         # Get part-time employed persons
         parttime_mask = (
             df["series_name"].str.contains("Total Nacional", case=False, na=False) &
-            df["series_name"].str.contains("Ambos sexos", case=False, na=False) &
-            df["series_name"].str.contains("parcial", case=False, na=False) &
-            df["series_name"].str.contains("Personas", case=False, na=False)
+            df["series_name"].str.contains(age + r"Jornada a tiempo parcial\. " + absolute, case=False, na=False, regex=True)
         )
         parttime_df = df[parttime_mask].copy()
 
@@ -443,13 +482,14 @@ class INEProcessor:
             return pd.DataFrame(columns=["date", "year", "parttime_rate", "yoy_change"])
         merged["parttime_rate"] = (merged["value_parttime"] / merged["value_total"]) * 100
 
-        # Calculate YoY change (quarterly = 4 periods for quarterly data)
+        # YoY change versus the same quarter a year earlier (by date)
         merged = merged.sort_values("date")
-        merged["yoy_change"] = merged["parttime_rate"].pct_change(periods=4) * 100
+        merged["yoy_change"] = pct_change_by_date(merged, "parttime_rate", 12)
 
         result = merged[["date", "year", "parttime_rate", "yoy_change"]].copy()
         result = result.sort_values("date").drop_duplicates(subset=["date"])
 
+        result = self._add_yoy_pp(result, "parttime_rate")
         self._save_processed(result, "parttime_rate.csv")
         return result
 
@@ -486,6 +526,7 @@ class INEProcessor:
         result = result.rename(columns={"value": "youth_unemployment_rate"})
         result = result.sort_values("date").drop_duplicates(subset=["date"])
 
+        result = self._add_yoy_pp(result, "youth_unemployment_rate")
         self._save_processed(result, "youth_unemployment.csv")
         return result
 
@@ -553,8 +594,8 @@ class INEProcessor:
             sub = sub.sort_values("date").drop_duplicates(subset=["date"])
 
             # YoY (4 quarters) and QoQ (1 quarter)
-            sub["yoy_change"] = sub["value"].pct_change(periods=4) * 100
-            sub["qoq_change"] = sub["value"].pct_change(periods=1) * 100
+            sub["yoy_change"] = pct_change_by_date(sub, "value", 12)
+            sub["qoq_change"] = pct_change_by_date(sub, "value", 3)
 
             # Index, base = 2019Q1 (date 2019-01-01)
             base_row = sub[sub["date"] == pd.Timestamp("2019-01-01")]
@@ -656,11 +697,14 @@ class INEProcessor:
         print("Processing Retail Sales...")
         df = self._load_raw("retail_sales_raw.csv")
 
-        # Filter for index (not variations)
+        # Headline index: retail trade excluding service stations, "General" aggregate,
+        # constant prices, seasonally and calendar adjusted (ICM4062, table 67178).
+        # The previously used table (75809) has no total, only distribution modes, so
+        # "first matching series" silently picked the "Empresas unilocalizadas" subset.
         mask = (
             df["series_name"].str.contains("Total Nacional", case=False, na=False) &
-            df["series_name"].str.contains("ndice", case=False, na=False) &
-            ~df["series_name"].str.contains("Variaci", case=False, na=False)
+            df["series_name"].str.contains(r"Estaciones de Servicio \(47 sin 473\)\. General\. [ÍI]ndice\.",
+                                           case=False, na=False, regex=True)
         )
         filtered = df[mask].copy()
 
@@ -676,6 +720,7 @@ class INEProcessor:
         result = result.rename(columns={"value": "retail_index"})
         result = result.sort_values("date").drop_duplicates(subset=["date"])
 
+        result["mom_change"] = pct_change_by_date(result, "retail_index", 1)
         self._save_processed(result, "retail_sales.csv")
         return result
 
@@ -834,6 +879,7 @@ class INEProcessor:
 
         result = result.sort_values("date").drop_duplicates(subset=["date"])
 
+        result["mom_change"] = pct_change_by_date(result, "services_prod_index", 1) if result["services_prod_index"].notna().any() else float("nan")
         self._save_processed(result, "services_production.csv")
         return result
 
@@ -1114,6 +1160,10 @@ class INEProcessor:
         result = result.sort_values("weight", ascending=False)
 
         print(f"  Found {len(result)} groups for year {latest_year}")
+        # Extra columns for the site export: weight as % of the basket (INE gives per mille)
+        # and the first day of the weights' year as the x value.
+        result["weight_pct"] = result["weight"] / 10
+        result["date"] = pd.to_datetime(result["year"].astype(int).astype(str) + "-01-01")
         self._save_processed(result, "cpi_weights.csv")
         return result
 
@@ -1239,6 +1289,8 @@ class INEProcessor:
             result = pd.concat(results, ignore_index=True)
             result = result.sort_values(["date", "group_name"]).drop_duplicates(subset=["date", "group_name"])
             print(f"  Processed {len(result['group_name'].unique())} groups")
+            # Weights are per mille of the basket; export also as % of the basket
+            result["weight_pct"] = result["weight"] / 10
             self._save_processed(result, "cpi_ecoicop_groups.csv")
             return result
 
@@ -1257,14 +1309,18 @@ class INEProcessor:
             print("  WARNING: No IPRI raw data found")
             return pd.DataFrame()
 
-        # Categories we want (only national data - "Total Nacional")
+        # Categories we want (only national data). Since the 2026 rebase INE names
+        # the series "Nacional. Mercado interior. ..." (before: "Total Nacional. ...").
+        # Patterns are anchored on ". <category>. " so that "Energía" cannot match
+        # "Total industria sin energía" and "Bienes de consumo" cannot match
+        # "Bienes de consumo duradero".
         categories = {
-            "total": "Total industria",
-            "total_sin_energia": "Total industria sin energ",
-            "consumo": "Bienes de consumo",
-            "equipo": "Bienes de equipo",
-            "intermedios": "Bienes intermedios",
-            "energia": "Energ",
+            "total": r"\. Total industria\.",
+            "total_sin_energia": r"\. Total industria sin energ.a\.",
+            "consumo": r"\. Bienes de consumo\.",
+            "equipo": r"\. Bienes de equipo\.",
+            "intermedios": r"\. Bienes intermedios\.",
+            "energia": r"\. Energ.a\.",
         }
 
         # Exclude subcategories like "Bienes de consumo duradero"
@@ -1275,8 +1331,8 @@ class INEProcessor:
         for cat_key, search_term in categories.items():
             # Get index series
             index_mask = (
-                df["series_name"].str.contains("Total Nacional", case=False, na=False) &
-                df["series_name"].str.contains(search_term, case=False, na=False) &
+                df["series_name"].str.contains(NACIONAL_RE, case=False, na=False, regex=True) &
+                df["series_name"].str.contains(search_term, case=False, na=False, regex=True) &
                 df["series_name"].str.contains(r"[ÍI]ndice", case=False, na=False, regex=True) &
                 ~df["series_name"].str.contains("Variaci", case=False, na=False)
             )
@@ -1286,8 +1342,8 @@ class INEProcessor:
 
             # Get YoY variation series
             yoy_mask = (
-                df["series_name"].str.contains("Total Nacional", case=False, na=False) &
-                df["series_name"].str.contains(search_term, case=False, na=False) &
+                df["series_name"].str.contains(NACIONAL_RE, case=False, na=False, regex=True) &
+                df["series_name"].str.contains(search_term, case=False, na=False, regex=True) &
                 df["series_name"].str.contains("Variaci.n anual", case=False, na=False, regex=True)
             )
             for excl in exclude_terms:
@@ -1295,8 +1351,8 @@ class INEProcessor:
 
             # Get MoM variation series
             mom_mask = (
-                df["series_name"].str.contains("Total Nacional", case=False, na=False) &
-                df["series_name"].str.contains(search_term, case=False, na=False) &
+                df["series_name"].str.contains(NACIONAL_RE, case=False, na=False, regex=True) &
+                df["series_name"].str.contains(search_term, case=False, na=False, regex=True) &
                 df["series_name"].str.contains("Variaci.n mensual", case=False, na=False, regex=True)
             )
             for excl in exclude_terms:
@@ -1415,7 +1471,10 @@ class INEProcessor:
         ]
 
         # Get total population
-        total_mask = df["series_name"].str.contains("Todas las edades", case=False, na=False)
+        # INE renamed the series in 2026: "Ambos sexos. Todas las edades. Personas."
+        # became "Ambos sexos. Total. Valor absoluto."; accept both.
+        total_mask = df["series_name"].str.contains(
+            r"Ambos sexos\. (?:Todas las edades|Total)\.", case=False, na=False, regex=True)
         total_df = df[total_mask].copy()
 
         if total_df.empty:
@@ -1695,6 +1754,13 @@ class INEProcessor:
 
         result = pd.concat(results, ignore_index=True)
         result = result.sort_values(["date", "indicator"]).drop_duplicates(subset=["date", "indicator"])
+
+        # YoY % change only makes sense for the ICE index level; the other two are
+        # balances (can be negative), so they get NaN. Computed before the 2021
+        # cut so that 2021 values have a base period.
+        result["yoy_change"] = float("nan")
+        ice = result["indicator"] == "ice"
+        result.loc[ice, "yoy_change"] = pct_change_by_date(result[ice], "value", 12)
 
         # Filter from 2021 onwards
         result = result[result["date"] >= "2021-01-01"]

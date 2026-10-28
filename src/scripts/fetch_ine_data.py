@@ -20,11 +20,32 @@ from src.fetchers import INEIndicatorFetcher
 
 AVAILABLE_INDICATORS = [
     "gdp",
+    "gdp_demand",
     "industrial_production",
+    "industry_turnover",
+    "services_turnover",
+    "services_production",
     "unemployment",
+    "employment_rate",
+    "activity_rate",
+    "employed",
+    "temporary_rate",
+    "parttime_rate",
+    "youth_unemployment",
+    "labor_cost",
+    "labor_cost_hour",
     "cpi",
+    "cpi_special_groups",
+    "cpi_ecoicop_groups",
+    "cpi_weights",
+    "cpi_special_weights",
     "retail_sales",
     "house_prices",
+    "ipri",
+    "cntr_employment",
+    "population_age",
+    "cpi_ccaa",
+    "business_confidence",
 ]
 
 
