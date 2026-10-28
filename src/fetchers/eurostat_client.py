@@ -1,16 +1,61 @@
 """
 Eurostat API Client
-Base client for fetching data from Eurostat using the eurostat Python package.
+
+One request per dataset against the Eurostat Statistics API (JSON-stat 2.0), with every
+dimension pinned server-side. The `eurostat` Python package was dropped: it issued an extra
+request to read the dataset's dimension order and one data request per combination of filter
+values (100 requests for 24 datasets); this client needs 24 and no extra dependency.
 """
 
-import eurostat
 import pandas as pd
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+import itertools
 import re
 import logging
 
+from .http_session import make_session
+
 logger = logging.getLogger(__name__)
+
+BASE_URL = "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/"
+
+
+class EurostatError(Exception):
+    """A Eurostat response is unusable (error, unexpected dimensions, no data)."""
+
+
+def jsonstat_to_long(js: dict, dataset_code: str, pinned: List[str]) -> pd.DataFrame:
+    """
+    Convert a JSON-stat 2.0 response to the long format of the raw files: one column per
+    dimension (in the dataset's dimension order), `period` and `value`. Missing observations
+    are absent from JSON-stat, so they are absent here.
+
+    Every dimension except geo and time must be pinned to one category by the request
+    (`pinned` lists the filter keys); otherwise the series would be ambiguous and this raises.
+    """
+    ids, sizes = js["id"], js["size"]
+    dims = {d: js["dimension"][d]["category"]["index"] for d in ids}
+    # category index is a dict code -> position, or a list of codes
+    cats = {d: (list(ix) if isinstance(ix, list) else sorted(ix, key=ix.get)) for d, ix in dims.items()}
+    for d in ids:
+        if d not in ("geo", "time") and len(cats[d]) > 1 and d not in pinned:
+            raise EurostatError(f"{dataset_code}: dimension {d} has {len(cats[d])} categories and was not filtered")
+    values = js.get("value", {})
+    if isinstance(values, list):
+        values = {i: v for i, v in enumerate(values) if v is not None}
+    other = [d for d in ids if d != "time"]
+    n_time = len(cats["time"])
+    rows = []
+    # JSON-stat is row-major over `id` with time last: position = combo_index * n_time + t
+    combos = list(itertools.product(*[range(len(cats[d])) for d in other]))
+    for ci, combo in enumerate(combos):
+        for t in range(n_time):
+            v = values.get(str(ci * n_time + t), values.get(ci * n_time + t))
+            if v is None:
+                continue
+            rows.append([cats[d][k] for d, k in zip(other, combo)] + [cats["time"][t], float(v)])
+    return pd.DataFrame(rows, columns=other + ["period", "value"])
 
 
 class EurostatClient:
@@ -29,6 +74,7 @@ class EurostatClient:
             start_period: Start year for data fetching (default: 2015)
         """
         self.start_period = start_period
+        self.session = make_session(headers={"Accept": "application/json"})
 
     def get_data(
         self,
@@ -37,60 +83,39 @@ class EurostatClient:
         include_start_period: bool = True
     ) -> pd.DataFrame:
         """
-        Fetch data from Eurostat.
+        Fetch one dataset, filtered on the server.
 
         Args:
             dataset_code: Eurostat dataset code (e.g., 'namq_10_gdp')
-            filter_pars: Dictionary of filter parameters
-            include_start_period: Whether to include startPeriod in filters
+            filter_pars: dimension -> value or list of values; 'startPeriod' sets the first period
+            include_start_period: Whether to default startPeriod to the client's start year
 
         Returns:
-            DataFrame with the fetched data
+            Long DataFrame (dimensions, period, value); empty on failure (logged as an error)
         """
-        if include_start_period and 'startPeriod' not in filter_pars:
-            filter_pars['startPeriod'] = self.start_period
+        params = {}
+        pinned = []
+        for key, val in filter_pars.items():
+            if key == "startPeriod":
+                continue
+            params[key] = list(val) if isinstance(val, (list, tuple)) else [val]
+            pinned.append(key)
+        start = filter_pars.get("startPeriod", self.start_period if include_start_period else None)
+        if start is not None:
+            params["sinceTimePeriod"] = str(start)
+        params["format"] = "JSON"
+        params["lang"] = "EN"
 
         try:
-            df = eurostat.get_data_df(dataset_code, filter_pars=filter_pars)
-            return df
+            resp = self.session.get(BASE_URL + dataset_code, params=params)
+            resp.raise_for_status()
+            js = resp.json()
+            if "error" in js:
+                raise EurostatError(f"{dataset_code}: {js['error']}")
+            return jsonstat_to_long(js, dataset_code, pinned)
         except Exception as e:
             logger.error(f"Error fetching {dataset_code}: {e}")
             return pd.DataFrame()
-
-    def get_dataset_info(self, dataset_code: str) -> Dict:
-        """
-        Get available parameters for a dataset.
-
-        Args:
-            dataset_code: Eurostat dataset code
-
-        Returns:
-            Dictionary with parameter information
-        """
-        try:
-            pars = eurostat.get_pars(dataset_code)
-            return {"parameters": pars}
-        except Exception as e:
-            logger.error(f"Error getting parameters for {dataset_code}: {e}")
-            return {}
-
-    def get_parameter_values(self, dataset_code: str, parameter: str) -> List[str]:
-        """
-        Get possible values for a parameter.
-
-        Args:
-            dataset_code: Eurostat dataset code
-            parameter: Parameter name (e.g., 'geo', 'unit')
-
-        Returns:
-            List of possible values
-        """
-        try:
-            values = eurostat.get_par_values(dataset_code, parameter)
-            return values
-        except Exception as e:
-            logger.error(f"Error getting values for {parameter}: {e}")
-            return []
 
 
 def melt_eurostat_data(df: pd.DataFrame) -> pd.DataFrame:
