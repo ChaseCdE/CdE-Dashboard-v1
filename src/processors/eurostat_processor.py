@@ -73,6 +73,11 @@ class EurostatProcessor:
         # Parse date column
         if 'date' in df.columns:
             df['date'] = pd.to_datetime(df['date'])
+        # Eurostat publishes placeholder periods with no value (e.g. the latest
+        # month for one geography). Drop them: a missing observation must not be
+        # carried forward into growth rates nor extend the series.
+        if 'value' in df.columns:
+            df = df.dropna(subset=['value']).reset_index(drop=True)
         return df
 
     def _save_processed(self, df: pd.DataFrame, filename: str) -> Path:
@@ -90,25 +95,41 @@ class EurostatProcessor:
         df: pd.DataFrame,
         value_col: str = "value",
         periods: int = 4,
-        geo_col: str = "geo"
+        geo_col: str = "geo",
+        kind: str = "pct"
     ) -> pd.DataFrame:
         """
-        Calculate Year-over-Year change, grouped by geography.
+        Calculate the change versus the same period one year earlier, by geography.
+
+        The comparison is by calendar date (value at t vs value at t - 12 months),
+        not by row position, so a missing period yields NaN instead of silently
+        comparing against a different period. Nothing is forward-filled.
 
         Args:
             df: DataFrame with date and value columns
             value_col: Name of the value column
-            periods: Number of periods for YoY (4 for quarterly, 12 for monthly)
+            periods: Kept for compatibility (periods per year: 4 or 12); the
+                lag is always one calendar year
             geo_col: Name of geography column
+            kind: "pct" = percent change (levels and indices);
+                  "diff" = difference in percentage points (rates, balances)
 
         Returns:
             DataFrame with added 'yoy_change' column
         """
         df = df.sort_values([geo_col, "date"]).reset_index(drop=True).copy()
-
-        # Calculate YoY change per geography
-        df["yoy_change"] = df.groupby(geo_col)[value_col].pct_change(periods=periods) * 100
-
+        parts = []
+        for _, g in df.groupby(geo_col, sort=False):
+            s = g.set_index("date")[value_col]
+            prior = s.copy()
+            prior.index = prior.index + pd.DateOffset(years=1)
+            prior = prior[~prior.index.duplicated(keep="last")].reindex(s.index)
+            if kind == "diff":
+                yoy = s - prior
+            else:
+                yoy = (s / prior - 1) * 100
+            parts.append(pd.Series(yoy.values, index=g.index))
+        df["yoy_change"] = pd.concat(parts) if parts else float("nan")
         return df
 
     def _split_by_geography(
@@ -214,8 +235,8 @@ class EurostatProcessor:
         # Check for time gaps before YoY calculation
         _check_time_gaps(df, "Q", "GDP Growth")
 
-        # Calculate YoY (4 quarters)
-        df = self._calculate_yoy_change(df, "gdp_growth_qoq", periods=4)
+        # No yoy_change: the input is already a quarter-on-quarter growth rate and
+        # the difference between two such rates is not an economic quantity.
 
         # Select relevant columns
         cols = ["geo", "date", "gdp_growth_qoq", "yoy_change"]
@@ -333,7 +354,7 @@ class EurostatProcessor:
             return {}
 
         df = df.rename(columns={"value": "unemployment_rate"})
-        df = self._calculate_yoy_change(df, "unemployment_rate", periods=12)
+        df = self._calculate_yoy_change(df, "unemployment_rate", periods=12, kind="diff")
 
         cols = ["geo", "date", "unemployment_rate", "yoy_change"]
         df = df[[c for c in cols if c in df.columns]].copy()
@@ -350,7 +371,7 @@ class EurostatProcessor:
             return {}
 
         df = df.rename(columns={"value": "employment_growth"})
-        df = self._calculate_yoy_change(df, "employment_growth", periods=4)
+        # No yoy_change (input is already a quarter-on-quarter growth rate).
 
         cols = ["geo", "date", "employment_growth", "yoy_change"]
         df = df[[c for c in cols if c in df.columns]].copy()
@@ -367,7 +388,7 @@ class EurostatProcessor:
             return {}
 
         df = df.rename(columns={"value": "participation_rate"})
-        df = self._calculate_yoy_change(df, "participation_rate", periods=4)
+        df = self._calculate_yoy_change(df, "participation_rate", periods=4, kind="diff")
 
         cols = ["geo", "date", "participation_rate", "yoy_change"]
         df = df[[c for c in cols if c in df.columns]].copy()
@@ -432,42 +453,26 @@ class EurostatProcessor:
     # === External Sector ===
 
     def process_trade_balance(self) -> Dict[str, pd.DataFrame]:
-        """Process Trade Balance (Spain only)."""
+        """Process trade in goods (Spain only, monthly, million EUR, NSA)."""
         print("Processing Trade Balance...")
         df = self._load_raw("trade_balance_raw.csv")
 
         if df.empty:
             return {}
 
-        # This has multiple indic_et values, pivot if needed
-        if 'indic_et' in df.columns:
-            df_pivot = df.pivot_table(
-                index=["geo", "date"],
-                columns="indic_et",
-                values="value",
-                aggfunc="first"
-            ).reset_index()
+        if "stk_flow" not in df.columns:
+            print("  Warning: trade_balance_raw.csv has the old annual layout; refetch required")
+            return {}
 
-            df_pivot.columns.name = None
-
-            # Rename columns
-            col_mapping = {
-                "MIO_BAL_VAL": "trade_balance",
-                "MIO_EXP_VAL": "exports",
-                "MIO_IMP_VAL": "imports"
-            }
-            df_pivot = df_pivot.rename(columns=col_mapping)
-            df = df_pivot
-
-        cols = ["geo", "date", "trade_balance", "exports", "imports"]
-        df = df[[c for c in cols if c in df.columns]].copy()
-        df = df.sort_values("date").reset_index(drop=True)
-
-        # Save Spain data only
-        if 'geo' in df.columns:
-            df_spain = df[df["geo"] == self.GEO_SPAIN].drop(columns=["geo"]).copy()
-        else:
-            df_spain = df.copy()
+        df = df[df["geo"] == self.GEO_SPAIN]
+        wide = df.pivot_table(index="date", columns="stk_flow", values="value", aggfunc="first")
+        wide = wide.rename(columns={"EXP": "exports", "IMP": "imports"})
+        # Only months where both flows are published (the balance needs both)
+        wide = wide.dropna(subset=["exports", "imports"])
+        wide["trade_balance"] = wide["exports"] - wide["imports"]
+        wide.columns.name = None
+        df_spain = wide.reset_index()[["date", "trade_balance", "exports", "imports"]]
+        df_spain = df_spain.sort_values("date").reset_index(drop=True)
 
         self._save_processed(df_spain, "trade_balance_spain.csv")
         return {"ES": df_spain}
@@ -483,7 +488,7 @@ class EurostatProcessor:
             return {}
 
         df = df.rename(columns={"value": "debt_to_gdp"})
-        df = self._calculate_yoy_change(df, "debt_to_gdp", periods=4)
+        df = self._calculate_yoy_change(df, "debt_to_gdp", periods=4, kind="diff")
 
         cols = ["geo", "date", "debt_to_gdp", "yoy_change"]
         df = df[[c for c in cols if c in df.columns]].copy()
@@ -518,7 +523,7 @@ class EurostatProcessor:
             return {}
 
         df = df.rename(columns={"value": "consumer_confidence"})
-        df = self._calculate_yoy_change(df, "consumer_confidence", periods=12)
+        df = self._calculate_yoy_change(df, "consumer_confidence", periods=12, kind="diff")
 
         cols = ["geo", "date", "consumer_confidence", "yoy_change"]
         df = df[[c for c in cols if c in df.columns]].copy()
