@@ -700,7 +700,9 @@ class BdeProcessor:
             ("spain_tbill_3m", 0.25),   # 3 months
             ("spain_tbill_6m", 0.5),    # 6 months
             ("spain_tbill_1y", 1.0),    # 1 year
-            ("spain_2y_bond", 2.0),     # 2 years
+            # spain_2y_bond is excluded: the BdE series is "bonds with more than 2 years to
+            # maturity" (an average over all longer maturities), not a 2-year yield, and it
+            # produced a false kink between 1 and 3 years.
             ("spain_3y_bond", 3.0),     # 3 years
             ("spain_5y_bond", 5.0),     # 5 years
             ("spain_10y_bond", 10.0),   # 10 years
