@@ -134,6 +134,19 @@ INDICATORS = {
     "cpi_weights": dict(table=76156, nult=12, file="cpi_weights_raw.csv", series={
         f"w{c}": _s(f"IPC{c}", "Nacional", "Ponderación") for c in range(331936, 331950)
     }),
+    # Weights (per mille) of the four special groups, one observation per year. INE publishes them in
+    # two series families: ECOICOP ver.2 (base 2025; table 76161, from 2026) and the previous base
+    # (table 50951, 2022-2025). Both are fetched so every year has its own weights (audit M2).
+    "cpi_special_weights": dict(table=76161, nult=12, file="cpi_special_weights_raw.csv", series={
+        "alimentos_bebidas_y_tabaco": _s("IPC332382", "Nacional", "Alimentos, bebidas y tabaco", "Ponderación"),
+        "productos_energeticos": _s("IPC332363", "Nacional", "Productos energéticos", "Ponderación"),
+        "servicios": _s("IPC332372", "Nacional", "Servicios", "Ponderación"),
+        "bienes_industriales_sin_productos_energeticos": _s("IPC332383", "Nacional", "Bienes industriales sin productos energéticos", "Ponderación"),
+        "prev_alimentos_bebidas_y_tabaco": _s("IPC233251", "Nacional", "Alimentos, bebidas y tabaco", "Ponderación"),
+        "prev_productos_energeticos": _s("IPC233270", "Nacional", "Productos energéticos", "Ponderación"),
+        "prev_servicios": _s("IPC233252", "Nacional", "Servicios", "Ponderación"),
+        "prev_bienes_industriales_sin_productos_energeticos": _s("IPC233249", "Nacional", "Bienes industriales sin productos energéticos", "Ponderación"),
+    }),
     "retail_sales": dict(table=67178, nult=60, file="retail_sales_raw.csv", series={
         "index": _s("ICM4062", "Total Nacional", "precios constantes", "47 sin 473", "General", "Índice", SA),
         "yoy": _s("ICM4079", "precios constantes", "47 sin 473", "General", "Variación anual", SA),

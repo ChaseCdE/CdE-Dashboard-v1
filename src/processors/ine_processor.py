@@ -464,28 +464,46 @@ class INEProcessor:
         self._save_processed(result, "cpi_weights.csv")
         return result
 
+    def _special_group_weights(self, role: str) -> pd.Series:
+        """Weight (per mille) of one special group by year, from INE's current and previous-base series."""
+        parts = [self._pick("cpi_special_weights", r)[["year", "value"]] for r in (role, f"prev_{role}")]
+        w = pd.concat(parts).drop_duplicates("year", keep="first").set_index("year")["value"]
+        return w.sort_index()
+
     def process_cpi_ecoicop_groups(self) -> pd.DataFrame:
         """
         CPI contributions of the four special groups: contribution = weight / 1000 * yoy.
-        yoy is INE's published annual variation; weights are hard-coded (see audit M2).
+
+        yoy is INE's published annual variation. The weight is INE's weight of the year of each
+        observation (audit M2). Observations from years before the first available weight (2021)
+        are not published. A later year without a weight raises: no other year's weight is reused.
         """
         print("Processing CPI Special Groups Contributions...")
-        expected_weights = {
-            "alimentos_bebidas_y_tabaco": ("Alimentos, bebidas y tabaco", 209.2),
-            "productos_energeticos": ("Productos energéticos", 89.3),
-            "servicios": ("Servicios", 503.1),
-            "bienes_industriales_sin_productos_energeticos": ("Bienes industriales sin productos energéticos", 198.4),
+        names = {
+            "alimentos_bebidas_y_tabaco": "Alimentos, bebidas y tabaco",
+            "productos_energeticos": "Productos energéticos",
+            "servicios": "Servicios",
+            "bienes_industriales_sin_productos_energeticos": "Bienes industriales sin productos energéticos",
         }
         results = []
-        for role, (short_name, weight) in expected_weights.items():
+        for role, short_name in names.items():
+            weights = self._special_group_weights(role)
             group_data = self._pick("cpi_special_groups", role).sort_values("date")
+            years = group_data["year"].astype(int)
+            covered = years >= int(weights.index.min())
+            if (~covered).any():
+                print(f"  {short_name}: {int((~covered).sum())} observations before {int(weights.index.min())} have no INE weight and are not published")
+            group_data = group_data[covered].copy()
+            group_data["weight"] = group_data["year"].astype(int).map(weights)
+            missing = group_data.loc[group_data["weight"].isna(), "year"].unique()
+            if len(missing):
+                raise SeriesNotFound(f"cpi_ecoicop_groups: no INE weight for {short_name} in {sorted(int(y) for y in missing)}")
             group_data["group_name"] = short_name
             group_data["yoy_change"] = group_data["value"]
-            group_data["weight"] = weight
-            group_data["contribution"] = (weight / 1000) * group_data["yoy_change"]
+            group_data["contribution"] = (group_data["weight"] / 1000) * group_data["yoy_change"]
             group_data = group_data[["date", "year", "group_name", "yoy_change", "weight", "contribution"]]
             results.append(group_data)
-            print(f"  Found {short_name}: {len(group_data)} records, weight={weight:.1f}")
+            print(f"  Found {short_name}: {len(group_data)} records, weights by year {weights.to_dict()}")
         result = pd.concat(results, ignore_index=True)
         result = result.sort_values(["date", "group_name"]).drop_duplicates(subset=["date", "group_name"])
         print(f"  Processed {len(result['group_name'].unique())} groups")

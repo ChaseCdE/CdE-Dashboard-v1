@@ -282,12 +282,12 @@ DATASETS = [
     _ine(
         "cpi_ecoicop_groups", "cpi_ecoicop_groups",
         title_es="Inflación por grupos especiales: aportaciones",
-        description_es="Variación anual, peso y aportación a la inflación (en puntos porcentuales) de los grupos especiales del IPC. La aportación es aproximada: aplica los pesos de 2026 a todo el periodo.",
+        description_es="Variación anual, peso y aportación a la inflación (en puntos porcentuales) de los grupos especiales del IPC. La aportación usa el peso que el INE publica para cada año.",
         frequency="M",
         fields=[
             Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change"),
             Field("weight", "Peso en la cesta", "pct", 1, column="weight_pct",
-                  note_es="Peso de 2026 aplicado a todo el periodo"),
+                  note_es="Peso del año de cada observación, según el INE"),
             Field("contribution", "Aportación a la inflación", "pp", 2),
         ],
         series=long_series("group_name", order=[
