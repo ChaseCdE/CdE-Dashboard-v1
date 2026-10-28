@@ -103,11 +103,11 @@ YAHOO_INDICATORS: Dict[str, Dict[str, Any]] = {
     # US INTEREST RATES
     # ==========================================================================
 
-    "fed_funds": {
+    "us_tbill_3m": {
         "ticker": "^IRX",
-        "name": "Fed Funds Rate (proxy)",
+        "name": "US 3-Month T-Bill Yield",
         "category": "interest_rates",
-        "description": "13-week T-Bill rate as proxy for Fed Funds effective rate",
+        "description": "13-week US Treasury bill discount rate (CBOE ^IRX). Money-market rate close to, but not equal to, the Fed Funds rate",
         "geography": "US",
         "currency": "%",
         "frequency": "daily"
@@ -279,21 +279,11 @@ YAHOO_INDICATORS: Dict[str, Dict[str, Any]] = {
     # BOND MARKET PROXIES (ETFs)
     # ==========================================================================
 
-    "spain_govt_bond_etf": {
-        "ticker": "SPGB.L",
-        "name": "Spain Government Bond ETF",
-        "category": "bonds",
-        "description": "iShares Spain Government Bond UCITS ETF tracking Spanish government bonds",
-        "geography": "Spain",
-        "currency": "EUR",
-        "frequency": "daily"
-    },
-
     "euro_govt_bond_etf": {
-        "ticker": "IBGE.AS",
+        "ticker": "EUNH.DE",
         "name": "Euro Government Bond ETF",
         "category": "bonds",
-        "description": "iShares Core Euro Government Bond ETF",
+        "description": "iShares Core EUR Govt Bond UCITS ETF (Xetra, EUR). Replaces IBGE.AS, delisted on Yahoo",
         "geography": "Eurozone",
         "currency": "EUR",
         "frequency": "daily"
@@ -333,16 +323,6 @@ YAHOO_INDICATORS: Dict[str, Dict[str, Any]] = {
         "frequency": "daily"
     },
 
-    "vstoxx": {
-        "ticker": "^V2X",
-        "name": "VSTOXX",
-        "category": "volatility",
-        "description": "Euro STOXX 50 Volatility Index",
-        "geography": "Eurozone",
-        "currency": "Index",
-        "frequency": "daily"
-    },
-
     # ==========================================================================
     # SECTOR INDICES (SPAIN-FOCUSED)
     # ==========================================================================
@@ -376,7 +356,7 @@ INDICATOR_GROUPS = {
         "nasdaq_composite", "dax", "cac_40", "ftse_100"
     ],
     "interest_rates": [
-        "us_treasury_5y", "us_treasury_10y", "us_treasury_30y"
+        "us_tbill_3m", "us_treasury_5y", "us_treasury_10y", "us_treasury_30y"
     ],
     "currencies": [
         "eur_usd", "eur_gbp", "eur_jpy", "eur_chf", "dxy"
@@ -385,11 +365,11 @@ INDICATOR_GROUPS = {
         "gold", "brent_crude", "wti_crude", "natural_gas", "silver"
     ],
     "bonds": [
-        "spain_govt_bond_etf", "euro_govt_bond_etf",
+        "euro_govt_bond_etf",
         "us_treasury_20y_etf", "us_treasury_7_10y_etf"
     ],
     "volatility": [
-        "vix", "vstoxx"
+        "vix"
     ],
     "sector": [
         "spanish_banks_etf", "european_banks_etf"
@@ -401,7 +381,7 @@ INDICATOR_GROUPS = {
     ],
     # Spain-focused view
     "spain_focus": [
-        "ibex_35", "spanish_banks_etf", "spain_govt_bond_etf", "eur_usd"
+        "ibex_35", "spanish_banks_etf", "eur_usd"
     ]
 }
 

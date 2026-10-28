@@ -105,11 +105,15 @@ class YahooProcessor:
             else:
                 df['cumulative_return_pct'] = float('nan')
 
-            # Year-to-date returns
+            # Year-to-date returns: change vs the last close of the previous
+            # calendar year. The first year in the sample has no prior
+            # year-end close and is left empty (NaN) rather than measured from
+            # the first available day.
             df['year'] = df['date'].dt.year
-            df['ytd_return_pct'] = df.groupby('year')['Close'].transform(
-                lambda x: ((x / x.iloc[0]) - 1) * 100 if len(x) > 0 and pd.notna(x.iloc[0]) and x.iloc[0] != 0 else pd.Series([float('nan')] * len(x), index=x.index)
-            )
+            prev_year_end = df.groupby('year')['Close'].last().shift(1)
+            base = df['year'].map(prev_year_end)
+            df['ytd_return_pct'] = ((df['Close'] / base) - 1) * 100
+            df.loc[~(base > 0), 'ytd_return_pct'] = float('nan')
 
             # Rolling returns
             df['return_1w_pct'] = df['Close'].pct_change(periods=5, fill_method=None) * 100

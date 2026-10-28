@@ -181,21 +181,12 @@ Yahoo Finance provides real-time and historical financial data through the `yfin
 
 Since Yahoo Finance doesn't provide direct bond yield data, we use ETFs as proxies for bond market performance.
 
-### Spain Government Bond ETF
-| Field | Value |
-|-------|-------|
-| Ticker | `SPGB.L` |
-| Key | `spain_govt_bond_etf` |
-| Description | iShares Spain Government Bond UCITS ETF |
-| Currency | EUR |
-| Notes | Tracks Spanish government bond performance |
-
 ### Euro Government Bond ETF
 | Field | Value |
 |-------|-------|
-| Ticker | `IBGE.AS` |
+| Ticker | `EUNH.DE` (Xetra; `IBGE.AS` is no longer available on Yahoo) |
 | Key | `euro_govt_bond_etf` |
-| Description | iShares Core Euro Government Bond ETF |
+| Description | iShares Core EUR Govt Bond UCITS ETF |
 | Currency | EUR |
 
 ### US Treasury 20+ Year ETF
@@ -227,15 +218,6 @@ Since Yahoo Finance doesn't provide direct bond yield data, we use ETFs as proxi
 | Description | Market's expectation of 30-day S&P 500 volatility |
 | Unit | Index points (annualized % volatility) |
 | Notes | Often called the "fear index" |
-
-### VSTOXX
-| Field | Value |
-|-------|-------|
-| Ticker | `^V2X` |
-| Key | `vstoxx` |
-| Description | Euro STOXX 50 Volatility Index |
-| Unit | Index points |
-| Notes | European equivalent of VIX |
 
 ---
 
@@ -314,8 +296,8 @@ Pre-defined groups for different dashboard views:
 | `stock_indices` | IBEX 35, Euro Stoxx 50, STOXX 600, S&P 500, NASDAQ, DAX, CAC 40, FTSE 100 |
 | `currencies` | EUR/USD, EUR/GBP, EUR/JPY, EUR/CHF, DXY |
 | `commodities` | Gold, Brent Crude, WTI Crude, Natural Gas, Silver |
-| `bonds` | Spain Govt Bond ETF, Euro Govt Bond ETF, TLT, IEF |
-| `volatility` | VIX, VSTOXX |
+| `bonds` | Euro Govt Bond ETF, TLT, IEF |
+| `volatility` | VIX |
 | `sector` | Spanish Banks ETF, European Banks ETF |
 | `dashboard_summary` | IBEX 35, Euro Stoxx 50, S&P 500, EUR/USD, Brent, Gold, VIX |
 | `spain_focus` | IBEX 35, Spanish Banks ETF, Spain Govt Bond ETF, EUR/USD |
@@ -373,7 +355,7 @@ Pre-defined groups for different dashboard views:
 
 2. **Market Hours**: Data reflects end-of-day prices; intraday data requires separate API calls.
 
-3. **Timezone**: All timestamps are in the local market's timezone, then converted to UTC-naive.
+3. **Timezone**: Dates are the exchange's local calendar date (the timezone is dropped, not converted to UTC). Converting to UTC shifts European local-midnight timestamps to the previous day.
 
 4. **Dividends/Splits**: yfinance automatically adjusts for dividends and splits unless specified otherwise.
 
@@ -392,3 +374,14 @@ Pre-defined groups for different dashboard views:
 - `src/processors/yahoo_processor.py` - Data processing and transformation
 - `src/scripts/fetch_yahoo_data.py` - Fetch script
 - `src/scripts/process_yahoo_data.py` - Processing script
+
+---
+
+## Removed or renamed tickers (2026-10)
+
+| Key | Change |
+|-----|--------|
+| `spain_govt_bond_etf` (`SPGB.L`) | Dropped: no data on Yahoo, no replacement found |
+| `vstoxx` (`^V2X`) | Dropped: no VSTOXX symbol returns data |
+| `euro_govt_bond_etf` | `IBGE.AS` replaced by `EUNH.DE` |
+| `fed_funds` (`^IRX`) | Renamed `us_tbill_3m`: it is the 13-week T-bill rate, not Fed Funds |

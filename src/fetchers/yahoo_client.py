@@ -74,8 +74,15 @@ class YahooFinanceClient:
 
             # Normalize to date-only (YYYY-MM-DD), dropping timezone and time components
             if 'date' in df.columns:
-                df['date'] = pd.to_datetime(df['date'], utc=True).dt.date
-                df['date'] = pd.to_datetime(df['date'])
+                # Keep the exchange's own calendar date. yfinance returns
+                # tz-aware timestamps at local midnight (e.g. 00:00+02:00 for
+                # Madrid); converting to UTC first would shift them to the
+                # previous day (Sundays instead of Mondays). Dropping the tz
+                # without converting keeps the local wall-clock date.
+                dates = pd.to_datetime(df['date'])
+                if getattr(dates.dt, 'tz', None) is not None:
+                    dates = dates.dt.tz_localize(None)
+                df['date'] = dates.dt.normalize()
 
             return df
 
