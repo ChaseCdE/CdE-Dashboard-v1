@@ -42,3 +42,4 @@ Thumbs.db
 # Local tooling
 .claude/settings.local.json
 tmpclaude-*
+site/data.tmp/

@@ -18,7 +18,7 @@ Status: draft, 2026-10-28. Target: public static site. Python stays as the data 
 - Agents read this file, `docs/data-contract.md` and the relevant `data_sources_*.md` before starting. Frontend agents also read `docs/style-guide.md`.
 - Temporary files are deleted at the end of every task (existing project rule).
 
-## Phase 0 — Stabilise (sequential, 1 agent, ~1 h)
+## Phase 0 — Stabilise (sequential, 1 agent, ~1 h) — DONE 2026-10-28
 
 Owns: everything. Blocks all other phases.
 
@@ -30,22 +30,17 @@ Owns: everything. Blocks all other phases.
 
 Acceptance: clean `git status`, pipeline runs, smoke test passes.
 
-## Phase 1 — Data contract (sequential, 1 agent, ~half day)
+## Phase 1 — Data contract (sequential, 1 agent, ~half day) — DONE 2026-10-28
 
 Owns: `docs/data-contract.md`, `scripts/validate_contract.py`, `src/export/`, `site/data/` (schema only, sample files).
 
-Deliverables:
-- `docs/data-contract.md` specifying:
-  - File naming: `site/data/<source>/<indicator>.json`, snake_case, no `_processed`/`_raw`/`_comparison` suffixes.
-  - Series JSON shape: `{ "id", "name_es", "source", "source_url", "unit", "frequency", "geo", "last_updated", "series": [ { "key": "...", "label_es": "...", "data": [[date, value], ...] } ] }`. Multi-series files (e.g. Spain vs EU27, sector breakdowns) use several entries in `series`.
-  - Derived fields allowed (`yoy`, `mom`, `qoq`) and how they are named.
-  - `site/data/manifest.json`: list of all series with id, title, frequency, last date, latest value, page assignment.
-  - Dates ISO 8601; nulls explicit; numbers unrounded.
-- `src/export/export_site_data.py`: reads `data/processed/`, writes `site/data/`. Initially a thin mapping; Phase 2 agents extend it per source.
-- `scripts/validate_contract.py`: validates every JSON against the schema and the manifest against the files. Exit code non-zero on failure.
-- Three sample files (one INE, one Eurostat, one Yahoo) as fixtures for the frontend.
-
-Acceptance: validator passes on the samples; contract reviewed and marked FROZEN by the owner.
+Delivered (see `docs/data-contract.md`, which supersedes this summary):
+- Contract v1.0, FROZEN. One JSON per dataset at `site/data/<source>/<indicator>.json`; columnar rows `[x, field_1, ...]`; every series in a file shares the same fields; Spain/EU27 comparisons and sector breakdowns are series inside one file. Period dates on the first day of the period. Numbers stored to at most 4 decimals; display rounding via each field's `decimals`. Frontend may not compute economic quantities.
+- `site/data/manifest.json` with latest value per series and field. Page assignment is NOT in the manifest; it lives in `docs/indicator-inventory.md` (Phase 3).
+- Exporter: `src/export/core.py` (frozen with the contract), one declaration module per source (`src/export/{ine,eurostat,bde,yahoo}.py`), `src/export/export_site_data.py`. Rebuilds `site/data/` atomically; anything not declared disappears.
+- `scripts/validate_contract.py`: structural checks, manifest consistency, staleness warnings by frequency; `--strict` fails on warnings. No external dependencies.
+- `run_pipeline.py` now runs export + validation after processing and exits non-zero on failure (`--no-export` to skip).
+- Five sample datasets, one per data shape: `ine.cpi` (single series), `ine.ipi_sectors` (long format), `eurostat.hicp` (Spain vs EU27), `bde.yield_curve` (cross-section), `yahoo.ibex_35` (daily).
 
 ## Phase 2 — Pipeline normalisation (parallel, 4 agents, ~1 day each)
 
@@ -60,11 +55,12 @@ One agent per source. Each owns its fetcher, processor, script and export mappin
 
 Tasks for each:
 - Fix any failures logged in Phase 0.
+- Declare datasets only in `src/export/<source>.py`. Do not edit `src/export/core.py` or the validator; request changes in `docs/migration-notes.md`.
 - Map every indicator the dashboard needs (see `docs/indicator-inventory.md`, produced by ws/frontend-scaffold in Phase 3; until it exists, use `content.md` and the existing `src/app/pages/*.py` as the inventory) to contract-compliant JSON.
 - Metadata (Spanish names, units, source URLs) lives in the indicator dictionaries (`*_indicators.py`), not hard-coded in the export.
 - Known fixes: `fed_funds` uses `^IRX` (3-month T-bill) and is mislabelled; relabel or drop. `cntr_employment.csv` and `population.csv` are produced but unused: decide.
 
-Acceptance: `validate_contract.py` passes; `run_pipeline.py --sources <src>` completes; manifest entries present for every indicator assigned to that source.
+Acceptance: `validate_contract.py --strict` passes (or each remaining warning is explained in `docs/migration-notes.md`); `run_pipeline.py --sources <src>` completes; manifest entries present for every indicator assigned to that source in the inventory.
 
 ## Phase 3 — Frontend scaffold (1 agent, parallel with Phase 2, ~1 day)
 

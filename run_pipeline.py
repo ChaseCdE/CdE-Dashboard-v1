@@ -2,10 +2,14 @@
 """
 CdE Dashboard — Full Pipeline Runner
 
-Runs the complete data pipeline: fetch → process → (optionally) serve.
+Runs the complete data pipeline: fetch → process → export → validate → (optionally) serve.
+
+Export writes site/data/ (docs/data-contract.md); validate runs
+scripts/validate_contract.py. A validation error makes the run exit non-zero.
 
 Usage:
-    python run_pipeline.py                  # fetch + process all sources
+    python run_pipeline.py                  # fetch + process + export + validate all sources
+    python run_pipeline.py --no-export      # stop after processing
     python run_pipeline.py --serve          # fetch + process + start dashboard
     python run_pipeline.py --process-only   # skip fetching, just reprocess cached data
     python run_pipeline.py --sources ine yahoo  # only run specific sources
@@ -94,6 +98,26 @@ def run_process(sources: list[str]) -> dict[str, bool]:
     return results
 
 
+def run_export_and_validate() -> bool:
+    """Rebuild site/data/ from data/processed/ and validate it. Returns True if valid."""
+    import subprocess
+
+    print(f"\n{'='*60}")
+    print("  EXPORT site/data")
+    print(f"{'='*60}")
+    from src.export import export_site_data
+    if export_site_data.main([]) != 0:
+        print("  [FAIL] export failed; site/data left unchanged")
+        return False
+
+    print(f"\n{'='*60}")
+    print("  VALIDATE site/data")
+    print(f"{'='*60}")
+    sys.stdout.flush()
+    result = subprocess.run([sys.executable, str(PROJECT_ROOT / "scripts" / "validate_contract.py")])
+    return result.returncode == 0
+
+
 def run_serve():
     """Start the dashboard server."""
     print(f"\n{'='*60}")
@@ -149,6 +173,11 @@ def main():
         help="Start the dashboard server after pipeline completes"
     )
     parser.add_argument(
+        "--no-export",
+        action="store_true",
+        help="Skip exporting and validating site/data"
+    )
+    parser.add_argument(
         "--serve-only",
         action="store_true",
         help="Skip pipeline, just start the dashboard server"
@@ -172,14 +201,24 @@ def main():
     # Process
     process_results = run_process(args.sources)
 
+    # Export + validate
+    export_ok = True
+    if not args.no_export:
+        export_ok = run_export_and_validate()
+
     # Summary
     elapsed_total = time.time() - t_start
     print_summary(fetch_results, process_results)
+    if not args.no_export:
+        print(f"  site/data export + validation: {'[OK]' if export_ok else '[FAIL]'}")
     print(f"  Total time: {elapsed_total:.1f}s\n")
 
     # Serve
     if args.serve:
         run_serve()
+
+    if not export_ok or not all(process_results.values()):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
