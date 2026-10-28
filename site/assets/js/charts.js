@@ -132,6 +132,18 @@ function daysBetween(isoA, isoB) {
 }
 
 /** {stale, days, limit, last} for a dataset, using the thresholds of the contract validator. */
+/** First day after the period starting on iso ('2026-04-01', 'Q' -> '2026-07-01'). */
+function periodEnd(iso, freq) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const months = { M: 1, Q: 3, A: 12 }[freq];
+  if (months) {
+    const t = new Date(Date.UTC(y, m - 1 + months, 1));
+    return t.toISOString().slice(0, 10);
+  }
+  const t = new Date(Date.UTC(y, m - 1, d + (freq === 'W' ? 7 : 1)));
+  return t.toISOString().slice(0, 10);
+}
+
 export function staleInfo(ds) {
   let last = ds.last_observation;
   let freq = ds.frequency;
@@ -142,7 +154,8 @@ export function staleInfo(ds) {
   }
   const limit = STALE_DAYS[freq];
   if (!last || !limit || !ds.generated_at) return { stale: false, days: null, limit, last };
-  const days = daysBetween(last, ds.generated_at);
+  // Contract v1.1: age is measured from the END of the last period.
+  const days = daysBetween(periodEnd(last, freq), ds.generated_at);
   return { stale: days > limit, days, limit, last };
 }
 

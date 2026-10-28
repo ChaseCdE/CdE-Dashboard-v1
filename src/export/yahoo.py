@@ -32,8 +32,32 @@ def _url(ticker: str) -> str:
     return f"https://finance.yahoo.com/quote/{quote(ticker, safe='')}/"
 
 
+# Yields: changes are differences in percentage points, not relative returns.
+CHANGE_FIELDS = [
+    ("chg_1d", "Variación diaria", "daily_change_abs"),
+    ("chg_1w", "Variación 1 semana", "change_1w_abs"),
+    ("chg_1m", "Variación 1 mes", "change_1m_abs"),
+    ("chg_1y", "Variación 1 año", "change_1y_abs"),
+    ("chg_ytd", "Variación en el año", "ytd_change_abs"),
+]
+
+
 def _make(key, ticker, title, desc, close_field, series_key, series_label, sma=False):
     fields = [close_field]
+    if close_field.unit == "pct":
+        for fkey, label, col in CHANGE_FIELDS:
+            note = {
+                "chg_1w": "5 sesiones",
+                "chg_1m": "21 sesiones",
+                "chg_1y": "252 sesiones",
+                "chg_ytd": "Frente al último cierre del año anterior",
+            }.get(fkey)
+            fields.append(Field(fkey, label, "pp", 2, column=col, note_es=note))
+        return Dataset(
+            source="yahoo", indicator=key, csv=f"yahoo/{key}_processed.csv", title_es=title,
+            description_es=desc, source_dataset=ticker, source_url=_url(ticker), frequency="D",
+            fields=fields, series=[Series(series_key, series_label)],
+        )
     for fkey, label, col in RETURN_FIELDS:
         note = {
             "ret_1w": "5 sesiones",

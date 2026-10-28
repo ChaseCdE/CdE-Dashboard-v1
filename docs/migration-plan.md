@@ -42,7 +42,7 @@ Delivered (see `docs/data-contract.md`, which supersedes this summary):
 - `run_pipeline.py` now runs export + validation after processing and exits non-zero on failure (`--no-export` to skip).
 - Five sample datasets, one per data shape: `ine.cpi` (single series), `ine.ipi_sectors` (long format), `eurostat.hicp` (Spain vs EU27), `bde.yield_curve` (cross-section), `yahoo.ibex_35` (daily).
 
-## Phase 2 — Pipeline normalisation (parallel, 4 agents, ~1 day each)
+## Phase 2 — Pipeline normalisation (parallel, 4 agents, ~1 day each) — DONE 2026-10-28
 
 One agent per source. Each owns its fetcher, processor, script and export mapping:
 
@@ -62,7 +62,7 @@ Tasks for each:
 
 Acceptance: `validate_contract.py --strict` passes (or each remaining warning is explained in `docs/migration-notes.md`); `run_pipeline.py --sources <src>` completes; manifest entries present for every indicator assigned to that source in the inventory.
 
-## Phase 3 — Frontend scaffold (1 agent, parallel with Phase 2, ~1 day)
+## Phase 3 — Frontend scaffold (1 agent, parallel with Phase 2, ~1 day) — DONE 2026-10-28
 
 Owns: `site/` except `site/data/` and `site/pages/`; `docs/style-guide.md`; `docs/indicator-inventory.md`.
 
@@ -71,7 +71,7 @@ Owns: `site/` except `site/data/` and `site/pages/`; `docs/style-guide.md`; `doc
 - `docs/indicator-inventory.md`: for each existing Shiny page (including the five unregistered ones: overview, labor, credit, consumer, eu_comparison) list the indicators shown, chart type, transformations. This is the spec Phase 4 agents build from and Phase 2 agents export to.
 - Works against the Phase 1 sample fixtures.
 
-Acceptance: `index.html` opens from the file system and from a static server with no console errors; chart factory renders all fixture files.
+Acceptance: `index.html` and `site/dev/fixtures.html` render from a static server with no console errors (`file://` is not supported: browsers block `fetch` there); chart factory renders all fixture files.
 
 ## Phase 4 — Pages (parallel, 1 agent per page, ~half day each)
 
@@ -87,7 +87,7 @@ Pages (Spanish titles, URL slugs):
 7. Comparativa UE (`ue`): from `eu_comparison.py` (unregistered).
 8. Consumo (`consumo`): from `consumer.py`; decide whether to merge into Actividad.
 
-Each page: uses only the chart factory and loader from Phase 3; no inline Plotly config; every chart has title, unit, source and last-date caption taken from the JSON, not typed by hand.
+Each page: reads dataset ids, series keys and field keys from `site/data/manifest.json` and the reconciliation table at the end of `docs/indicator-inventory.md` (which overrides the proposals above it); uses only the chart factory and loader from Phase 3; no inline Plotly config; every chart has title, unit, source and last-date caption taken from the JSON, not typed by hand.
 
 Acceptance: page renders all its indicators from `site/data/`; no hard-coded numbers; checked at 375 px and 1440 px widths.
 

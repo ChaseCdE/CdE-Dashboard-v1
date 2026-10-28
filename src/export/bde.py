@@ -48,19 +48,19 @@ def _fields(key: str, meta: dict, decimals: int) -> list:
 
     if kind == "rate_daily_chg":
         fields += [
-            Field("change_30d", "Variación en 30 días", "pp", decimals, column="change_30d_abs"),
-            Field("change_ytd", "Variación en el año", "pp", decimals, column="change_ytd_abs"),
-            Field("change_1y", "Variación en 1 año", "pp", decimals, column="yoy_change_abs"),
+            Field("chg_1m", "Variación en 30 días", "pp", decimals, column="change_30d_abs"),
+            Field("chg_ytd", "Variación en el año", "pp", decimals, column="change_ytd_abs"),
+            Field("chg_1y", "Variación en 1 año", "pp", decimals, column="yoy_change_abs"),
         ]
     elif kind == "rate_monthly_chg":
-        fields.append(Field("change", "Variación mensual", "pp", decimals, column="change_abs"))
+        fields.append(Field("mom_pp", "Variación mensual", "pp", decimals, column="change_abs"))
     elif kind == "credit_stock":
         fields += [
             Field("mom", "Variación mensual", "pct_change", 1, column="change_pct"),
             Field("yoy", "Variación interanual", "pct_change", 1, column="yoy_change_pct"),
         ]
     elif kind == "ratio":
-        fields.append(Field("change", "Variación trimestral", "pp", 1, column="change_abs"))
+        fields.append(Field("qoq_pp", "Variación trimestral", "pp", 1, column="change_abs"))
     elif kind == "balance":
         fields.append(Field("sum_12m", "Acumulado 12 meses", "currency", 0, column="rolling_12m_sum", **money))
     elif kind == "receipts":

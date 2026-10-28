@@ -49,11 +49,11 @@ def _comparison(indicator: str, code_key: str, title: str, desc: str, freq: str,
         fields.append(value_field)
     if yoy_field:
         fields.append(yoy_field)
-        extra = {"yoy": "yoy_change"}
-    main = value_field.key if value_field else "yoy"
+        extra = {yoy_field.key: "yoy_change"}
+    main = value_field.key if value_field else yoy_field.key
     series = _es_eu(value_col, value_col, field=main, extra=extra if value_field else None)
     if not value_field:
-        series = [Series(s.key, s.label_es, columns={"yoy": s.columns["yoy"]}) for s in series]
+        series = [Series(s.key, s.label_es, columns={main: s.columns[main]}) for s in series]
     code = code or DATASET_CODES[code_key]
     return Dataset(
         source="eurostat",
@@ -125,7 +125,7 @@ DATASETS = [
         "M", "unemployment_rate",
         Field("value", "Tasa de paro", "pct", 1,
               note_es="Población activa de 25 a 74 años. Datos corregidos de estacionalidad"),
-        Field("yoy", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change"),
+        Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change"),
     ),
     _comparison(
         "employment_growth", "employment_growth",
@@ -143,7 +143,7 @@ DATASETS = [
         "Q", "participation_rate",
         Field("value", "Tasa de actividad", "pct", 1,
               note_es="Población de 15 a 64 años. Datos corregidos de estacionalidad"),
-        Field("yoy", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change"),
+        Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change"),
     ),
     # ---- Precios ---------------------------------------------------------
     _comparison(
@@ -198,7 +198,7 @@ DATASETS = [
         "Deuda bruta de las Administraciones Públicas en porcentaje del PIB. España frente a UE-27.",
         "Q", "debt_to_gdp",
         Field("value", "Deuda pública (% del PIB)", "pct", 1, note_es="Deuda bruta consolidada de las Administraciones Públicas (S13)"),
-        Field("yoy", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change"),
+        Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change"),
     ),
     _comparison(
         "budget_deficit", "budget_deficit",
@@ -216,7 +216,7 @@ DATASETS = [
         "Indicador de confianza del consumidor de la Comisión Europea (saldo de respuestas). España frente a UE-27.",
         "M", "consumer_confidence",
         Field("value", "Saldo de respuestas", "points", 1, note_es="Saldo de respuestas. Datos corregidos de estacionalidad"),
-        Field("yoy", "Variación anual (puntos)", "points", 1, column="yoy_change"),
+        Field("yoy_diff", "Variación anual (puntos)", "points", 1, column="yoy_change"),
     ),
     _comparison(
         "retail_trade", "retail_trade",

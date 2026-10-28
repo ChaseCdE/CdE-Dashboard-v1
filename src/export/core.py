@@ -15,7 +15,7 @@ from typing import Callable, Optional, Union
 
 import pandas as pd
 
-CONTRACT_VERSION = "1.0"
+CONTRACT_VERSION = "1.1"
 ROOT = Path(__file__).resolve().parent.parent.parent
 PROCESSED_DIR = ROOT / "data" / "processed"
 SITE_DATA_DIR = ROOT / "site" / "data"

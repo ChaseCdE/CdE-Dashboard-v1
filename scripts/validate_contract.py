@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Validate site/data/ against docs/data-contract.md (v1.0).
+Validate site/data/ against docs/data-contract.md (v1.1).
 
 Errors: anything that breaks the contract. Exit code 1.
 Warnings: stale data (see staleness thresholds in the contract). Exit code 0,
@@ -25,12 +25,35 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = ROOT / "site" / "data"
 
-CONTRACT_VERSION = "1.0"
+CONTRACT_VERSION = "1.1"
 UNITS = {"pct", "pct_change", "pp", "index", "points", "currency", "rate", "persons", "hours", "years", "count"}
 FREQUENCIES = {"D", "W", "M", "Q", "A", "X"}
 X_TYPES = {"date", "number", "category"}
 SOURCES = {"ine": "INE", "eurostat": "Eurostat", "bde": "Banco de España", "yahoo": "Yahoo Finance"}
+# Staleness: days between the END of the last observed period and generated_at.
 STALE_DAYS = {"D": 7, "W": 21, "M": 100, "Q": 200, "A": 550}
+PERIOD_MONTHS = {"M": 1, "Q": 3, "A": 12}
+
+# Field-key naming rules (contract v1.1, "Field keys and units").
+PCT_CHANGE_KEYS = {"yoy", "qoq", "mom"}
+
+
+def required_unit(key: str):
+    """Unit a field key forces, or None if the key carries no unit rule."""
+    if key in PCT_CHANGE_KEYS or key.startswith("ret_"):
+        return "pct_change"
+    if key.endswith("_pp") or key.startswith("chg_"):
+        return "pp"
+    return None
+
+
+def period_end(d: date, freq: str) -> date:
+    """First day after the period that starts on d."""
+    from datetime import timedelta
+    if freq in PERIOD_MONTHS:
+        m = d.month - 1 + PERIOD_MONTHS[freq]
+        return date(d.year + m // 12, m % 12 + 1, 1)
+    return d + timedelta(days=7 if freq == "W" else 1)
 
 SNAKE = re.compile(r"^[a-z0-9]+(_[a-z0-9]+)*$")
 ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -154,6 +177,10 @@ def validate_dataset(path: Path, rel: str, obj: dict, r: Report) -> dict | None:
             r.err(fw, f"key {key!r} not snake_case")
         if f.get("unit") not in UNITS:
             r.err(fw, f"unit {f.get('unit')!r} not in {sorted(UNITS)}")
+        need = required_unit(str(key))
+        if need and f.get("unit") != need:
+            r.err(fw, f"key {key!r} requires unit {need!r} (got {f.get('unit')!r}); "
+                      "use a '_pp' or '_diff' key for differences")
         if f.get("unit") == "currency" and not CURRENCY.match(str(f.get("currency", ""))):
             r.err(fw, "unit currency requires an ISO 4217 'currency'")
         if not isinstance(f.get("decimals"), int) or not 0 <= f.get("decimals", -1) <= 4:
@@ -230,9 +257,10 @@ def validate_dataset(path: Path, rel: str, obj: dict, r: Report) -> dict | None:
             r.err(w, f"last_observation {lo!r} != max x {expected!r}")
         gen = obj["generated_at"]
         if expected and freq in STALE_DAYS and ISO_TS.match(str(gen)):
-            age = (datetime.fromisoformat(gen.replace("Z", "+00:00")).date() - max_x).days
+            age = (datetime.fromisoformat(gen.replace("Z", "+00:00")).date() - period_end(max_x, freq)).days
             if age > STALE_DAYS[freq]:
-                r.warn(w, f"stale: last observation {expected} is {age} days old (limit {STALE_DAYS[freq]} for {freq})")
+                r.warn(w, f"stale: period starting {expected} ended {age} days before generation "
+                          f"(limit {STALE_DAYS[freq]} for {freq})")
     elif lo is not None:
         r.err(w, "last_observation must be null for non-date datasets")
     return obj

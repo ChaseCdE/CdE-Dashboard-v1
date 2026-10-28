@@ -162,3 +162,32 @@ One line per proposed id; fields in brackets. `(+)` marks fields that are NEEDS 
 - **Eurostat:** `gdp_growth` [qoq], `gdp_index` [value; es, eu27, de, fr, it], `economic_sentiment` [value], `unemployment` [value, gap series(+)], `hicp` [yoy, gap series(+)] (sample), `government_debt` [value], optional the rest.
 - **BdE:** `credit_households_total`, `credit_nfc_total` [value, yoy], `mortgage_rate`, `consumer_credit_rate`, `corporate_lending_rate`, `household_deposit_rate`, `household_debt_gdp`, `nfc_debt_gdp` [value, yoy_pp], `current_account_balance` [value, sum_12m(+)], `tourism_receipts` [value], `euribor_12m_monthly`, `euribor_3m_daily`, `euribor_12m_daily`, `ester_daily` [value, chg_30d(+), chg_ytd(+), chg_1y(+)], `spain_10y_bond`, `spain_5y_bond` [same], `spain_10y_bond_monthly`, `germany_10y_bond`, `france_10y_bond`, `italy_10y_bond` [value], `yield_curve` [yield] (sample).
 - **Yahoo:** `ibex_35` [close, ret_1d(+), ret_1w(+), ret_1m(+), ytd(+), ret_1y(+), sma_200(+)] (sample has close only), `euro_stoxx_50`, `sp_500`, `nasdaq_composite`, `dax` [same], `vix` [close], `eur_usd`, `gbp_usd`, `usd_jpy` [close, ret_30d(+), ytd(+), ret_1y(+)], `us_treasury_5y`, `us_treasury_10y` [close, chg_30d(+), chg_ytd(+), chg_1y(+)].
+
+
+## Reconciliation with the exported data (lead, 2026-10-28, contract v1.1)
+
+Phase 2 and Phase 3 ran in parallel, so the field keys proposed above were guesses. **This table overrides them.** The authoritative list of datasets, series keys and field keys is `site/data/manifest.json`; page agents must read it before writing a chart spec and must not use a key that is not in the manifest.
+
+| Inventory item | Proposed above | Resolution |
+|---|---|---|
+| KPI IBEX 35, 1-day change | `ret_1d` NEEDS PIPELINE FIELD | Exists: `yahoo.ibex_35` `ret_1d` |
+| España vs UE cards | various | Exist: `eurostat.gdp_growth` `qoq`; `eurostat.unemployment` `value`; `eurostat.hicp` `yoy`; `eurostat.government_debt` `value` |
+| Mercados YTD by index | field `ytd` | Use `ret_ytd` (all Yahoo price datasets) |
+| PIB index 2019 = 100 | `value_2019` NEEDS PIPELINE FIELD | Frontend rebases `ine.gdp` `value` to the 2019 average (allowed by contract v1.1, display-only). `qoq` and `yoy` exist |
+| Descomposición del crecimiento, total line | NEEDS PIPELINE FIELD | Overlay `ine.gdp` `yoy`. Series keys: `private_consumption`, `public_consumption`, `gfcf`, `external_demand` |
+| Confianza empresarial yoy | NEEDS PIPELINE FIELD | Exists: `ine.business_confidence` `yoy`; series `ice`, `situacion`, `expectativas` |
+| Producción, mom | NEEDS PIPELINE FIELD | Exists: `mom` on `ine.industrial_production`, `ine.services_production` |
+| Producción, index 2021 = 100 | `value_2021` | Frontend rebases `value` to the 2021 average |
+| Descomposición de la inflación, total line | NEEDS PIPELINE FIELD | Overlay `ine.cpi` `yoy`. Note: contributions use current weights for the whole history (see `docs/notes/ws-ine.md`), so the bars will not sum exactly to the headline in earlier years; say so in the chart note. Series keys: `servicios`, `alimentos_bebidas_y_tabaco`, `bienes_industriales_sin_productos_energeticos`, `productos_energeticos` |
+| IPRI index Jan 2021 = 100 | `value_2021_01` | Frontend rebases `value` to 2021-01-01. `yoy`, `mom` exist; series `total`, `total_sin_energia`, `consumo`, `equipo`, `intermedios`, `energia` |
+| Balanza por cuenta corriente, 12-month sum | NEEDS PIPELINE FIELD | Exists: `bde.current_account_balance` `sum_12m` |
+| Índices with 200-day average | `sma_200` | Exists on the 9 equity-index datasets |
+| Cotizaciones table | `ret_1w, ret_1m, ytd, ret_1y` | Use `ret_1w`, `ret_1m`, `ret_ytd`, `ret_1y` |
+| Tipos de interés table | `chg_30d, chg_ytd, chg_1y` (bp) | Use `chg_1m`, `chg_ytd`, `chg_1y`, unit `pp` (displayed "p. p."). BdE `chg_1m` is 30 calendar days; Yahoo (US Treasuries) `chg_1m` is 21 sessions; the field `note_es` says which |
+| Tipos de cambio | `ret_30d, ytd, ret_1y` | Use `ret_1m`, `ret_ytd`, `ret_1y` |
+| Diferencial España − UE-27 (paro, inflación) | series `gap` NEEDS PIPELINE FIELD | **Not exported.** Phase 4 shows both series on one chart instead. If a gap chart is wanted later, ws/eurostat adds a `gap` series |
+| Changes of rates (paro, actividad, deuda/PIB) | `yoy` | Contract v1.1: differences of rates are `yoy_pp` (INE EPA rates, `eurostat.unemployment`, `eurostat.labor_participation`, `eurostat.government_debt`); `eurostat.consumer_confidence` uses `yoy_diff` (points); BdE monthly/quarterly rate changes are `mom_pp` / `qoq_pp` |
+| `ine.cntr_employment`, `ine.population` | dataset ids | Not exported; their information is in `ine.gdp_productivity` (series `pib`, `pib_per_capita`, `pib_per_working_age`, `pib_per_employed`, `pib_per_hour`) |
+| Series key for global/US markets | `es`/`eu27` | Yahoo FX uses `global`; US instruments `us`; BdE euro-area rates (`ester_daily`, Euribor) use `ea` |
+
+Datasets exported but not used by any old page (40, e.g. `eurostat.core_inflation`, `bde.euribor_6m_daily`, `yahoo.gold`): available to Phase 4 where they add value; not required.

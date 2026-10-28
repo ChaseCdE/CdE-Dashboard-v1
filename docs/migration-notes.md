@@ -38,3 +38,37 @@ Design decisions worth knowing before Phase 2/3:
 - The frontend may not compute economic quantities. Yahoo returns, moving averages and volatility are therefore exported as fields if a page needs them, not computed in JS. The Phase 1 `yahoo.ibex_35` sample exports only `close`.
 - `ine.cpi` yoy is computed by `ine_processor.py` from the index, not taken from INE's published rate. For a base-2026 series this is fine within the table, but ws/ine should confirm it matches INE's published tasa anual for recent months.
 - Validator correctly reports `eurostat.hicp` as stale (331 days). Expected until ws/eurostat repoints the dataset.
+
+## 2026-10-28 Phases 2 and 3 (merged into main)
+
+Per-workstream detail: `docs/notes/ws-{ine,eurostat,bde,yahoo,frontend}.md`.
+
+Result: 105 datasets (INE 28, Eurostat 16, BdE 31, Yahoo 30), `validate_contract.py --strict` 0 errors, 0 warnings. Site renders with real data at 375 and 1440 px, no console errors.
+
+Errors in the old dashboard found and fixed:
+- Yahoo: European tickers dated one day early (UTC conversion). Fixed; no weekend rows remain.
+- Eurostat: trade balance summed food and drink (SITC 0+1) only, not total trade. Now total trade, monthly (`ext_st_27_2020msbec`).
+- Eurostat: HICP and core inflation frozen at 2025-12 (`prc_hicp_manr` discontinued with ECOICOP 2). Now `prc_hicp_minr`, full history, max 0.1 pp difference on overlap.
+- INE: retail sales were the "empresas unilocalizadas" subset, not the national total (Aug 2026 yoy +1.0 % vs +0.2 % shown before).
+- INE: part-time rate used an annual table, so its "yoy" was a 4-year change.
+- INE: business confidence was never fetched by `fetch_all`.
+- INE: IPRI and population tables renamed series; repointed.
+- BdE: daily yoy assumed 252 rows = 1 year; now date-based.
+- All sources: growth rates no longer forward-fill across gaps (`fill_method=None`, date-based comparisons).
+- Rates: year-on-year change of a rate (unemployment, debt/GDP) was a relative % change; now a difference in pp.
+- Yahoo: dead tickers dropped (SPGB.L, ^V2X); IBGE.AS → EUNH.DE; `fed_funds` (actually ^IRX) renamed `us_tbill_3m`.
+
+Lead decisions at merge:
+- Contract v1.1: field-key rules enforced by the validator (`yoy/qoq/mom/ret_*` = % change; `*_pp`, `chg_*` = pp; `*_diff` = own unit); staleness measured from period end (v1.0 flagged every quarterly series between releases); frontend may rebase to a fixed reference period.
+- Harmonised keys: Eurostat rate changes `yoy` → `yoy_pp`, consumer confidence `yoy` → `yoy_diff`; BdE `change` → `mom_pp`/`qoq_pp`, `change_30d/ytd/1y` → `chg_1m/chg_ytd/chg_1y`; Yahoo yields get `chg_*` (pp) instead of `ret_*` (a yield going from 4,0 % to 4,2 % is +0,2 p. p., not +5 %).
+- Inventory reconciled with the export (table at the end of `docs/indicator-inventory.md`). Spain − EU27 gap charts are not exported; Phase 4 shows both lines.
+
+Open for the project lead:
+- Consumo as its own page or merged into Actividad (frontend notes argue both).
+- Beige `#C2AE93` has 2.2:1 contrast on white: fine for lines/areas next to navy, not for text. See `docs/style-guide.md`.
+- CCAA: bar chart instead of a map (`plotly-basic` has no maps).
+- `ine.cpi_ecoicop_groups` contributions use current weights for the whole history (INE API returns only the current year's weights).
+- `bde.spain_2y_bond` is "more than 2 years" and `bde.spain_tbill_3m` is "1 to 3 months" (BdE series definitions): loose proxies on the yield curve.
+
+Operational:
+- On the linked computer's workspace, background processes die when the shell call ends. Run the pipeline in the foreground, by source if needed (all four sources take ~100 s).

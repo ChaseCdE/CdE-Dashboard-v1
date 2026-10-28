@@ -75,5 +75,5 @@ export const CHART = {
   ],
 };
 
-// Staleness thresholds in days (docs/data-contract.md, "Validation").
+// Staleness thresholds in days, counted from the END of the last period (docs/data-contract.md v1.1, "Validation").
 export const STALE_DAYS = { D: 7, W: 21, M: 100, Q: 200, A: 550 };

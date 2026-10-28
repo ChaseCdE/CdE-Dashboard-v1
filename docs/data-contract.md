@@ -1,6 +1,6 @@
-# Data contract v1.0
+# Data contract v1.1
 
-Status: **FROZEN** on 2026-10-28. Changes require a version bump (`contract_version`), an entry in `docs/migration-notes.md`, and updates to the validator, exporter and frontend loader in the same PR.
+Status: **FROZEN** on 2026-10-28 (v1.0); v1.1 on 2026-10-28, see changelog at the end. Changes require a version bump (`contract_version`), an entry in `docs/migration-notes.md`, and updates to the validator, exporter and frontend loader in the same PR.
 
 This is the only interface between the Python pipeline and the HTML frontend. The pipeline writes it; the frontend reads it; neither depends on anything else from the other side.
 
@@ -23,7 +23,7 @@ site/data/
 
 ```json
 {
-  "contract_version": "1.0",
+  "contract_version": "1.1",
   "id": "eurostat.hicp",
   "title_es": "Inflación armonizada (IPCA)",
   "description_es": "Tasa de variación anual del IPCA. España frente a UE-27.",
@@ -50,7 +50,7 @@ site/data/
 
 | Key | Required | Rule |
 |---|---|---|
-| `contract_version` | yes | `"1.0"` |
+| `contract_version` | yes | `"1.1"` |
 | `id` | yes | `<source>.<indicator>`, matches file path |
 | `title_es` | yes | Display title, Spanish, no trailing period |
 | `description_es` | no | One or two sentences, Spanish |
@@ -70,13 +70,28 @@ Every series in a file has the same fields, in the same order. Each data row is 
 
 | Key | Required | Rule |
 |---|---|---|
-| `key` | yes | `snake_case`, unique in file. Reserved meanings: `value` (level), `yoy`, `qoq`, `mom` (% change vs same period a year / quarter / month earlier), `contribution` (pp contribution to a total), `weight` |
+| `key` | yes | `snake_case`, unique in file. Naming rules below |
 | `label_es` | yes | Display label |
 | `unit` | yes | One of the units below |
 | `decimals` | yes | Display precision (0 to 4). Data is stored with up to 4 decimals regardless |
 | `currency` | if unit=`currency` | ISO 4217 code |
 | `scale` | no | Power of ten the stored number is expressed in: `3` = thousands, `6` = millions. Default `0` |
 | `note_es` | no | E.g. `"Base 2021 = 100"`, `"Datos corregidos de estacionalidad"` |
+
+Field keys and units (enforced by the validator):
+
+| Key | Meaning | Unit |
+|---|---|---|
+| `value` | Level of the indicator | any |
+| `yoy`, `qoq`, `mom` | **Relative** change vs a year / quarter / month earlier | must be `pct_change` |
+| `ret_1d`, `ret_1w`, `ret_1m`, `ret_1y`, `ret_ytd` | Relative change of a market price over a window | must be `pct_change` |
+| `yoy_pp`, `qoq_pp`, `mom_pp` (any `*_pp`) | **Difference** of a rate vs a year / quarter / month earlier (e.g. unemployment rate, debt/GDP) | must be `pp` |
+| `chg_1d`, `chg_1w`, `chg_1m`, `chg_1y`, `chg_ytd` (any `chg_*`) | Difference of a rate or yield over a market window | must be `pp` |
+| `yoy_diff` (any `*_diff`) | Difference in the field's own unit when it is not a percentage (e.g. confidence balance in points) | same unit as the level |
+| `contribution` | Contribution to the growth of a total | `pp` |
+| `weight` | Weight in a total | `pct` |
+
+Rule of thumb: a relative change of a percentage ("unemployment fell 5 %") is never exported; use `*_pp`.
 
 Units:
 
@@ -112,7 +127,7 @@ Data rules:
 
 ### What the frontend may and may not do
 
-- **May:** select series and fields, slice by date range, format numbers and dates (es-ES), stack/group for display, compute display-only transforms that change nothing economically (rebasing a chart to 100 at the start of a user-selected window).
+- **May:** select series and fields, slice by date range, format numbers and dates (es-ES), stack/group for display, compute display-only transforms that change nothing economically: rebasing an index or price series to 100 at the start of a user-selected window, or at a fixed reference period (a single date such as Jan 2021, or the average of a calendar year such as 2019). Rebasing changes the base, not the dynamics.
 - **May not:** compute economic quantities (growth rates, contributions, seasonal adjustment, averages used as indicators). If a page needs one, the pipeline exports it as a field.
 
 ## Manifest
@@ -121,7 +136,7 @@ Data rules:
 
 ```json
 {
-  "contract_version": "1.0",
+  "contract_version": "1.1",
   "generated_at": "2026-10-28T18:10:00Z",
   "datasets": [
     {
@@ -150,9 +165,9 @@ Data rules:
 
 ## Validation
 
-`python scripts/validate_contract.py` checks every rule above that can be checked mechanically, plus consistency between files and manifest. It also warns when data looks stale relative to `generated_at`:
+`python scripts/validate_contract.py` checks every rule above that can be checked mechanically, plus consistency between files and manifest. It also warns when data looks stale: the age is the number of days between the **end** of the last observed period and `generated_at` (Q2 2026, dated `2026-04-01`, ends on `2026-07-01`). Thresholds are allowances for publication lags:
 
-| Frequency | Warn if last observation older than |
+| Frequency | Warn if the last period ended more than |
 |---|---|
 | D | 7 days |
 | W | 21 days |
@@ -167,3 +182,8 @@ Data rules:
 1. Add a `Dataset(...)` entry to `src/export/<source>.py`. Do not edit `src/export/core.py`; request changes in `docs/migration-notes.md`.
 2. `python -m src.export.export_site_data && python scripts/validate_contract.py --strict`
 3. Check the JSON by eye: labels in Spanish, units right, periods on the first day.
+
+## Changelog
+
+- **1.1** (2026-10-28). Field-key naming rules made explicit and enforced (`*_pp`, `chg_*`, `*_diff`, `ret_*`); `yoy`/`qoq`/`mom` are relative changes only. Staleness measured from the end of the last period instead of its first day (v1.0 flagged every quarterly series as stale before the next release). Frontend may rebase to a fixed reference period, not only to the window start. Data layout unchanged; the frontend accepts any 1.x.
+- **1.0** (2026-10-28). Initial version.
