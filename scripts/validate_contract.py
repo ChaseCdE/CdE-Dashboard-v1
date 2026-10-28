@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Validate site/data/ against docs/data-contract.md (v1.1).
+Validate site/data/ against docs/data-contract.md (v1.2).
 
 Errors: anything that breaks the contract. Exit code 1.
 Warnings: stale data (see staleness thresholds in the contract). Exit code 0,
@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = ROOT / "site" / "data"
 
-CONTRACT_VERSION = "1.1"
+CONTRACT_VERSION = "1.2"
 UNITS = {"pct", "pct_change", "pp", "index", "points", "currency", "rate", "persons", "hours", "years", "count"}
 FREQUENCIES = {"D", "W", "M", "Q", "A", "X"}
 X_TYPES = {"date", "number", "category"}
@@ -108,7 +108,10 @@ def validate_dataset(path: Path, rel: str, obj: dict, r: Report) -> dict | None:
     if missing:
         r.err(w, f"missing keys {missing}")
         return None
-    allowed = set(required) | {"description_es"}
+    allowed = set(required) | {"description_es", "stale_after_days"}
+    sad = obj.get("stale_after_days")
+    if sad is not None and (not isinstance(sad, int) or isinstance(sad, bool) or sad <= 0):
+        r.err(w, "stale_after_days must be a positive integer")
     extra = set(obj) - allowed
     if extra:
         r.err(w, f"unknown keys {sorted(extra)}")
@@ -258,9 +261,10 @@ def validate_dataset(path: Path, rel: str, obj: dict, r: Report) -> dict | None:
         gen = obj["generated_at"]
         if expected and freq in STALE_DAYS and ISO_TS.match(str(gen)):
             age = (datetime.fromisoformat(gen.replace("Z", "+00:00")).date() - period_end(max_x, freq)).days
-            if age > STALE_DAYS[freq]:
+            limit = obj.get("stale_after_days") if isinstance(obj.get("stale_after_days"), int) else STALE_DAYS[freq]
+            if age > limit:
                 r.warn(w, f"stale: period starting {expected} ended {age} days before generation "
-                          f"(limit {STALE_DAYS[freq]} for {freq})")
+                          f"(limit {limit} for {freq})")
     elif lo is not None:
         r.err(w, "last_observation must be null for non-date datasets")
     return obj

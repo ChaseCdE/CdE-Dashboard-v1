@@ -1,4 +1,4 @@
-# Data contract v1.1
+# Data contract v1.2
 
 Status: **FROZEN** on 2026-10-28 (v1.0); v1.1 on 2026-10-28, see changelog at the end. Changes require a version bump (`contract_version`), an entry in `docs/migration-notes.md`, and updates to the validator, exporter and frontend loader in the same PR.
 
@@ -23,7 +23,7 @@ site/data/
 
 ```json
 {
-  "contract_version": "1.1",
+  "contract_version": "1.2",
   "id": "eurostat.hicp",
   "title_es": "Inflación armonizada (IPCA)",
   "description_es": "Tasa de variación anual del IPCA. España frente a UE-27.",
@@ -50,7 +50,7 @@ site/data/
 
 | Key | Required | Rule |
 |---|---|---|
-| `contract_version` | yes | `"1.1"` |
+| `contract_version` | yes | `"1.2"` |
 | `id` | yes | `<source>.<indicator>`, matches file path |
 | `title_es` | yes | Display title, Spanish, no trailing period |
 | `description_es` | no | One or two sentences, Spanish |
@@ -63,6 +63,7 @@ site/data/
 | `series` | yes | ≥ 1 series, see below |
 | `last_observation` | yes | Max x over all series for date datasets; `null` for `X` |
 | `generated_at` | yes | UTC ISO 8601 timestamp of the export run |
+| `stale_after_days` | no | Positive integer. Overrides the staleness threshold of the frequency for sources with a known long publication lag (e.g. annual R&D). Used by the validator and the frontend badge |
 
 ### Fields
 
@@ -136,7 +137,7 @@ Data rules:
 
 ```json
 {
-  "contract_version": "1.1",
+  "contract_version": "1.2",
   "generated_at": "2026-10-28T18:10:00Z",
   "datasets": [
     {
@@ -184,6 +185,8 @@ Data rules:
 3. Check the JSON by eye: labels in Spanish, units right, periods on the first day.
 
 ## Changelog
+
+- **1.2** (2026-10-28). Optional `stale_after_days` per dataset (additive; no change for existing files).
 
 - **1.1** (2026-10-28). Field-key naming rules made explicit and enforced (`*_pp`, `chg_*`, `*_diff`, `ret_*`); `yoy`/`qoq`/`mom` are relative changes only. Staleness measured from the end of the last period instead of its first day (v1.0 flagged every quarterly series as stale before the next release). Frontend may rebase to a fixed reference period, not only to the window start. Data layout unchanged; the frontend accepts any 1.x.
 - **1.0** (2026-10-28). Initial version.

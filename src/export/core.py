@@ -15,7 +15,7 @@ from typing import Callable, Optional, Union
 
 import pandas as pd
 
-CONTRACT_VERSION = "1.1"
+CONTRACT_VERSION = "1.2"
 ROOT = Path(__file__).resolve().parent.parent.parent
 PROCESSED_DIR = ROOT / "data" / "processed"
 SITE_DATA_DIR = ROOT / "site" / "data"
@@ -114,6 +114,9 @@ class Dataset:
     x_column: str = "date"
     x_type: str = "date"
     start: Optional[str] = None  # drop rows before this date (date datasets only)
+    # Contract v1.2: staleness allowance in days for sources with a known long publication
+    # lag (e.g. annual R&D). None = the frequency default in the contract.
+    stale_after_days: Optional[int] = None
 
     @property
     def id(self) -> str:
@@ -226,6 +229,8 @@ def build_dataset(ds: Dataset, generated_at: str) -> dict:
         "last_observation": last_obs,
         "generated_at": generated_at,
     })
+    if ds.stale_after_days is not None:
+        obj["stale_after_days"] = int(ds.stale_after_days)
     return obj
 
 

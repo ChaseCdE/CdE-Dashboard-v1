@@ -152,7 +152,8 @@ export function staleInfo(ds) {
     last = asOf.length ? asOf[asOf.length - 1] : null;
     freq = 'D';
   }
-  const limit = STALE_DAYS[freq];
+  // Contract v1.2: a dataset may declare its own allowance for long publication lags.
+  const limit = Number.isInteger(ds.stale_after_days) && ds.last_observation ? ds.stale_after_days : STALE_DAYS[freq];
   if (!last || !limit || !ds.generated_at) return { stale: false, days: null, limit, last };
   // Contract v1.1: age is measured from the END of the last period.
   const days = daysBetween(periodEnd(last, freq), ds.generated_at);

@@ -323,3 +323,10 @@ DATASETS += [
         [("es", ES), ("eu27", EU)],
     ),
 ]
+
+
+# Eurostat publishes R&D expenditure for year t around November of t+1, so the latest year
+# is legitimately ~22 months past its end just before each release (contract v1.2).
+for _ds in DATASETS:
+    if _ds.indicator == "rd_expenditure":
+        _ds.stale_after_days = 760
