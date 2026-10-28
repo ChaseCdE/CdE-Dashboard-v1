@@ -1,52 +1,68 @@
-# CdE Macroeconomic Dashboard
+# CdE Macroeconomic Dashboard ("La economía en datos")
 
-## Project Overview
+Public dashboard of Spanish and European macroeconomic data by Círculo de Empresarios. Static HTML site fed by a Python data pipeline.
 
-A dashboard application for visualizing publicly available macroeconomic data. The dashboard will aggregate and display economic indicators from multiple authoritative sources.
+## Architecture
 
-## Data Sources
+```
+INE, Eurostat, Banco de España, Yahoo Finance
+        │  src/fetchers/   (download → data/raw/, gitignored)
+        │  src/processors/ (clean, derive → data/processed/, gitignored)
+        │  src/export/     (→ site/data/*.json, committed)
+        ▼
+docs/data-contract.md  ← the only interface between pipeline and site (v1.1)
+        ▼
+site/  (plain HTML + ES modules + Plotly.js from cdnjs; no build step)
+```
 
-- **INE** (Instituto Nacional de Estadística) - Spanish national statistics
-- **Eurostat** - European Union statistics
-- **Yahoo Finance** - Financial market data
-- **FRED** (Federal Reserve Economic Data) - US economic data
-- **Other public APIs** as needed
+- `python run_pipeline.py` runs fetch → process → export → validate. Exit code ≠ 0 on failure.
+- `scripts/validate_contract.py [--strict]` checks `site/data/` against the contract.
+- `scripts/smoke_test.py [--run-processors]` offline checks of the pipeline.
+- `.github/workflows/`: scheduled refresh (weekdays) and GitHub Pages deploy. See `docs/deploy.md`.
 
-## Project Status
+## Ground rules
 
-**Current Phase:** Initial setup
+### Data contract
+- `docs/data-contract.md` is frozen. Changing it requires a version bump, a changelog entry, and updating the exporter (`src/export/core.py`), the validator and the frontend loader together.
+- The frontend never computes economic quantities (growth rates, contributions, averages used as indicators). If a page needs one, the pipeline exports it as a field. Display-only rebasing is allowed.
+- Field keys: `yoy/qoq/mom/ret_*` are relative changes (`pct_change`); `*_pp` and `chg_*` are differences of rates (`pp`); `*_diff` differences in the level's own unit. The validator enforces this.
+- Dataset ids: `<source>.<indicator>`; declare datasets in `src/export/<source>.py` only.
 
-## Ground Rules
+### Site
+- Pages use only `site/assets/js/charts.js` (chart factory), `layout.js`, `format.js`. No raw Plotly config in pages, no hard-coded numbers, units, dates or sources.
+- Spanish UI, es-ES formatting. Corporate palette: navy `#16254D`, beige `#C2AE93` (beige for lines/areas, never for text). See `docs/style-guide.md`.
+- Adding a page: copy `site/assets/templates/page-template.{html,js}`, add it to the nav in `layout.js`, document its charts in `docs/indicator-inventory.md`.
+- `site/dev/` is a developer test harness; it is not deployed.
 
-### File Management
-- **Always delete temporary files at the end of each task.** This includes any `tmp/`, `temp/`, cache files, or intermediate processing files created during development or data processing.
+### Process
+- Always delete temporary files at the end of each task.
+- After changing pipeline code: `python scripts/smoke_test.py --run-processors` and `python scripts/validate_contract.py --strict`.
+- After changing the site: serve `site/` locally and check every page at 375 px and 1440 px with no console errors.
+- Commit with descriptive messages; keep commits focused.
 
-### Code Standards
-- Write clean, maintainable code with clear variable names
-- Include comments for complex logic
-- Handle API errors gracefully with appropriate fallbacks
-
-### Data Handling
-- Cache API responses appropriately to avoid rate limiting
-- Document data update frequencies
-- Validate data before visualization
-
-### Version Control
-- Commit changes with descriptive messages
-- Keep commits focused and atomic
-
-## Directory Structure
+## Directory structure
 
 ```
 CdE-Dashboard-v1/
-├── claude.md          # Project documentation and rules
-├── src/               # Source code
-├── data/              # Cached/processed data (gitignored)
-├── config/            # Configuration files
-└── docs/              # Additional documentation
+├── run_pipeline.py          # pipeline entry point
+├── requirements.txt         # pipeline dependencies (pinned)
+├── src/
+│   ├── fetchers/            # API clients and indicator definitions per source
+│   ├── processors/          # cleaning and derived fields per source
+│   ├── scripts/             # fetch_/process_ entry points per source
+│   └── export/              # site-data exporter (core.py + one module per source)
+├── scripts/                 # smoke_test.py, validate_contract.py
+├── site/                    # the public website (GitHub Pages)
+│   ├── index.html, pages/   # Portada + 6 pages
+│   ├── assets/              # css, js (charts, data, format, layout, config), img, templates
+│   ├── data/                # generated JSON (do not edit by hand)
+│   └── dev/                 # fixtures test page (not deployed)
+├── docs/                    # contract, deploy, style guide, inventory, migration notes
+├── data_sources_*.md        # source documentation per provider
+└── .github/workflows/       # refresh-data.yml, deploy.yml
 ```
 
 ## Notes
 
-- This project is maintained by Círculo de Empresarios
-- Dashboard should be accessible and easy to interpret for economic analysis
+- Maintained by Círculo de Empresarios.
+- History of the Shiny → static migration: `docs/migration-plan.md`, `docs/migration-notes.md`, `docs/notes/`.

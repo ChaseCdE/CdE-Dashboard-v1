@@ -73,7 +73,7 @@ Owns: `site/` except `site/data/` and `site/pages/`; `docs/style-guide.md`; `doc
 
 Acceptance: `index.html` and `site/dev/fixtures.html` render from a static server with no console errors (`file://` is not supported: browsers block `fetch` there); chart factory renders all fixture files.
 
-## Phase 4 — Pages (parallel, 1 agent per page, ~half day each)
+## Phase 4 — Pages (parallel, 1 agent per page, ~half day each) — DONE 2026-10-28
 
 Owns: `site/pages/<page>.html` and `site/assets/js/pages/<page>.js` only. Needs Phase 3 done and the relevant Phase 2 sources merged.
 
@@ -85,13 +85,13 @@ Pages (Spanish titles, URL slugs):
 5. Crédito y tipos (`credito`): from `credit.py` (unregistered) plus BdE rates/yield curve.
 6. Mercados (`mercados`): from `markets.py`.
 7. Comparativa UE (`ue`): from `eu_comparison.py` (unregistered).
-8. Consumo (`consumo`): from `consumer.py`; decide whether to merge into Actividad.
+8. ~~Consumo (`consumo`)~~: merged into Actividad as section "Consumo y hogares" (decision 2026-10-28).
 
 Each page: reads dataset ids, series keys and field keys from `site/data/manifest.json` and the reconciliation table at the end of `docs/indicator-inventory.md` (which overrides the proposals above it); uses only the chart factory and loader from Phase 3; no inline Plotly config; every chart has title, unit, source and last-date caption taken from the JSON, not typed by hand.
 
 Acceptance: page renders all its indicators from `site/data/`; no hard-coded numbers; checked at 375 px and 1440 px widths.
 
-## Phase 5 — Automation and hosting (1 agent, after Phase 2, ~half day)
+## Phase 5 — Automation and hosting (1 agent, after Phase 2, ~half day) — DONE 2026-10-28
 
 Owns: `.github/workflows/`, `docs/deploy.md`.
 
@@ -101,7 +101,7 @@ Owns: `.github/workflows/`, `docs/deploy.md`.
 
 Acceptance: a scheduled run completes and the public URL serves fresh data.
 
-## Phase 6 — Cut-over and cleanup (1 agent, last)
+## Phase 6 — Cut-over and cleanup (1 agent, last) — DONE 2026-10-28
 
 Owns: everything.
 

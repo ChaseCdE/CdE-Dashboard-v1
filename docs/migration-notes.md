@@ -72,3 +72,29 @@ Open for the project lead:
 
 Operational:
 - On the linked computer's workspace, background processes die when the shell call ends. Run the pipeline in the foreground, by source if needed (all four sources take ~100 s).
+
+## 2026-10-28 Phases 4, 5 and 6
+
+Decisions (project lead): Consumo merged into Actividad ("Consumo y hogares"). Defaults taken without objection: Spain vs EU-27 as two lines (no gap series); CCAA as bars (no map); beige for lines/areas only; FRED out of v1.
+
+Phase 4: 7 pages (Portada, Actividad, Precios, Mercado laboral, Crédito y tipos, Mercados, Comparativa UE), 7 Sonnet agents in parallel; per-page notes in `docs/notes/p4-*.md`. Lead re-test after the factory changes below: all 7 pages at 375 and 1440 px, 0 console errors, 0 failed requests, no overflow, no error cards (6 + 15 + 11 + 8 + 8 + 11 + 21 = 80 charts).
+
+Factory changes by the lead (from page-agent requests):
+- `lineChart`: `rebase: {year}` / `{date}` (display-only, contract v1.1) and per-toggle `ref` / `rebase`.
+- Reference-line labels get a background so they stay legible over bars.
+- `groupedBarChart`: bars centred when each category has one bar (overlay mode); long horizontal labels wrap; fewer value ticks.
+- KPI values: number and magnitude stay together but the noun can wrap ("22,9 M" / "personas"); smaller KPI font under 420 px.
+
+Phase 5: `.github/workflows/refresh-data.yml` (weekdays 12:23 UTC, Actions cache of `data/` as fallback, validation report in the run summary, commit `site/data`, then deploy) and `deploy.yml` (Pages; excludes `site/dev/`). Setup steps for the repository owner in `docs/deploy.md`. Not yet run: needs a push and Pages enabled.
+
+Phase 6: removed `src/app/` (Shiny), `serve.py`, `src/scripts/run_dashboard.py`, `.env.example`, `docs/sharing-setup.md`, `layout.md`, `content.md`, the old white logo; `run_pipeline.py --serve*` removed; `requirements.txt` without shiny/shinywidgets/plotly/uvicorn, verified in a fresh environment (smoke test with processors, export, validation). New `README.md`, rewritten `claude.md`. The local `.env` (old Basic Auth credentials, untracked) is left for the owner to delete.
+
+Data observations (not bugs):
+- `bde.credit_households_total`: the BdE stock (not seasonally adjusted) jumps ~2 % every June and November and reverses the next month; in June 2026 the jump did not happen, so yoy dips to 0,8 % for one month. Source behaviour.
+- Germany/France/Italy 10Y yields end in different months (BdE publication), so the 10Y chart lines end at different dates.
+
+Backlog:
+- `latestTable` with a per-row field, so BdE (`value`) and Yahoo (`close`) rates fit one table (Mercados currently shows two tables; Comparativa UE has no cross-indicator summary table).
+- `yahoo.spanish_banks_etf` is EWP (iShares MSCI Spain, whole market): rename the id to `yahoo.msci_spain_etf` together with `mercados.js`.
+- Monthly charts can show an axis tick one month past the last observation (e.g. "ene 2027"); cosmetic.
+- 375 px screenshots were checked only partially for some long pages (Actividad, Comparativa UE).

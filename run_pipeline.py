@@ -2,7 +2,7 @@
 """
 CdE Dashboard — Full Pipeline Runner
 
-Runs the complete data pipeline: fetch → process → export → validate → (optionally) serve.
+Runs the complete data pipeline: fetch → process → export → validate.
 
 Export writes site/data/ (docs/data-contract.md); validate runs
 scripts/validate_contract.py. A validation error makes the run exit non-zero.
@@ -10,10 +10,9 @@ scripts/validate_contract.py. A validation error makes the run exit non-zero.
 Usage:
     python run_pipeline.py                  # fetch + process + export + validate all sources
     python run_pipeline.py --no-export      # stop after processing
-    python run_pipeline.py --serve          # fetch + process + start dashboard
     python run_pipeline.py --process-only   # skip fetching, just reprocess cached data
     python run_pipeline.py --sources ine yahoo  # only run specific sources
-    python run_pipeline.py --serve-only     # just start the dashboard server
+    (preview the site: cd site && python -m http.server 8000)
 """
 
 import argparse
@@ -118,15 +117,6 @@ def run_export_and_validate() -> bool:
     return result.returncode == 0
 
 
-def run_serve():
-    """Start the dashboard server."""
-    print(f"\n{'='*60}")
-    print("  STARTING DASHBOARD SERVER")
-    print(f"{'='*60}")
-    import serve
-    serve.main()
-
-
 def print_summary(fetch_results: dict, process_results: dict):
     """Print a final summary table."""
     print(f"\n{'='*60}")
@@ -168,25 +158,11 @@ def main():
         help="Skip fetching, only process cached raw data"
     )
     parser.add_argument(
-        "--serve",
-        action="store_true",
-        help="Start the dashboard server after pipeline completes"
-    )
-    parser.add_argument(
         "--no-export",
         action="store_true",
         help="Skip exporting and validating site/data"
     )
-    parser.add_argument(
-        "--serve-only",
-        action="store_true",
-        help="Skip pipeline, just start the dashboard server"
-    )
     args = parser.parse_args()
-
-    if args.serve_only:
-        run_serve()
-        return
 
     t_start = time.time()
     fetch_results = {}
@@ -212,10 +188,6 @@ def main():
     if not args.no_export:
         print(f"  site/data export + validation: {'[OK]' if export_ok else '[FAIL]'}")
     print(f"  Total time: {elapsed_total:.1f}s\n")
-
-    # Serve
-    if args.serve:
-        run_serve()
 
     if not export_ok or not all(process_results.values()):
         sys.exit(1)

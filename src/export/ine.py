@@ -1,7 +1,7 @@
 """
 INE datasets for site/data/ine/. Owned by ws/ine.
 
-One Dataset per processed INE CSV in data/processed/ that src/app/data.py loads
+One Dataset per processed INE CSV in data/processed/ that the former Shiny app loaded (src/app/data.py, removed in Phase 6)
 (summary.csv excluded). Dataset id = "ine.<csv stem>".
 
 Not exported on purpose (see docs/notes/ws-ine.md):

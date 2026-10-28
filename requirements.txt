@@ -1,6 +1,5 @@
-# CdE Dashboard dependencies
+# CdE Dashboard pipeline dependencies (the site itself has no Python dependencies).
 # Pinned 2026-10-28 to versions verified with a full run_pipeline.py.
-# Shiny, shinywidgets, plotly and uvicorn are removed in Phase 6 of docs/migration-plan.md.
 
 # Data fetching
 requests==2.34.2
@@ -11,9 +10,3 @@ yfinance==1.7.0
 pandas==2.3.3
 numpy==2.2.6
 python-dateutil==3.0.0
-
-# Legacy Shiny app (to be removed)
-shiny==1.8.0
-shinywidgets==0.8.2
-plotly==7.1.0
-uvicorn==0.54.0
