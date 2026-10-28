@@ -30,12 +30,18 @@ DATASET_CODES = {
     "labor_participation": "lfsi_emp_q",
 
     # Prices & Inflation
-    "hicp": "prc_hicp_manr",
-    "core_inflation": "prc_hicp_manr",  # Same dataset, different coicop filter
+    # prc_hicp_manr (ECOICOP ver. 1) was frozen at 2025-12 when Eurostat moved
+    # the HICP to ECOICOP ver. 2 (2026). Its successor prc_hicp_minr carries the
+    # whole history back to 1996 on the new classification, so no splicing is
+    # needed (see docs/notes/ws-eurostat.md). Note the dimension is `coicop18`.
+    "hicp": "prc_hicp_minr",
+    "core_inflation": "prc_hicp_minr",  # Same dataset, different coicop18 filter
     "producer_prices": "sts_inppd_m",
 
     # External Sector
-    "trade_balance": "ext_lt_intratrd",
+    # Monthly, by Member State (EU27 from 2020). Replaces the annual
+    # ext_lt_intratrd, which ends in 2025 and was also mis-aggregated (see notes).
+    "trade_balance": "ext_st_27_2020msbec",
 
     # Public Finances
     "government_debt": "gov_10q_ggdebt",
@@ -226,7 +232,7 @@ class EurostatIndicatorFetcher:
         logger.info("Fetching HICP Inflation...")
         filter_pars = {
             'geo': self.geo_codes,
-            'coicop': ['CP00'],  # All items
+            'coicop18': ['TOTAL'],  # All items (ECOICOP ver. 2; was CP00)
             'unit': ['RCH_A']  # Annual rate of change
         }
         df = self.client.get_data(DATASET_CODES["hicp"], filter_pars)
@@ -244,7 +250,7 @@ class EurostatIndicatorFetcher:
         logger.info("Fetching Core Inflation...")
         filter_pars = {
             'geo': self.geo_codes,
-            'coicop': ['TOT_X_NRG_FOOD'],  # Excluding energy and food
+            'coicop18': ['TOT_X_NRG_FOOD'],  # Excluding energy and food
             'unit': ['RCH_A']
         }
         df = self.client.get_data(DATASET_CODES["core_inflation"], filter_pars)
@@ -274,16 +280,20 @@ class EurostatIndicatorFetcher:
 
     def fetch_trade_balance(self) -> pd.DataFrame:
         """
-        Fetch Trade Balance (monthly, Spain only).
+        Fetch Trade in goods (monthly, Spain only): exports and imports with the
+        whole world, million EUR, not seasonally adjusted. The balance is derived
+        in the processor (exports - imports).
 
         Returns:
-            DataFrame with trade balance data for Spain
+            DataFrame with export and import values for Spain
         """
         logger.info("Fetching Trade Balance...")
         filter_pars = {
             'geo': ['ES'],  # Spain only
             'partner': ['WORLD'],
-            'indic_et': ['MIO_BAL_VAL', 'MIO_EXP_VAL', 'MIO_IMP_VAL']  # Million EUR
+            'bclas_bec': ['TOTAL'],  # All products
+            'indic_et': ['TRD_VAL'],  # Trade value, million EUR
+            'stk_flow': ['EXP', 'IMP'],
         }
         df = self.client.get_data(DATASET_CODES["trade_balance"], filter_pars)
         df = self._process_data(df)

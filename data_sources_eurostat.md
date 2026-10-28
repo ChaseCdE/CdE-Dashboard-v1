@@ -295,16 +295,16 @@ participation = eurostat.get_data_df('lfsi_emp_q', filter_pars=filter_pars)
 
 | Attribute | Value |
 |-----------|-------|
-| **Dataset Code** | `prc_hicp_manr` |
+| **Dataset Code** | `prc_hicp_minr` |
 | **Frequency** | Monthly |
-| **Description** | HICP - monthly data (annual rate of change) |
+| **Description** | HICP (ECOICOP ver. 2) - indices and rates of change, monthly data. Replaces `prc_hicp_manr` (ECOICOP 1), frozen at 2025-12; full history from 1996 is available on the new classification |
 
 **Key Filters:**
 
 | Parameter | Recommended Values | Description |
 |-----------|-------------------|-------------|
 | `geo` | `['ES', 'EU27_2020']` | Spain and EU27 |
-| `coicop` | `CP00` | All-items HICP |
+| `coicop18` | `TOTAL` | All-items HICP (ECOICOP ver. 2) |
 | `unit` | `RCH_A` | Annual rate of change |
 
 **Python Example:**
@@ -315,10 +315,10 @@ import eurostat
 filter_pars = {
     'startPeriod': 2020,
     'geo': ['ES', 'EU27_2020'],
-    'coicop': ['CP00'],
+    'coicop18': ['TOTAL'],
     'unit': ['RCH_A']
 }
-hicp = eurostat.get_data_df('prc_hicp_manr', filter_pars=filter_pars)
+hicp = eurostat.get_data_df('prc_hicp_minr', filter_pars=filter_pars)
 ```
 
 **Alternative Datasets:**
@@ -331,23 +331,23 @@ hicp = eurostat.get_data_df('prc_hicp_manr', filter_pars=filter_pars)
 
 | Attribute | Value |
 |-----------|-------|
-| **Dataset Code** | `prc_hicp_manr` |
+| **Dataset Code** | `prc_hicp_minr` |
 | **Frequency** | Monthly |
-| **Description** | HICP - monthly data (annual rate of change) |
+| **Description** | HICP (ECOICOP ver. 2) - indices and rates of change, monthly data. Replaces `prc_hicp_manr` (ECOICOP 1), frozen at 2025-12; full history from 1996 is available on the new classification |
 
 **Key Filters:**
 
 | Parameter | Recommended Values | Description |
 |-----------|-------------------|-------------|
 | `geo` | `['ES', 'EU27_2020']` | Spain and EU27 |
-| `coicop` | `TOT_X_NRG_FOOD` | All-items excluding energy and food (core inflation) |
+| `coicop18` | `TOT_X_NRG_FOOD` | All-items excluding energy and food (core inflation) |
 | `unit` | `RCH_A` | Annual rate of change |
 
 **COICOP Special Aggregates for Analysis:**
 
 | Code | Description |
 |------|-------------|
-| `CP00` | All-items HICP |
+| `TOTAL` | All-items HICP |
 | `TOT_X_NRG_FOOD` | All-items excluding energy and food (core) |
 | `TOT_X_NRG` | All-items excluding energy |
 | `NRG` | Energy |
@@ -363,10 +363,10 @@ import eurostat
 filter_pars = {
     'startPeriod': 2020,
     'geo': ['ES', 'EU27_2020'],
-    'coicop': ['TOT_X_NRG_FOOD'],
+    'coicop18': ['TOT_X_NRG_FOOD'],
     'unit': ['RCH_A']
 }
-core_inflation = eurostat.get_data_df('prc_hicp_manr', filter_pars=filter_pars)
+core_inflation = eurostat.get_data_df('prc_hicp_minr', filter_pars=filter_pars)
 ```
 
 ---
@@ -416,21 +416,21 @@ ppi = eurostat.get_data_df('sts_inppd_m', filter_pars=filter_pars)
 
 | Attribute | Value |
 |-----------|-------|
-| **Dataset Code** | `ext_lt_intratrd` |
+| **Dataset Code** | `ext_st_27_2020msbec` |
 | **Frequency** | Monthly |
-| **Description** | Intra and Extra-EU trade by Member State |
+| **Description** | Member States EU27 (from 2020) trade by BEC product group |
+
+The pipeline previously used the annual `ext_lt_intratrd` (ends in 2025, and carries a `sitc06` dimension that must be filtered to `TOTAL`). The monthly dataset below is used instead; exports and imports are fetched and the balance is derived as exports minus imports.
 
 **Key Filters:**
 
-| Parameter | Recommended Values | Description |
-|-----------|-------------------|-------------|
-| `geo` | `['ES']` | Spain |
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `geo` | `ES` | Spain |
 | `partner` | `WORLD` | World (total trade) |
-| `partner` | `EU27_2020_INTRA` | Intra-EU trade |
-| `partner` | `EU27_2020_EXTRA` | Extra-EU trade |
-| `indic_et` | `TRD_BAL` | Trade balance |
-| `indic_et` | `EXP_VAL` | Exports value |
-| `indic_et` | `IMP_VAL` | Imports value |
+| `bclas_bec` | `TOTAL` | All products |
+| `indic_et` | `TRD_VAL` | Trade value, million EUR, not seasonally adjusted |
+| `stk_flow` | `EXP`, `IMP` | Exports, imports (`BAL_RT` is a ratio, not used) |
 
 **Python Example:**
 
@@ -438,12 +438,14 @@ ppi = eurostat.get_data_df('sts_inppd_m', filter_pars=filter_pars)
 import eurostat
 
 filter_pars = {
-    'startPeriod': 2020,
+    'startPeriod': 2015,
     'geo': ['ES'],
     'partner': ['WORLD'],
-    'indic_et': ['TRD_BAL', 'EXP_VAL', 'IMP_VAL']
+    'bclas_bec': ['TOTAL'],
+    'indic_et': ['TRD_VAL'],
+    'stk_flow': ['EXP', 'IMP'],
 }
-trade_balance = eurostat.get_data_df('ext_lt_intratrd', filter_pars=filter_pars)
+trade = eurostat.get_data_df('ext_st_27_2020msbec', filter_pars=filter_pars)
 ```
 
 **Alternative Dataset for Detailed Monthly Data:**
@@ -730,20 +732,20 @@ def get_hicp():
     filter_pars = {
         'startPeriod': START_PERIOD,
         'geo': GEO_CODES,
-        'coicop': ['CP00'],
+        'coicop18': ['TOTAL'],
         'unit': ['RCH_A']
     }
-    return eurostat.get_data_df('prc_hicp_manr', filter_pars=filter_pars)
+    return eurostat.get_data_df('prc_hicp_minr', filter_pars=filter_pars)
 
 def get_core_inflation():
     """Core Inflation (HICP excl. energy and food) - Monthly"""
     filter_pars = {
         'startPeriod': START_PERIOD,
         'geo': GEO_CODES,
-        'coicop': ['TOT_X_NRG_FOOD'],
+        'coicop18': ['TOT_X_NRG_FOOD'],
         'unit': ['RCH_A']
     }
-    return eurostat.get_data_df('prc_hicp_manr', filter_pars=filter_pars)
+    return eurostat.get_data_df('prc_hicp_minr', filter_pars=filter_pars)
 
 def get_producer_prices():
     """Producer Price Index - Monthly"""
@@ -756,14 +758,16 @@ def get_producer_prices():
     return eurostat.get_data_df('sts_inppd_m', filter_pars=filter_pars)
 
 def get_trade_balance():
-    """Trade Balance - Monthly (Spain only)"""
+    """Trade in goods - Monthly (Spain only); balance = EXP - IMP"""
     filter_pars = {
         'startPeriod': START_PERIOD,
         'geo': ['ES'],
         'partner': ['WORLD'],
-        'indic_et': ['TRD_BAL', 'EXP_VAL', 'IMP_VAL']
+        'bclas_bec': ['TOTAL'],
+        'indic_et': ['TRD_VAL'],
+        'stk_flow': ['EXP', 'IMP'],
     }
-    return eurostat.get_data_df('ext_lt_intratrd', filter_pars=filter_pars)
+    return eurostat.get_data_df('ext_st_27_2020msbec', filter_pars=filter_pars)
 
 def get_government_debt():
     """Government Debt-to-GDP - Quarterly"""

@@ -37,6 +37,16 @@ def main():
     non_empty = sum(1 for df in results.values() if not df.empty)
     print(f"Non-empty datasets: {non_empty}/{len(results)}")
 
+    # Latest observation per indicator: a silently frozen dataset (like
+    # prc_hicp_manr after the 2026 ECOICOP 2 switch) shows up here.
+    print("\nLatest observation per indicator:")
+    for name, df in results.items():
+        if df.empty or "date" not in df.columns:
+            print(f"  {name}: EMPTY (cached raw file kept, if any)")
+            continue
+        last = df.dropna(subset=["value"])["date"].max()
+        print(f"  {name}: {last:%Y-%m-%d}")
+
 
 if __name__ == "__main__":
     main()
