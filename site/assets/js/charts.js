@@ -11,6 +11,7 @@ import {
   loadDataset, loadManifest, manifestEntry, getSeries, fieldDef, columns, allNull,
   lastPoint, firstPoint, sliceFrom, shiftYears, latest as manifestLatest, DataError,
 } from './data.js';
+import { plotCsv, tableCsv, downloadCsv, downloadPng, cardMeta } from './download.js';
 import {
   fmtValue, fmtNumber, fmtNumberTrim, fmtPeriod, plotlyNumberFormat, unitShort, signClass, arrow,
   hoverDateFormat, MONTHS, fmtDateLong,
@@ -482,6 +483,7 @@ async function draw(ui, data, layout) {
   const div = h('div', { class: 'plot' });
   ui.body.append(div);
   await Plotly.react(div, data, layout, PLOT_CONFIG);
+  attachDownloads(ui, { div });
   return div;
 }
 
@@ -490,6 +492,39 @@ async function redraw(ui, data, layout) {
   let div = ui.body.querySelector('.plot');
   if (!div) { div = h('div', { class: 'plot' }); ui.body.replaceChildren(div); }
   await Plotly.react(div, data, layout, PLOT_CONFIG);
+  attachDownloads(ui, { div });
+}
+
+/**
+ * Download bar under a card: "Descargar imagen" (PNG with title, units and source) for charts
+ * and "Descargar datos (CSV)" for charts and tables. Created once per card; it always uses the
+ * latest render (ui._dl), so toggles, range buttons and rebasing are respected.
+ */
+function attachDownloads(ui, target) {
+  ui._dl = target;
+  const host = ui.card;
+  if (!host || !host.append) return;
+  let bar = [...host.children].find((c) => c.classList && c.classList.contains('card-downloads'));
+  if (bar) return;
+  bar = h('div', { class: 'card-downloads' });
+  host.append(bar);
+  const meta = () => ({ ...cardMeta(host), xLabel: ui.xLabel });
+  const run = async (btn, fn) => {
+    btn.disabled = true;
+    try { await fn(); } catch (e) { console.error('[download]', e); } finally { btn.disabled = false; }
+  };
+  if (target.div) {
+    const png = h('button', { type: 'button', class: 'btn-dl', text: 'Descargar imagen', title: 'Gráfico en PNG, con título, unidades y fuente' });
+    png.addEventListener('click', () => run(png, async () => downloadPng(await ensurePlotly(), ui._dl.div, meta())));
+    bar.append(png);
+  }
+  const csv = h('button', { type: 'button', class: 'btn-dl', text: 'Descargar datos (CSV)', title: 'Datos mostrados, en CSV (separador «;», coma decimal)' });
+  csv.addEventListener('click', () => run(csv, async () => {
+    const m = meta();
+    const t = ui._dl;
+    downloadCsv(t.div ? plotCsv(t.div, m) : tableCsv(t.table, m), m.title);
+  }));
+  bar.append(csv);
 }
 
 function loadingBody(ui) {
@@ -917,6 +952,7 @@ export function crossSectionChart(el, spec) {
     const asOfText = asOf.length ? `Datos a ${asOf.map((d) => fmtPeriod(d, 'D')).join('; ')}` : '';
     const sub = spec.subtitle !== undefined ? spec.subtitle : [base, asOfText].filter(Boolean).join(' · ');
     const ui = makeUi(el, { ...spec, subtitle: sub }, traces);
+    ui.xLabel = spec.xTitle || 'Plazo (años)';
     noteProblems(ui, g.problems);
     const xs = traces[0].col.x;
     const tickvals = xs.length <= 14 ? xs.filter((v) => v >= 1) : undefined;
@@ -1090,11 +1126,12 @@ export function latestTable(el, spec) {
           const s = signClass(p[1]);
           cls += ' ' + (s === 'flat' ? '' : ((s === 'up') !== !!c.invert ? 'pos' : 'neg'));
         }
-        return h('td', { class: cls, text: fmtValue(p[1], t.field) });
+        return h('td', { class: cls, text: fmtValue(p[1], t.field), 'data-value': String(p[1]) });
       }))));
     ui.body.replaceChildren(h('div', { class: 'table-wrap', tabindex: '0', role: 'region', 'aria-label': spec.title || 'Tabla' },
       h('table', { class: 'data-table' }, thead, tbody)));
     fillFooter(ui.foot, [...g.loaded.values()], observedOf(g.traces), { stale: spec.stale });
+    attachDownloads(ui, { table: ui.body.querySelector('table') });
     return { ok: true };
   });
 }
@@ -1124,11 +1161,12 @@ export function periodTable(el, spec) {
         if (v === null || v === undefined) return h('td', { class: 'num muted', text: '–' });
         let cls = 'num';
         if (t.spec.signColor && v !== 0) cls += v > 0 ? ' pos' : ' neg';
-        return h('td', { class: cls, text: fmtValue(v, t.field) });
+        return h('td', { class: cls, text: fmtValue(v, t.field), 'data-value': String(v) });
       }))));
     ui.body.replaceChildren(h('div', { class: 'table-wrap', tabindex: '0', role: 'region', 'aria-label': spec.title || 'Tabla' },
       h('table', { class: 'data-table' }, thead, tbody)));
     fillFooter(ui.foot, [...g.loaded.values()], observedOf(g.traces), { stale: spec.stale });
+    attachDownloads(ui, { table: ui.body.querySelector('table') });
     return { ok: true };
   });
 }
