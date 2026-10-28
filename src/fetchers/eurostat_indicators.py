@@ -186,7 +186,7 @@ class EurostatIndicatorFetcher:
             'unit': ['PC_ACT'],  # % of active population
             's_adj': ['SA'],
             'sex': ['T'],  # Total
-            'age': ['Y25-74']  # 25-74 years (Y15-74 not available)
+            'age': ['TOTAL']  # 15-74 years: the headline rate (audit C1; Y25-74 understated it by ~1 pp)
         }
         df = self.client.get_data(DATASET_CODES["unemployment"], filter_pars)
         df = self._process_data(df)
