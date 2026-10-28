@@ -11,7 +11,7 @@ Window definitions recomputed here (independently of src/):
   BdE daily chg_1m       value - last value on or before x - 30 days
   BdE daily chg_ytd      value - last value on or before 31 Dec of the previous year
   BdE daily chg_1y       value - last value on or before x - 1 calendar year
-  Yahoo ret_1d/1w/1m/1y  % change vs 1 / 5 / 21 / 252 published sessions earlier
+  Yahoo ret_1d/1w/1m  % change vs 1 / 5 / 21 published sessions earlier; ret_1y/chg_1y vs the last close on or before x - 1 calendar year
   Yahoo chg_*            same windows, difference (pp) for yields
   Yahoo ret_ytd/chg_ytd  vs last published close of the previous calendar year
   sma_200                mean of the last 200 published closes
@@ -37,6 +37,8 @@ OFFICIAL = {
     ("ine.industrial_production", "mom"), ("ine.services_production", "mom"),
     ("ine.cpi", "yoy"), ("ine.retail_sales", "yoy"), ("ine.retail_sales", "mom"), ("ine.house_prices", "yoy"),
     ("ine.tourist_arrivals", "yoy"), ("ine.tourist_spending", "yoy"),
+    # Audit M3: BdE's published transaction-based growth rates (check_bde.py compares them with the API)
+    ("bde.credit_households_total", "yoy"), ("bde.credit_nfc_total", "yoy"),
 }
 LEVEL_FIELD = {"yahoo": "close"}
 
@@ -248,7 +250,7 @@ def check_daily_bde(rep, ds_id, ds):
             compare_maps(rep, ds_id, f"{s['key']}.{k}", pub, exp, 0.0002)
 
 
-SESS = {"1d": 1, "1w": 5, "1m": 21, "1y": 252}
+SESS = {"1d": 1, "1w": 5, "1m": 21}  # 1y is a calendar year (audit L3), handled below
 
 
 def check_yahoo(rep, ds_id, ds):
@@ -266,6 +268,13 @@ def check_yahoo(rep, ds_id, ds):
             if win in SESS:
                 n = SESS[win]
                 base = cl[j - n] if j - n >= 0 else None
+            elif win == "1y":
+                d = date.fromisoformat(x)
+                try:
+                    t = d.replace(year=d.year - 1)
+                except ValueError:
+                    t = d.replace(year=d.year - 1, day=28)
+                base = asof(xs, dict(zip(xs, cl)), t.isoformat())
             elif win == "ytd":
                 y = int(x[:4])
                 prev = [i for i in range(j) if int(xs[i][:4]) == y - 1]

@@ -57,6 +57,10 @@ SPEC = {
     "bde.registered_unemployment": ("D_1JA0D000", ["Paro registrado"], "m pers.", 1, "M"),
     "bde.government_debt_pde": ("DMNPDE2010_P00000_PS_APU", ["Deuda PDE", "Total"], "K  EUR", 1e3, "M"),
 }
+GROWTH = {
+    "bde.credit_households_total": "DCF_M.N.ES.W0.S1M.S1.N.L.LE.FD.T._Z.XDC._T.M.V.TVA._T",
+    "bde.credit_nfc_total": "DCF_M.N.ES.W0.S11.S1.N.L.LE.F4.T._Z.XDC._T.M.V.TVA._T",
+}
 SPREADS = {"bde.spread_10y_de": ("D_1NBBO320", "D_1NBBO308"), "bde.spread_10y_it": ("D_1NBBO320", "D_1NBBO309")}
 CURVE = {0.25: "D_DTES00B7", 0.5: "D_DTES00S7", 1.0: "D_DTES00U7", 3.0: "D_G0B1F0ZN", 5.0: "D_G0B1F0ZO",
          10.0: "D_G0B1F0ZP", 15.0: "D_G0B1F0ZQ"}
@@ -110,6 +114,11 @@ def run(rep: Report):
         else:
             n = 24
         rep.compare(ds, "values", pub, off, tol=tol + 1e-9 * max(abs(v) for v in off.values()), label=f"{code}", last_n=n)
+
+    # Audit M3: the credit "yoy" is BdE's published transaction-based growth rate (BE 3.20 / 3.21)
+    for ds, code in GROWTH.items():
+        _, gdata = fetch(code, "M")
+        rep.compare(ds, "yoy vs BdE published growth rate", series(ds, "es", "yoy"), gdata, tol=0.005 + 1e-9, label=code, last_n=60)
 
     # Spreads: Spain minus peer, monthly Maastricht yields.
     for ds, (a, b) in SPREADS.items():

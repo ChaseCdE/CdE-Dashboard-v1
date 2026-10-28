@@ -305,6 +305,7 @@ BDE_INDICATORS: Dict[str, Dict[str, Any]] = {
         "name": "Credit to Households - Total",
         "category": "credit_banking",
         "description": "OIFM. Loans and credits. To households and NPISHs",
+        "growth_key": "credit_households_growth",
         "unit": "Millions EUR",
         "frequency": "M",
         "source": "Banco de Espana",
@@ -316,7 +317,34 @@ BDE_INDICATORS: Dict[str, Dict[str, Any]] = {
         "name": "Credit to Non-Financial Corporations - Total",
         "category": "credit_banking",
         "description": "Total lending to NFCs",
+        "growth_key": "credit_nfc_growth",
         "unit": "Billions EUR",
+        "frequency": "M",
+        "source": "Banco de Espana",
+        "priority": "high"
+    },
+
+    # Transaction-based year-on-year growth rates published by BdE (Boletin Estadistico 3.19-3.21,
+    # "Indicadores de liquidez y financiacion"). They exclude reclassifications, write-offs and
+    # securitisations, which move the stock series above. Used as the "yoy" of the credit stocks
+    # (audit M3); not exported on their own.
+    "credit_households_growth": {
+        "series_code": "DCF_M.N.ES.W0.S1M.S1.N.L.LE.FD.T._Z.XDC._T.M.V.TVA._T",
+        "name": "Household financing, year-on-year growth (transaction-based)",
+        "category": "credit_growth",
+        "description": "Financing of households and NPISHs: balance, year-on-year growth rate (BE 3.21)",
+        "unit": "%",
+        "frequency": "M",
+        "source": "Banco de Espana",
+        "priority": "high"
+    },
+
+    "credit_nfc_growth": {
+        "series_code": "DCF_M.N.ES.W0.S11.S1.N.L.LE.F4.T._Z.XDC._T.M.V.TVA._T",
+        "name": "NFC loans from credit institutions, year-on-year growth (transaction-based)",
+        "category": "credit_growth",
+        "description": "Loans from credit institutions to non-financial corporations: balance, year-on-year growth rate (BE 3.20)",
+        "unit": "%",
         "frequency": "M",
         "source": "Banco de Espana",
         "priority": "high"
@@ -438,6 +466,7 @@ INDICATOR_GROUPS = {
         "household_deposit_rate", "household_overnight_deposit_rate",
         "credit_households_total", "credit_nfc_total"
     ],
+    "credit_growth": ["credit_households_growth", "credit_nfc_growth"],
     "debt_ratios": [
         "household_debt_gdp", "nfc_debt_gdp"
     ],

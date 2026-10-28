@@ -63,8 +63,10 @@ def _fields(key: str, meta: dict, decimals: int) -> list:
         fields.append(Field("mom_pp", "Variación mensual", "pp", decimals, column="change_abs"))
     elif kind == "credit_stock":
         fields += [
-            Field("mom", "Variación mensual", "pct_change", 1, column="change_pct"),
-            Field("yoy", "Variación interanual", "pct_change", 1, column="yoy_change_pct"),
+            Field("mom", "Variación mensual del saldo", "pct_change", 1, column="change_pct",
+                  note_es="Variación del saldo: incluye reclasificaciones, fallidos y titulizaciones"),
+            Field("yoy", "Variación interanual", "pct_change", 1, column="yoy_change_pct",
+                  note_es="Tasa de crecimiento interanual basada en operaciones, publicada por el Banco de España"),
         ]
     elif kind == "ratio":
         fields.append(Field("qoq_pp", "Variación trimestral", "pp", 1, column="change_abs"))
