@@ -10,13 +10,12 @@ kpiGrid($('kpis'), [
   { dataset: 'bde.euribor_12m_daily', series: 'ea', field: 'value', change: { field: 'chg_1y', label: 'en un año' }, positiveIsGood: false },
   { dataset: 'bde.spain_10y_bond', series: 'es', field: 'value', change: { field: 'chg_1y', label: 'en un año' }, positiveIsGood: false },
   { dataset: 'bde.mortgage_rate', series: 'es', field: 'value', change: { field: 'mom_pp', label: 'mensual' }, positiveIsGood: false },
-  { dataset: 'bde.consumer_credit_rate', series: 'es', field: 'value', change: { field: 'mom_pp', label: 'mensual' }, positiveIsGood: false },
   { dataset: 'bde.corporate_lending_rate', series: 'es', field: 'value', change: { field: 'mom_pp', label: 'mensual' }, positiveIsGood: false },
-  { dataset: 'bde.household_deposit_rate', series: 'es', field: 'value', change: { field: 'mom_pp', label: 'mensual' }, positiveIsGood: true },
   { dataset: 'bde.credit_households_total', series: 'es', field: 'value', change: { field: 'yoy', label: 'interanual' } },
   { dataset: 'bde.credit_nfc_total', series: 'es', field: 'value', change: { field: 'yoy', label: 'interanual' } },
+  { dataset: 'bde.spread_10y_de', series: 'es', field: 'value', title: 'Diferencial a 10 años frente a Alemania', change: { field: 'chg_1m', label: 'mensual' }, positiveIsGood: false },
+  { dataset: 'bde.npl_ratio', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: false },
   { dataset: 'bde.household_debt_gdp', series: 'es', field: 'value', change: { field: 'qoq_pp', label: 'trimestral' }, positiveIsGood: false },
-  { dataset: 'bde.nfc_debt_gdp', series: 'es', field: 'value', change: { field: 'qoq_pp', label: 'trimestral' }, positiveIsGood: false },
   { dataset: 'bde.current_account_balance', series: 'es', field: 'sum_12m', title: 'Saldo por cuenta corriente, 12 meses' },
   { dataset: 'bde.tourism_receipts', series: 'es', field: 'value', change: { field: 'yoy', label: 'interanual' }, positiveIsGood: true },
 ]);
@@ -90,4 +89,30 @@ barChart($('tourism'), {
   title: 'Ingresos por turismo',
   series: [{ dataset: 'bde.tourism_receipts', series: 'es', field: 'value' }],
   range: { default: '5A' },
+});
+
+lineChart($('spreads'), {
+  title: 'Diferencial de rentabilidad a 10 años de España frente a Alemania e Italia',
+  subtitle: 'Un valor positivo indica que España paga más que el país de comparación; uno negativo, que paga menos.',
+  series: [
+    { dataset: 'bde.spread_10y_de', series: 'es', field: 'value', label: 'Frente a Alemania' },
+    { dataset: 'bde.spread_10y_it', series: 'es', field: 'value', label: 'Frente a Italia' },
+  ],
+  ref: { y: 0 },
+  range: { default: '5A' },
+});
+
+lineChart($('pde'), {
+  title: 'Deuda de las Administraciones Públicas (PDE)',
+  toggle: [
+    { id: 'value', label: 'Nivel', series: [{ dataset: 'bde.government_debt_pde', series: 'es', field: 'value' }] },
+    { id: 'yoy', label: 'Variación anual', series: [{ dataset: 'bde.government_debt_pde', series: 'es', field: 'yoy' }] },
+  ],
+  range: { default: '5A' },
+});
+
+lineChart($('npl'), {
+  title: 'Ratio de créditos dudosos',
+  series: [{ dataset: 'bde.npl_ratio', series: 'es', field: 'value' }],
+  range: { default: 'max' },
 });

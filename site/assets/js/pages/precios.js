@@ -11,6 +11,7 @@ kpiGrid($('kpis'), [
   { dataset: 'ine.ipri', series: 'total', field: 'yoy', title: 'Precios industriales', change: { field: 'mom', label: 'mensual' }, positiveIsGood: false },
   { dataset: 'ine.ipri', series: 'total_sin_energia', field: 'yoy', title: 'Precios industriales sin energía', change: { field: 'mom', label: 'mensual' }, positiveIsGood: false },
   { dataset: 'ine.house_prices', series: 'es', field: 'yoy', title: 'Precio de la vivienda', positiveIsGood: false },
+  { dataset: 'eurostat.hicp_energy', series: 'es', field: 'yoy', title: 'Inflación de la energía (IPCA España)', positiveIsGood: false },
   { dataset: 'eurostat.hicp', series: 'es', field: 'yoy', title: 'IPCA España', positiveIsGood: false },
   { dataset: 'eurostat.hicp', series: 'eu27', field: 'yoy', title: 'IPCA UE-27', positiveIsGood: false },
 ]);
@@ -54,6 +55,16 @@ groupedBarChart($('weights'), {
   orientation: 'h', sort: 'desc',
 });
 
+// Energía
+lineChart($('energy-hicp'), {
+  title: 'Inflación de la energía: España frente a la UE-27',
+  series: [
+    { dataset: 'eurostat.hicp_energy', series: 'es', field: 'yoy' },
+    { dataset: 'eurostat.hicp_energy', series: 'eu27', field: 'yoy' },
+  ],
+  range: { default: '5A' },
+});
+
 // CCAA
 groupedBarChart($('ccaa-bars'), {
   title: 'Inflación por comunidad autónoma',
@@ -72,6 +83,7 @@ lineChart($('ipri-general'), {
   title: 'Precios industriales: total y sin energía',
   toggle: ['value', 'yoy', 'mom'].map((f) => ({
     id: f, label: { value: 'Índice', yoy: 'Anual', mom: 'Mensual' }[f],
+    ...(f === 'value' ? { rebase: { year: 2022 } } : {}),
     series: ['total', 'total_sin_energia'].map((s) => ({ dataset: 'ine.ipri', series: s, field: f })),
   })),
   range: { default: '5A' },
@@ -80,6 +92,7 @@ lineChart($('ipri-destino'), {
   title: 'Precios industriales por destino económico',
   toggle: ['value', 'yoy', 'mom'].map((f) => ({
     id: f, label: { value: 'Índice', yoy: 'Anual', mom: 'Mensual' }[f],
+    ...(f === 'value' ? { rebase: { year: 2022 } } : {}),
     series: ['consumo', 'equipo', 'intermedios', 'energia'].map((s) => ({ dataset: 'ine.ipri', series: s, field: f })),
   })),
   range: { default: '5A' },

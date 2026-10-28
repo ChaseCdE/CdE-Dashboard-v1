@@ -5,11 +5,36 @@ mountLayout({ active: 'laboral' });
 const $ = (id) => document.getElementById(id);
 
 kpiGrid($('kpis'), [
+  { dataset: 'bde.social_security_affiliates', series: 'es', field: 'value', change: { field: 'yoy', label: 'interanual' }, positiveIsGood: true },
+  { dataset: 'bde.registered_unemployment', series: 'es', field: 'value', change: { field: 'yoy', label: 'interanual' }, positiveIsGood: false },
   { dataset: 'ine.unemployment', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: false },
   { dataset: 'ine.employment_rate', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: true },
   { dataset: 'ine.activity_rate', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: true },
   { dataset: 'ine.employed', series: 'es', field: 'value', change: { field: 'yoy', label: 'interanual' }, positiveIsGood: true },
 ]);
+
+lineChart($('c-afil'), {
+  title: 'Afiliados a la Seguridad Social, último día del mes',
+  series: [{ dataset: 'bde.social_security_affiliates', series: 'es', field: 'value' }],
+  range: { default: '5A' },
+});
+barChart($('c-afil-var'), {
+  title: 'Variación interanual de los afiliados, último día del mes',
+  series: [{ dataset: 'bde.social_security_affiliates', series: 'es', field: 'yoy' }],
+  colorBySign: 'neutral',
+  range: { default: '5A' },
+});
+lineChart($('c-pr'), {
+  title: 'Paro registrado',
+  series: [{ dataset: 'bde.registered_unemployment', series: 'es', field: 'value' }],
+  range: { default: '5A' },
+});
+barChart($('c-pr-var'), {
+  title: 'Variación interanual del paro registrado',
+  series: [{ dataset: 'bde.registered_unemployment', series: 'es', field: 'yoy' }],
+  colorBySign: 'neutral',
+  range: { default: '5A' },
+});
 
 lineChart($('c-paro'), {
   title: 'Tasa de paro, España',
@@ -43,7 +68,6 @@ periodTable($('c-tabla'), {
 kpiGrid($('kpis-calidad'), [
   { dataset: 'ine.temporary_rate', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: false },
   { dataset: 'ine.youth_unemployment', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: false },
-  { dataset: 'ine.parttime_rate', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' } },
 ]);
 lineChart($('c-temp'), {
   title: 'Temporalidad y parcialidad del empleo',
@@ -60,6 +84,24 @@ lineChart($('c-juvenil'), {
     { dataset: 'ine.unemployment', series: 'es', field: 'value', label: 'Total' },
   ],
   range: { default: '5A' },
+});
+
+lineChart($('c-pob'), {
+  title: 'Población residente por nacionalidad',
+  series: [
+    { dataset: 'ine.population_nationality', series: 'total', field: 'value' },
+    { dataset: 'ine.population_nationality', series: 'espanola', field: 'value' },
+    { dataset: 'ine.population_nationality', series: 'extranjera', field: 'value' },
+  ],
+  range: { default: 'max' },
+});
+lineChart($('c-pob-var'), {
+  title: 'Crecimiento interanual de la población española y extranjera',
+  series: [
+    { dataset: 'ine.population_nationality', series: 'espanola', field: 'yoy' },
+    { dataset: 'ine.population_nationality', series: 'extranjera', field: 'yoy' },
+  ],
+  range: { default: 'max' },
 });
 
 kpiGrid($('kpis-costes'), [

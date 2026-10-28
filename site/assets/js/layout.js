@@ -8,6 +8,7 @@ import { fmtDateLong } from './format.js';
 export const NAV = [
   { id: 'portada', label: 'Portada', path: 'index.html' },
   { id: 'actividad', label: 'Actividad', path: 'pages/actividad.html' },
+  { id: 'empresas', label: 'Empresas y turismo', path: 'pages/empresas.html' },
   { id: 'precios', label: 'Precios', path: 'pages/precios.html' },
   { id: 'laboral', label: 'Mercado laboral', path: 'pages/laboral.html' },
   { id: 'credito', label: 'Crédito y tipos', path: 'pages/credito.html' },

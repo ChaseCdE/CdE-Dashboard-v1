@@ -464,6 +464,12 @@ function refShapes(ref) {
   };
 }
 
+/** Right margin wide enough for the longest end label (~7 px per character at 12 px bold). */
+function endLabelMargin(annotations) {
+  const len = Math.max(0, ...annotations.map((a) => String(a.text).replace(/<[^>]+>/g, '').length));
+  return Math.max(58, Math.min(150, Math.round(7.2 * len + 16)));
+}
+
 function endLabelAnnotations(traces, plotted) {
   return plotted.map(({ t, x, y }) => {
     let i = y.length - 1;
@@ -482,12 +488,33 @@ async function draw(ui, data, layout) {
   ui.body.replaceChildren();
   const div = h('div', { class: 'plot' });
   ui.body.append(div);
+  clampDateAxis(data, layout);
   await Plotly.react(div, data, layout, PLOT_CONFIG);
   attachDownloads(ui, { div });
   return div;
 }
 
+/**
+ * Date axes end at the data: Plotly's autorange can add a tick past the last observation
+ * (e.g. "ene 2027" on a series ending in sep 2026). Bars get half a period of padding so the
+ * first and last bars are not cut. Skipped when the chart sets its own x range.
+ */
+function clampDateAxis(data, layout) {
+  const xa = layout.xaxis || {};
+  if (xa.type !== 'date' || xa.range) return layout;
+  const xs = [...new Set(data.filter((t) => t.orientation !== 'h').flatMap((t) => t.x || []))]
+    .filter((x) => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}/.test(x)).sort();
+  if (xs.length < 2) return layout;
+  const t = (iso) => Date.parse(iso.slice(0, 10) + 'T00:00:00Z');
+  const hasBars = data.some((d) => d.type === 'bar');
+  const pad = hasBars ? (t(xs[xs.length - 1]) - t(xs[xs.length - 2])) / 2 : 0;
+  const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
+  layout.xaxis = { ...xa, range: [iso(t(xs[0]) - pad), iso(t(xs[xs.length - 1]) + pad)], autorange: false };
+  return layout;
+}
+
 async function redraw(ui, data, layout) {
+  clampDateAxis(data, layout);
   const Plotly = await ensurePlotly();
   let div = ui.body.querySelector('.plot');
   if (!div) { div = h('div', { class: 'plot' }); ui.body.replaceChildren(div); }
@@ -662,7 +689,7 @@ export function lineChart(el, spec) {
       const layout = baseLayout({
         height: spec.height, legend: shown.length > 1, freq: shown[0].freq,
         yField: plotted[0].t.field, zero: spec.zero !== undefined ? spec.zero : seriesNeedsZero(shown),
-        rightMargin: endLabels ? 58 : 14,
+        rightMargin: endLabels ? endLabelMargin(endLabelAnnotations(shown, plotted)) : 14,
         extra: {
           shapes: ref.shapes,
           annotations: [...ref.annotations, ...(endLabels ? endLabelAnnotations(shown, plotted) : [])],
@@ -911,7 +938,11 @@ export function groupedBarChart(el, spec) {
       const pad = (vmax - vmin || 1) * 0.3;   // room for outside value labels (display only)
       const valueRange = [vmin < 0 ? vmin - pad : 0, vmax > 0 ? vmax + pad : 0];
       const layout = baseLayout({
-        height: spec.height || (horizontal ? Math.max(220, 34 * n * Math.max(1, single ? 1 : barNames.length * 0.7) + 50) : CHART.heightSmall + 40),
+        // Horizontal: each row tall enough for its wrapped label (16 px per line + gap).
+        height: spec.height || (horizontal
+          ? Math.max(220, rows.reduce((acc, c) => acc + Math.max(34, 16 * wrapLabel(c.label).split('<br>').length + 12), 0)
+            * Math.max(1, single ? 1 : barNames.length * 0.7) + 50)
+          : CHART.heightSmall + 40),
         legend: !single, freq: 'M', numericX: true, yField: fld0, zero: true,
         rightMargin: horizontal ? 64 : 12,
         extra: {

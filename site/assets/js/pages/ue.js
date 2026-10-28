@@ -1,6 +1,6 @@
 // Comparativa UE: España frente a la UE-27 (Eurostat).
 import { mountLayout } from '../layout.js';
-import { kpiGrid, lineChart, barChart, groupedBarChart } from '../charts.js';
+import { kpiGrid, lineChart, barChart } from '../charts.js';
 
 mountLayout({ active: 'ue' });
 const $ = (id) => document.getElementById(id);
@@ -19,18 +19,15 @@ kpiGrid($('kpis'), [
   { dataset: 'eurostat.government_debt', series: 'eu27', field: 'value', title: 'Deuda pública, % del PIB, UE-27', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: false },
 ]);
 
-// Último dato, España frente a UE-27 (una gráfica por indicador: unidades distintas).
-const bars = (id, title, ds, f) => groupedBarChart($(id), {
-  title,
-  categories: [{ label: title, bars: [
-    { dataset: 'eurostat.' + ds, series: 'es', field: f, name: 'España' },
-    { dataset: 'eurostat.' + ds, series: 'eu27', field: f, name: 'UE-27' },
-  ] }],
-});
-bars('now-gdp', 'PIB, variación trimestral: último dato', 'gdp_growth', 'qoq');
-bars('now-unemp', 'Tasa de paro: último dato', 'unemployment', 'value');
-bars('now-hicp', 'Inflación armonizada: último dato', 'hicp', 'yoy');
-bars('now-debt', 'Deuda pública sobre PIB: último dato', 'government_debt', 'value');
+// Convergencia con Europa
+const peers = (ds, keys) => keys.map((k) => ({ dataset: 'eurostat.' + ds, series: k, field: 'value' }));
+kpiGrid($('kpis-conv'), [
+  { dataset: 'eurostat.gdp_per_capita_pps', series: 'es', field: 'value', title: 'PIB per cápita en PPA, España (UE-27 = 100)', positiveIsGood: true },
+  { dataset: 'eurostat.labour_productivity_pps', series: 'es', field: 'value', title: 'Productividad por hora en PPA, España (UE-27 = 100)', positiveIsGood: true },
+]);
+lineChart($('conv-gdppc'), { title: 'PIB per cápita en paridad de poder adquisitivo', series: peers('gdp_per_capita_pps', ['es', 'de', 'fr', 'it', 'pt']), range: { default: 'max' }, ref: { y: 100, label: 'Media UE-27' } });
+lineChart($('conv-prod'), { title: 'Productividad por hora trabajada en paridad de poder adquisitivo', series: peers('labour_productivity_pps', ['es', 'de', 'fr', 'it', 'pt']), range: { default: 'max' }, ref: { y: 100, label: 'Media UE-27' } });
+lineChart($('conv-rd'), { title: 'Gasto en I+D sobre PIB, España y principales economías', series: peers('rd_expenditure', ['es', 'eu27', 'de', 'fr', 'it']), range: { default: 'max' } });
 
 // Crecimiento
 barChart($('gdp-growth'), { title: 'Crecimiento trimestral del PIB, España y UE-27', series: pair('gdp_growth', 'qoq'), range: { default: '5A' } });
@@ -47,6 +44,8 @@ lineChart($('gdp-index'), {
 lineChart($('unemp'), { title: 'Tasa de paro, España y UE-27', series: pair('unemployment', 'value'), range: { default: '5A' } });
 lineChart($('participation'), { title: 'Tasa de actividad, España y UE-27', series: pair('labor_participation', 'value'), range: { default: '5A' } });
 lineChart($('emp-growth'), { title: 'Crecimiento trimestral del empleo, España y UE-27', series: pair('employment_growth', 'qoq'), range: { default: '5A' }, ref: { y: 0 } });
+lineChart($('youth'), { title: 'Paro juvenil (menores de 25 años), España y UE-27', series: pair('youth_unemployment', 'value'), range: { default: '5A' } });
+lineChart($('longterm'), { title: 'Paro de larga duración, España y UE-27', series: pair('long_term_unemployment', 'value'), range: { default: '5A' } });
 
 // Precios
 lineChart($('hicp'), { title: 'Inflación armonizada, España y UE-27', series: pair('hicp', 'yoy'), range: { default: '5A' }, ref: { y: 2, label: 'Objetivo BCE 2 %' } });

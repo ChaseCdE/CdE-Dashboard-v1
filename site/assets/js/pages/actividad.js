@@ -20,7 +20,7 @@ lineChart($('gdp'), {
   toggle: [
     { id: 'yoy', label: 'Interanual', series: [{ dataset: 'ine.gdp', series: 'es', field: 'yoy' }] },
     { id: 'qoq', label: 'Trimestral', series: [{ dataset: 'ine.gdp', series: 'es', field: 'qoq' }] },
-    { id: 'lvl', label: 'Nivel (2019T1 = 100)', series: [{ dataset: 'ine.gdp_productivity', series: 'pib', field: 'value' }] },
+    { id: 'lvl', label: 'Índice (2019 = 100)', rebase: { year: 2019 }, series: [{ dataset: 'ine.gdp', series: 'es', field: 'value' }] },
   ],
   range: { default: '5A' },
 });
@@ -55,7 +55,7 @@ lineChart($('production'), {
   toggle: [
     { id: 'yoy', label: 'Interanual', series: prod('yoy') },
     { id: 'mom', label: 'Mensual', series: prod('mom') },
-    { id: 'value', label: 'Índice', series: prod('value') },
+    { id: 'value', label: 'Índice (2021 = 100)', rebase: { year: 2021 }, series: prod('value') },
   ],
   range: { default: '5A' },
 });
@@ -99,11 +99,6 @@ lineChart($('consumer-conf'), {
   series: ['es', 'eu27'].map((s) => ({ dataset: 'eurostat.consumer_confidence', series: s, field: 'value' })),
   range: { default: '5A' },
 });
-lineChart($('retail-eu'), {
-  title: 'Comercio minorista: España frente a la UE-27',
-  series: ['es', 'eu27'].map((s) => ({ dataset: 'eurostat.retail_trade', series: s, field: 'yoy' })),
-  range: { default: '5A' },
-});
 lineChart($('house-prices'), {
   title: 'Precios de la vivienda: España frente a la UE-27',
   series: ['es', 'eu27'].map((s) => ({ dataset: 'eurostat.house_prices', series: s, field: 'yoy' })),
@@ -117,5 +112,27 @@ lineChart($('credit'), {
 lineChart($('mortgage'), {
   title: 'Tipo de interés de los préstamos para vivienda',
   series: [{ dataset: 'bde.mortgage_rate', series: 'es', field: 'value' }],
+  range: { default: '5A' },
+});
+lineChart($('saving'), {
+  title: 'Tasa de ahorro de los hogares (desestacionalizada)',
+  series: [{ dataset: 'ine.household_saving_rate', series: 'es', field: 'value' }],
+  markers: true,
+  range: { default: '5A' },
+});
+lineChart($('housing'), {
+  title: 'Compraventas de viviendas, acumulado de 12 meses',
+  series: [
+    { dataset: 'ine.housing_transactions', series: 'nueva', field: 'sum_12m' },
+    { dataset: 'ine.housing_transactions', series: 'usada', field: 'sum_12m' },
+  ],
+  range: { default: '5A' },
+});
+lineChart($('mortgages'), {
+  title: 'Hipotecas sobre viviendas',
+  toggle: [
+    { id: 'n', label: 'Número, acumulado 12 meses', series: [{ dataset: 'ine.mortgages', series: 'es', field: 'sum_12m' }] },
+    { id: 'avg', label: 'Importe medio', series: [{ dataset: 'ine.mortgages', series: 'es', field: 'avg_amount' }] },
+  ],
   range: { default: '5A' },
 });

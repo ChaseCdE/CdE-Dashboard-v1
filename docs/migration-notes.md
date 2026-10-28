@@ -98,3 +98,24 @@ Backlog:
 - `yahoo.spanish_banks_etf` is EWP (iShares MSCI Spain, whole market): rename the id to `yahoo.msci_spain_etf` together with `mercados.js`.
 - Monthly charts can show an axis tick one month past the last observation (e.g. "ene 2027"); cosmetic.
 - 375 px screenshots were checked only partially for some long pages (Actividad, Comparativa UE).
+
+## 2026-10-28 Extension: new indicators and downloads
+
+New datasets (20; 125 in total; strict validation clean). Detail in `docs/notes/ext-{ine,eurostat,bde}.md`.
+- INE: `tourist_arrivals` (FRONTUR), `tourist_spending` (EGATUR), `hotel_overnight_stays`, `housing_transactions` (ETDP), `mortgages`, `companies` (created/dissolved), `household_saving_rate`, `population_nationality`. Insolvencies not available: INE discontinued the Estadística del Procedimiento Concursal after 2020.
+- Eurostat: `gdp_per_capita_pps`, `labour_productivity_pps`, `rd_expenditure`, `youth_unemployment`, `long_term_unemployment`, `hicp_energy`.
+- BdE: `npl_ratio`, `spread_10y_de`, `spread_10y_it`, `social_security_affiliates` (end of month, not monthly average), `registered_unemployment`, `government_debt_pde`.
+
+Errors found and fixed:
+- `bde.france_10y_bond` and `bde.italy_10y_bond` were Finland's and Portugal's series (D_1NBBO314, D_1NBBO316); now D_1NBBO303 (France) and D_1NBBO309 (Italy).
+- Yield curve: the "more than 2 years" BdE aggregate was plotted as the 2-year point and created a false kink; removed from the curve.
+
+Contract v1.2: optional `stale_after_days` per dataset (used for Eurostat R&D, published ~11 months after year end).
+
+Pages: new **Empresas y turismo**; Actividad gains housing, mortgages and saving rate ("Consumo, hogares y vivienda"); Mercado laboral gains affiliation, registered unemployment and population by nationality; Crédito y tipos gains spreads, PDE debt and NPL ratio; Comparativa UE gains "Convergencia con Europa" and youth/long-term unemployment; Precios gains energy inflation; Portada KPIs now include affiliation, spread and tourist arrivals. Per-page notes: `docs/notes/p5-*.md`.
+
+Factory (lead): download buttons on every chart and table card (PNG with title/units/source; CSV of the data shown, `;` and decimal comma); date axes end at the last observation; end-label margin sized to the label; horizontal bar rows sized to wrapped labels.
+
+Lead re-test: 8 pages at 375 and 1440 px, 101 charts, 0 console errors, 0 failed requests, no overflow; downloads tested on 5 pages.
+
+Declined: a line + bar combo chart with a secondary axis (style guide avoids dual axes).

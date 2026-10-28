@@ -10,11 +10,11 @@ kpiGrid($('kpis'), [
   { dataset: 'ine.gdp', series: 'es', field: 'yoy', title: 'PIB, variación anual', change: { field: 'qoq', label: 'trimestral' }, positiveIsGood: true, href: 'pages/actividad.html' },
   { dataset: 'ine.industrial_production', series: 'es', field: 'yoy', title: 'Producción industrial, variación anual', change: { field: 'mom', label: 'mensual' }, positiveIsGood: true, href: 'pages/actividad.html' },
   { dataset: 'ine.cpi', series: 'es', field: 'yoy', title: 'Inflación (IPC), variación anual', positiveIsGood: false, href: 'pages/precios.html' },
-  { dataset: 'ine.unemployment', series: 'es', field: 'value', title: 'Tasa de paro (EPA)', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: false, href: 'pages/laboral.html' },
+  { dataset: 'bde.social_security_affiliates', series: 'es', field: 'value', title: 'Afiliados a la Seguridad Social', change: { field: 'yoy', label: 'interanual' }, positiveIsGood: true, href: 'pages/laboral.html' },
   { dataset: 'bde.euribor_12m_daily', series: 'ea', field: 'value', title: 'Euríbor a 12 meses', change: { field: 'chg_1m', label: 'en un mes' }, positiveIsGood: null, href: 'pages/credito.html' },
-  { dataset: 'bde.spain_10y_bond', series: 'es', field: 'value', title: 'Bono español a 10 años', change: { field: 'chg_1m', label: 'en un mes' }, positiveIsGood: null, href: 'pages/credito.html' },
+  { dataset: 'bde.spread_10y_de', series: 'es', field: 'value', title: 'Diferencial a 10 años frente a Alemania', change: { field: 'chg_1m', label: 'en un mes' }, positiveIsGood: false, href: 'pages/credito.html' },
   { dataset: 'yahoo.ibex_35', series: 'es', field: 'close', title: 'IBEX 35', change: { field: 'ret_ytd', label: 'en el año' }, positiveIsGood: true, href: 'pages/mercados.html' },
-  { dataset: 'yahoo.brent_crude', series: 'global', field: 'close', title: 'Petróleo Brent', change: { field: 'ret_1m', label: 'en un mes' }, positiveIsGood: null, href: 'pages/mercados.html' },
+  { dataset: 'ine.tourist_arrivals', series: 'es', field: 'sum_12m', title: 'Turistas internacionales, últimos 12 meses', change: { field: 'yoy', label: 'interanual' }, positiveIsGood: true, href: 'pages/empresas.html' },
 ]);
 
 barChart($('chart-pib'), {
