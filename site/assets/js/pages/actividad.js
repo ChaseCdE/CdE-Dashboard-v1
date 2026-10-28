@@ -26,7 +26,7 @@ lineChart($('gdp'), {
 });
 stackedBarChart($('demand'), {
   title: 'Contribuciones de la demanda al crecimiento del PIB',
-  components: ['private_consumption', 'public_consumption', 'gfcf', 'external_demand']
+  components: ['private_consumption', 'public_consumption', 'gfcf', 'inventories', 'external_demand']
     .map((s) => ({ dataset: 'ine.gdp_demand', series: s, field: 'contribution' })),
   total: { dataset: 'ine.gdp', series: 'es', field: 'yoy', label: 'PIB, variación interanual' },
   range: { years: 3 },

@@ -937,38 +937,35 @@ class INEProcessor:
         print("Processing GDP Demand-Side (Annual Contributions)...")
         df = self._load_raw("gdp_demand_raw.csv")
 
-        # Define components using INE's "Aportación anual" series
-        # These are pre-calculated contributions to GDP growth (in percentage points)
+        # INE's headline contributions ("Aportación anual"), seasonally and calendar
+        # adjusted, pinned by series code. Name matching previously took the first
+        # match, which was the NON-adjusted series, and inventories were missing, so
+        # the bars did not add up to the (adjusted) GDP growth (audit C3).
         components = {
-            "private_consumption": "Gasto en consumo final de los hogares y las ISFLSH. Aportación anual",
-            "public_consumption": "Gasto en consumo final de las AAPP. Aportación anual",
-            "gfcf": "Formación bruta de capital fijo (FBCF). Aportación anual",
-            "external_demand": "Demanda externa. Aportación anual",
+            "private_consumption": "CNTR7160",
+            "public_consumption": "CNTR7190",
+            "gfcf": "CNTR7215",
+            "inventories": "CNTR7262",
+            "external_demand": "CNTR7264",
         }
 
         results = []
 
-        for component_key, search_term in components.items():
-            # Filter for the specific annual contribution series
-            # Use regex=False to avoid issues with parentheses in search terms
-            mask = (
-                df["series_name"].str.contains("Total Nacional", case=False, na=False, regex=False) &
-                df["series_name"].str.contains(search_term, case=False, na=False, regex=False)
-            )
-            filtered = df[mask].copy()
+        for component_key, series_code in components.items():
+            filtered = df[df["series_code"] == series_code].copy()
+            if filtered.empty:
+                raise ValueError(f"gdp_demand: INE series {series_code} ({component_key}) not found in table")
+            if "ajustados de estacionalidad" not in str(filtered["series_name"].iloc[0]) or \
+                    "no ajustados" in str(filtered["series_name"].iloc[0]):
+                raise ValueError(f"gdp_demand: {series_code} is not seasonally adjusted: {filtered['series_name'].iloc[0]}")
+            filtered = filtered[["date", "year", "value"]].copy()
+            filtered = filtered.sort_values("date").drop_duplicates(subset=["date"])
 
-            if not filtered.empty:
-                # Get first matching series
-                series_code = filtered["series_code"].iloc[0]
-                filtered = filtered[filtered["series_code"] == series_code]
-                filtered = filtered[["date", "year", "value"]].copy()
-                filtered = filtered.sort_values("date").drop_duplicates(subset=["date"])
-
-                # The value IS the contribution (aportación), rename for clarity
-                filtered = filtered.rename(columns={"value": "contribution"})
-                filtered["component"] = component_key
-                results.append(filtered)
-                print(f"  Found {component_key}: {len(filtered)} records")
+            # The value IS the contribution (aportación), rename for clarity
+            filtered = filtered.rename(columns={"value": "contribution"})
+            filtered["component"] = component_key
+            results.append(filtered)
+            print(f"  Found {component_key}: {len(filtered)} records")
 
         if results:
             result = pd.concat(results, ignore_index=True)
@@ -1061,7 +1058,9 @@ class INEProcessor:
         sectors = {
             "total": ("Total servicios", "Total servicios"),
             "vehiculos": ("Venta y reparaci.n de veh.culos", "Venta vehículos"),
-            "mayoristas": ("Comercio al por mayor", "Comercio mayorista"),
+            # Division 46. Plain "Comercio al por mayor" also matched section G
+            # ("al por mayor y al por menor; reparación de vehículos") first (audit C2).
+            "mayoristas": ("Comercio al por mayor e intermediarios", "Comercio mayorista"),
             "minoristas": ("Comercio al por menor", "Comercio minorista"),
             "transporte": ("Transporte y almacenamiento\\.", "Transporte"),
             "hosteleria": ("Hosteler.a\\.", "Hostelería"),
