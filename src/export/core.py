@@ -197,9 +197,12 @@ def build_dataset(ds: Dataset, generated_at: str) -> dict:
             if all(v is None for v in vals):
                 continue
             rows.append([xv, *vals])
-        # sort and de-duplicate on x (keep last occurrence)
+        # Duplicate x within a series means a processor mixed two series: fail loudly
+        # instead of silently keeping one (audit M6).
         dedup = {}
         for r in rows:
+            if r[0] in dedup and dedup[r[0]][1:] != r[1:]:
+                raise ValueError(f"{ds.id}: series '{s.key}' has conflicting rows for x={r[0]}: {dedup[r[0]]} vs {r}")
             dedup[r[0]] = r
         rows = [dedup[k] for k in sorted(dedup)] if ds.x_type != "category" else list(dedup.values())
 

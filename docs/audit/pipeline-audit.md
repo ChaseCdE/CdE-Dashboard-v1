@@ -205,3 +205,19 @@ Status of the worst check of each type: `identity` = source identifier and metad
 - **CI**: GitHub Actions behaviour (cache save/restore, commit, deploy) was inferred from the workflow files, not executed.
 - **Revisions**: no actual source revision happened during the audit. Robustness is inferred from the fact that each run re-downloads the full window (INE `nult`, Eurostat since 2015, BdE 36M/60M, Yahoo 5 years).
 - **Frontend**: only the page configs that reference the affected datasets were read, not the rendering.
+
+## Fix status (2026-10-28)
+
+Fixed before optimisation (verified by the lead against the API values above and by `scripts/audit/check_all.py`: PASS 985, SKIP 7, FAIL 0):
+
+| Finding | Fix | Check |
+|---|---|---|
+| C1 | `une_rt_m` age `TOTAL` (15-74) | ES 10.0 %, EU27 6.1 % (Aug 2026) |
+| C2 | wholesale pattern anchored to division 46 ("Comercio al por mayor e intermediarios") | Aug 2026 yoy −3.4 |
+| C3 | SA contributions pinned by code (CNTR7160/7190/7215/7262/7264), inventories added, fails if a code is missing or not SA | contributions sum to GDP yoy (2024Q4 3.72 = 3.72; 2026Q2 2.64 = 2.64); private consumption 2026Q1 1.65 |
+| H1 | `run_pipeline.py` captures every failure the fetchers log; summary lists what was not refreshed; exit code 3; CI publishes what refreshed, then fails the run | simulated BdE outage: `[WARN 102]`, exit 3; normal run: exit 0 |
+| H2 | Yahoo `auto_adjust=False` (traded close) | TLT 2026-09-24: 79.42 |
+| M6 | export fails on conflicting duplicate x | all 125 datasets export |
+| L1, L5, L6 | texts and comments | |
+
+Assigned to the optimisation pass (allowed to change published values, in separate commits citing the finding): M1 (pin INE codes; fail on 0 or >1 match), M2 (CPI weights by year; the remaining WARN above), M3 (credit growth definition), M4 (INE published rates instead of recomputed ones), M5, L2, L3, L4.

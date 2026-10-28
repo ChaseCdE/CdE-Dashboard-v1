@@ -35,7 +35,7 @@ TABLE_IDS = {
     "labor_cost": 6030,        # ETCL Coste laboral por trabajador por sectores (current, 2008+)
     "labor_cost_hour": 6034,   # ETCL Coste laboral por hora efectiva por sectores (current, 2008+)
     # Prices
-    "cpi": 79181,              # IPC Índices nacionales: general y grupos ECOICOP ver.2 (base 2026; replaces frozen 50904, base 2021)
+    "cpi": 79181,              # IPC Índices nacionales: general y grupos ECOICOP ver.2 (base 2025 = 100; replaces frozen 50904, base 2021)
     "cpi_special_groups": 76130,  # IPC Índices nacionales de grupos especiales
     "cpi_ecoicop_groups": 76125,  # IPC Índices nacionales de grupos ECOICOP ver.2
     "cpi_weights": 76156,      # IPC Ponderaciones de grupos ECOICOP ver.2

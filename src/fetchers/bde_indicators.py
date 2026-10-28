@@ -976,7 +976,7 @@ BDE_EXPORT_META: Dict[str, Dict[str, Any]] = {
         title_es="Ratio de créditos dudosos",
         description_es="Créditos dudosos a otros sectores residentes en porcentaje del crédito total, entidades de crédito y establecimientos financieros de crédito (tasa de morosidad)."),
     "social_security_affiliates": dict(kind="persons", url=BDE_URL_LABOUR, label_es="España",
-        title_es="Afiliados a la Seguridad Social",
+        title_es="Afiliados a la Seguridad Social (último día del mes)",
         description_es="Afiliados a fin de mes, total de regímenes, sin desestacionalizar."),
     "registered_unemployment": dict(kind="persons", url=BDE_URL_LABOUR, label_es="España",
         title_es="Paro registrado",
