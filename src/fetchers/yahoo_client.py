@@ -57,7 +57,7 @@ class YahooFinanceClient:
 
         try:
             ticker_obj = yf.Ticker(ticker)
-            df = ticker_obj.history(start=start, end=end, interval=interval)
+            df = ticker_obj.history(start=start, end=end, interval=interval, auto_adjust=False)  # traded close (audit H2)
 
             if df.empty:
                 logger.warning(f"No data returned for {ticker}")
