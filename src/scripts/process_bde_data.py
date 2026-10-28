@@ -122,6 +122,9 @@ def main():
         print("Creating lending rates comparison...")
         processor.create_lending_rates_comparison()
 
+        print("Creating sovereign spreads...")
+        processor.create_spread_datasets()
+
         print("Creating yield curve...")
         processor.create_yield_curve(args.yield_curve_date)
 

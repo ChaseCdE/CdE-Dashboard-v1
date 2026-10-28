@@ -12,7 +12,7 @@ frontend combines datasets itself and the manifest replaces the summary.
 """
 
 from .core import Dataset, Field, Series
-from ..fetchers.bde_indicators import BDE_INDICATORS, BDE_EXPORT_META
+from ..fetchers.bde_indicators import BDE_INDICATORS, BDE_EXPORT_META, BDE_DERIVED, BDE_DERIVED_META
 
 BDE_RATES_URL = "https://www.bde.es/webbe/es/estadisticas/temas/tipos-interes.html"
 
@@ -32,6 +32,12 @@ def _value_label(key: str, kind: str) -> str:
         return "Saldo"
     if kind == "ratio":
         return "Ratio sobre PIB"
+    if kind == "npl":
+        return "Ratio de dudosos"
+    if kind == "persons":
+        return "Personas"
+    if kind == "debt_stock":
+        return "Saldo de deuda"
     if kind in ("balance", "receipts"):
         return "Importe mensual"
     return "Tipo de interés"
@@ -40,9 +46,10 @@ def _value_label(key: str, kind: str) -> str:
 def _fields(key: str, meta: dict, decimals: int) -> list:
     kind = meta["kind"]
     money = {"currency": meta.get("currency"), "scale": meta.get("scale", 0)}
-    value_unit = "currency" if kind in ("credit_stock", "balance", "receipts") else "pct"
+    value_unit = ("currency" if kind in ("credit_stock", "balance", "receipts", "debt_stock")
+                  else "persons" if kind == "persons" else "pct")
     value_decimals = {"credit_stock": 1 if meta.get("scale") == 9 else 0, "balance": 0, "receipts": 0,
-                      "ratio": 1}.get(kind, decimals)
+                      "debt_stock": 0, "persons": 0, "ratio": 1}.get(kind, decimals)
     fields = [Field("value", _value_label(key, kind), value_unit, value_decimals,
                     **(money if value_unit == "currency" else {}))]
 
@@ -63,7 +70,9 @@ def _fields(key: str, meta: dict, decimals: int) -> list:
         fields.append(Field("qoq_pp", "Variación trimestral", "pp", 1, column="change_abs"))
     elif kind == "balance":
         fields.append(Field("sum_12m", "Acumulado 12 meses", "currency", 0, column="rolling_12m_sum", **money))
-    elif kind == "receipts":
+    elif kind == "npl":
+        fields.append(Field("yoy_pp", "Variación interanual", "pp", decimals, column="yoy_change_abs"))
+    elif kind in ("receipts", "persons", "debt_stock"):
         fields.append(Field("yoy", "Variación interanual", "pct_change", 1, column="yoy_change_pct"))
     return fields
 
@@ -91,7 +100,30 @@ def _build() -> list:
     return out
 
 
-DATASETS = _build() + [
+def _build_spreads() -> list:
+    out = []
+    for key, cfg in BDE_DERIVED.items():
+        meta = BDE_DERIVED_META[key]
+        out.append(Dataset(
+            source="bde",
+            indicator=key,
+            csv=f"bde/{key}_processed.csv",
+            title_es=meta["title_es"],
+            description_es=meta["description_es"],
+            source_dataset=cfg["series_code"],
+            source_url=meta["url"],
+            frequency=cfg["frequency"],
+            fields=[
+                Field("value", meta["value_label"], "pp", 2, note_es=meta["note_es"]),
+                Field("chg_1m", "Variación mensual", "pp", 2, column="change_abs"),
+                Field("chg_1y", "Variación en 1 año", "pp", 2, column="yoy_change_abs"),
+            ],
+            series=[Series("es", meta["label_es"])],
+        ))
+    return out
+
+
+DATASETS = _build() + _build_spreads() + [
     Dataset(
         source="bde",
         indicator="yield_curve",

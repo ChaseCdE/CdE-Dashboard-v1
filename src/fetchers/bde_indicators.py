@@ -216,7 +216,7 @@ BDE_INDICATORS: Dict[str, Dict[str, Any]] = {
     },
 
     "france_10y_bond": {
-        "series_code": "D_1NBBO314",
+        "series_code": "D_1NBBO303",
         "name": "France 10Y Government Bond Yield",
         "category": "interest_rates",
         "description": "10-year government bond yield - France (OAT)",
@@ -227,7 +227,7 @@ BDE_INDICATORS: Dict[str, Dict[str, Any]] = {
     },
 
     "italy_10y_bond": {
-        "series_code": "D_1NBBO316",
+        "series_code": "D_1NBBO309",
         "name": "Italy 10Y Government Bond Yield",
         "category": "interest_rates",
         "description": "10-year government bond yield - Italy (BTP)",
@@ -369,6 +369,54 @@ BDE_INDICATORS: Dict[str, Dict[str, Any]] = {
         "source": "Banco de Espana",
         "priority": "medium"
     },
+    # ==========================================================================
+    # FINANCIAL STABILITY, LABOUR MARKET, PUBLIC FINANCES (ext/bde)
+    # ==========================================================================
+
+    "npl_ratio": {
+        "series_code": "D_BEEA2020",
+        "name": "NPL Ratio (Credit Institutions)",
+        "category": "financial_stability",
+        "description": "Credit institutions and EFC. Doubtful loans to other resident sectors as a share of total loans (Boletin Estadistico 4.3)",
+        "unit": "%",
+        "frequency": "M",
+        "source": "Banco de Espana",
+        "priority": "high"
+    },
+
+    "social_security_affiliates": {
+        "series_code": "DEPSEGS1AF_XRTODS.M",
+        "name": "Social Security Affiliates (End of Month)",
+        "category": "labour_market",
+        "description": "Affiliates to Social Security at end of month, all regimes, not seasonally adjusted (Boletin Estadistico 24.19)",
+        "unit": "Persons",
+        "frequency": "M",
+        "source": "Banco de Espana / Seguridad Social",
+        "priority": "high"
+    },
+
+    "registered_unemployment": {
+        "series_code": "D_1JA0D000",
+        "name": "Registered Unemployment",
+        "category": "labour_market",
+        "description": "Registered unemployed (paro registrado, SEPE), end of month, not seasonally adjusted (Boletin Estadistico 24.15)",
+        "unit": "Persons",
+        "frequency": "M",
+        "source": "Banco de Espana / SEPE",
+        "priority": "high"
+    },
+
+    "government_debt_pde": {
+        "series_code": "DMNPDE2010_P00000_PS_APU",
+        "name": "General Government Debt (EDP)",
+        "category": "public_finances",
+        "description": "General government debt under the Excessive Deficit Procedure (PDE, ESA 2010), stock. Source unit: thousands of EUR; processed in millions of EUR (Boletin Estadistico 3.22)",
+        "unit": "Millions EUR",
+        "value_divisor": 1000,
+        "frequency": "M",
+        "source": "Banco de Espana",
+        "priority": "high"
+    },
 }
 
 
@@ -389,6 +437,9 @@ INDICATOR_GROUPS = {
     "debt_ratios": [
         "household_debt_gdp", "nfc_debt_gdp"
     ],
+    "financial_stability": ["npl_ratio"],
+    "labour_market": ["social_security_affiliates", "registered_unemployment"],
+    "public_finances": ["government_debt_pde"],
     "external_sector": [
         "current_account_balance", "tourism_receipts"
     ],
@@ -811,6 +862,29 @@ BDE_URL_MARKETS = "https://www.bde.es/webbe/es/estadisticas/temas/mercados-finan
 BDE_URL_INSTITUTIONS = "https://www.bde.es/webbe/es/estadisticas/temas/instituciones-financieras.html"
 BDE_URL_ACCOUNTS = "https://www.bde.es/webbe/es/estadisticas/temas/cuentas-financieras.html"
 BDE_URL_EXTERNAL = "https://www.bde.es/webbe/es/estadisticas/temas/estadisticas-exteriores.html"
+BDE_URL_LABOUR = "https://www.bde.es/webbe/es/estadisticas/temas/estadisticas-economicas-generales.html"
+BDE_URL_PUBLIC = "https://www.bde.es/webbe/es/estadisticas/temas/administraciones-publicas.html"
+
+# Derived datasets computed in the processor from two processed BdE series
+# (no API call of their own). value = `minuend` - `subtrahend`, in pp, on the
+# dates both series share. Both inputs are BdE "Economia internacional"
+# monthly series (Maastricht long-term yield, monthly average), so the
+# definitions are homogeneous; the frequency is that of the German/Italian
+# series (monthly).
+BDE_DERIVED: Dict[str, Dict[str, Any]] = {
+    "spread_10y_de": {
+        "minuend": "spain_10y_bond_monthly",
+        "subtrahend": "germany_10y_bond",
+        "frequency": "M",
+        "series_code": "D_1NBBO320 - D_1NBBO308",
+    },
+    "spread_10y_it": {
+        "minuend": "spain_10y_bond_monthly",
+        "subtrahend": "italy_10y_bond",
+        "frequency": "M",
+        "series_code": "D_1NBBO320 - D_1NBBO309",
+    },
+}
 
 BDE_EXPORT_META: Dict[str, Dict[str, Any]] = {
     "euribor_12m_monthly": dict(kind="rate_monthly", url=BDE_URL_RATES, label_es="Euríbor 12 meses",
@@ -898,4 +972,31 @@ BDE_EXPORT_META: Dict[str, Dict[str, Any]] = {
     "tourism_receipts": dict(kind="receipts", url=BDE_URL_EXTERNAL, label_es="España",
         currency="EUR", scale=6, title_es="Ingresos por turismo",
         description_es="Ingresos mensuales por turismo en la cuenta corriente de la balanza de pagos."),
+    "npl_ratio": dict(kind="npl", url=BDE_URL_INSTITUTIONS, label_es="España",
+        title_es="Ratio de créditos dudosos",
+        description_es="Créditos dudosos a otros sectores residentes en porcentaje del crédito total, entidades de crédito y establecimientos financieros de crédito (tasa de morosidad)."),
+    "social_security_affiliates": dict(kind="persons", url=BDE_URL_LABOUR, label_es="España",
+        title_es="Afiliados a la Seguridad Social",
+        description_es="Afiliados a fin de mes, total de regímenes, sin desestacionalizar."),
+    "registered_unemployment": dict(kind="persons", url=BDE_URL_LABOUR, label_es="España",
+        title_es="Paro registrado",
+        description_es="Demandantes de empleo no ocupados inscritos en los servicios públicos de empleo (SEPE), a fin de mes, sin desestacionalizar."),
+    "government_debt_pde": dict(kind="debt_stock", url=BDE_URL_PUBLIC, label_es="Administraciones Públicas",
+        currency="EUR", scale=6, title_es="Deuda de las Administraciones Públicas (PDE)",
+        description_es="Deuda de las Administraciones Públicas según el Protocolo de Déficit Excesivo (SEC 2010), saldo a fin de mes."),
+}
+
+
+# Export metadata of the derived spreads (see BDE_DERIVED).
+BDE_DERIVED_META: Dict[str, Dict[str, Any]] = {
+    "spread_10y_de": dict(url=BDE_URL_MARKETS, label_es="España frente a Alemania",
+        title_es="Diferencial de rentabilidad a 10 años: España frente a Alemania",
+        description_es="Rentabilidad de la deuda pública española a 10 años menos la alemana (media mensual, criterio de Maastricht). Prima de riesgo.",
+        value_label="Diferencial frente a Alemania",
+        note_es="Diferencia entre las rentabilidades de la deuda pública a 10 años de España y Alemania, en puntos porcentuales (1 p. p. = 100 p. b.). Media mensual."),
+    "spread_10y_it": dict(url=BDE_URL_MARKETS, label_es="España frente a Italia",
+        title_es="Diferencial de rentabilidad a 10 años: España frente a Italia",
+        description_es="Rentabilidad de la deuda pública española a 10 años menos la italiana (media mensual, criterio de Maastricht).",
+        value_label="Diferencial frente a Italia",
+        note_es="Diferencia entre las rentabilidades de la deuda pública a 10 años de España e Italia, en puntos porcentuales (1 p. p. = 100 p. b.). Un valor negativo significa que España paga menos que Italia. Media mensual."),
 }

@@ -518,6 +518,11 @@ class BdeProcessor:
         category = config.get("category", "")
         name = config.get("name", key)
 
+        # Unit conversion (e.g. thousands of EUR to millions of EUR)
+        divisor = config.get("value_divisor")
+        if divisor and "value" in df.columns:
+            df["value"] = df["value"] / divisor
+
         # Route to appropriate processor
         if category == "interest_rates":
             processed = self.process_interest_rate(df, key, name)
@@ -530,6 +535,12 @@ class BdeProcessor:
             processed = self.process_ratio_data(df, key, name)
         elif category == "external_sector":
             processed = self.process_balance_data(df, key, name)
+        elif category == "financial_stability":
+            # Ratio in %: value and differences in pp (change_abs, yoy_change_abs)
+            processed = self.process_interest_rate(df, key, name)
+        elif category in ("labour_market", "public_finances"):
+            # Stocks: value, mom and yoy as % changes
+            processed = self.process_credit_data(df, key, name)
         else:
             # Generic processing
             processed = self.process_credit_data(df, key, name)
@@ -781,6 +792,57 @@ class BdeProcessor:
             normalize=False
         )
 
+    def create_spread_datasets(
+        self,
+        derived_config: Optional[Dict[str, Dict[str, Any]]] = None
+    ) -> Dict[str, pd.DataFrame]:
+        """
+        Build the sovereign spreads (Spain minus a peer) from processed series.
+
+        Both inputs are monthly BdE "Economia internacional" series (Maastricht
+        long-term yield, monthly average). The spread is computed on the dates
+        both series share (inner join, no forward fill), in percentage points,
+        and rounded to the 2 decimals the sources are published with. Changes
+        are differences against the previous month (`change_abs`) and the
+        same month one year earlier (`yoy_change_abs`) on a complete monthly
+        calendar, so a missing month yields NaN instead of a change across the gap.
+        """
+        if derived_config is None:
+            from fetchers.bde_indicators import BDE_DERIVED
+            derived_config = BDE_DERIVED
+
+        results = {}
+        for key, cfg in derived_config.items():
+            print(f"Creating spread {key}...")
+            frames = {}
+            for role in ("minuend", "subtrahend"):
+                fp = self.output_dir / f"{cfg[role]}_processed.csv"
+                if not fp.exists():
+                    logger.warning(f"{fp} not found, skipping {key}")
+                    print(f"  Skipping {key} - {fp.name} missing")
+                    break
+                d = pd.read_csv(fp, usecols=['date', 'value'])
+                d['date'] = pd.to_datetime(d['date'])
+                frames[role] = d.set_index('date')['value']
+            else:
+                both = pd.concat([frames['minuend'], frames['subtrahend']], axis=1, keys=['a', 'b']).dropna()
+                if both.empty:
+                    continue
+                spread = (both['a'] - both['b']).round(2)
+                full = pd.date_range(spread.index.min(), spread.index.max(), freq='MS')
+                spread = spread.reindex(full)
+                df = pd.DataFrame({'date': full, 'value': spread.values})
+                df['change_abs'] = df['value'].diff().round(2)
+                df['yoy_change_abs'] = df['value'].diff(12).round(2)
+                df = self._drop_filler(df)
+                df['year'] = df['date'].dt.year
+                df['month'] = df['date'].dt.month
+                df['indicator'] = key
+                df['name'] = key
+                self._save_processed(df, f"{key}_processed.csv")
+                results[key] = df
+        return results
+
     def resample_to_monthly(self, indicator_key: str) -> pd.DataFrame:
         """
         Resample daily data to monthly for an indicator.
@@ -849,6 +911,10 @@ def run_processing(indicators_config: Dict[str, Dict[str, Any]]) -> None:
 
     # Lending rates comparison
     processor.create_lending_rates_comparison()
+
+    # Sovereign spreads (Spain minus Germany / Italy)
+    print("\nCreating sovereign spreads...")
+    processor.create_spread_datasets()
 
     # Yield curve
     print("\nCreating yield curve...")

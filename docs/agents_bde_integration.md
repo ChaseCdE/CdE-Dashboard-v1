@@ -126,3 +126,12 @@ The Shiny dashboard (Agent 3) is being replaced by a static HTML site. The BdE p
 ---
 
 *Document created: February 2026*
+
+---
+
+## ext/bde additions (2026-10-28)
+
+- New indicators in `BDE_INDICATORS`: `npl_ratio` (category `financial_stability`), `social_security_affiliates` and `registered_unemployment` (`labour_market`), `government_debt_pde` (`public_finances`, `value_divisor` 1000). Processor routing by category in `BdeProcessor.process_indicator`.
+- Derived datasets (`BDE_DERIVED`, `BDE_DERIVED_META`): `spread_10y_de`, `spread_10y_it`, built by `BdeProcessor.create_spread_datasets()` after the individual series (called from `run_processing` and `process_bde_data.py --comparisons-only`). They need no fetch of their own.
+- Export: `src/export/bde.py` kinds `npl`, `persons`, `debt_stock` and `_build_spreads()`.
+- Fixed wrong series codes for France and Italy (see `data_sources_bde.md`).
