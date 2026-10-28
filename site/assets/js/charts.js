@@ -457,7 +457,8 @@ function refShapes(ref) {
     shapes: list.map((r) => ({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: r.y, y1: r.y,
       line: { color: COLORS.zero, width: 1.2, dash: 'dot' } })),
     annotations: list.filter((r) => r.label).map((r) => ({ xref: 'paper', x: 1, xanchor: 'right', yref: 'y', y: r.y, yanchor: 'bottom',
-      text: r.label, showarrow: false, font: { size: 11, color: COLORS.muted } })),
+      text: r.label, showarrow: false, font: { size: 11, color: COLORS.inkSoft },
+      bgcolor: 'rgba(255,255,255,0.85)', borderpad: 2 })),
   };
 }
 
@@ -552,6 +553,37 @@ function asList(v) { return Array.isArray(v) ? v : (v ? [v] : []); }
  *   ref?: {y, label?}, endLabels?: bool, markers?: bool, height?: px, card?: false, stale?: false
  * }
  */
+/**
+ * Display-only rebasing (contract v1.1): divide a level series by its value at a reference
+ * period and multiply by 100. rebase = {date: 'YYYY-MM-DD'} (single period) or
+ * {year: 2019} (average of that calendar year's observations). Changes the base, not the
+ * dynamics. Returns the original column if rebase is falsy or the base is unavailable.
+ */
+function rebaseColumn(col, field, rebase) {
+  if (!rebase) return { y: col.y, field };
+  let base = null;
+  if (rebase.date) {
+    const i = col.x.indexOf(rebase.date);
+    base = i >= 0 ? col.y[i] : null;
+  } else if (rebase.year) {
+    const vals = col.y.filter((v, i) => v !== null && String(col.x[i]).startsWith(String(rebase.year)));
+    base = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  }
+  if (base === null || base === 0 || !Number.isFinite(base)) {
+    console.warn('rebase: no base value for', rebase, '- showing the series unrebased');
+    return { y: col.y, field };
+  }
+  return {
+    y: col.y.map((v) => (v === null ? null : (v / base) * 100)),
+    field: { ...field, unit: 'index', decimals: 1, note_es: undefined },
+  };
+}
+
+function rebaseSubtitle(rebase, freq) {
+  const label = rebase.year ? String(rebase.year) : fmtPeriod(rebase.date, freq);
+  return `Índice, base ${label} = 100`;
+}
+
 export function lineChart(el, spec) {
   return guard(el, spec, async () => {
     placeholder(el, spec);
@@ -573,10 +605,13 @@ export function lineChart(el, spec) {
       assignColors(traces);
       const shown = spec.selectable ? traces.filter((t) => !off.has(t.label)) : traces;
       if (!shown.length) { await redraw(ui, [], baseLayout({ height: spec.height })); return; }
+      const opt = toggle ? spec.toggle.find((o) => o.id === toggle.id) : null;
+      const rb = (opt && opt.rebase !== undefined) ? opt.rebase : spec.rebase;
       const start = windowStartIso(shown, range);
       const plotted = shown.map((t) => {
-        const s = sliceFrom(t.col.x, t.col.y, start);
-        return { t, x: s.x, y: s.y };
+        const { y: yAll, field } = rebaseColumn(t.col, t.field, rb);
+        const s = sliceFrom(t.col.x, yAll, start);
+        return { t: field === t.field ? t : { ...t, field }, x: s.x, y: s.y };
       });
       const data = plotted.map(({ t, x, y }) => ({
         type: 'scatter', mode: spec.markers ? 'lines+markers' : 'lines', x, y, name: t.label,
@@ -587,10 +622,10 @@ export function lineChart(el, spec) {
         hovertemplate: hoverTpl(t.field, t.label),
       }));
       const endLabels = spec.endLabels !== undefined ? spec.endLabels : shown.length <= 3;
-      const ref = refShapes(spec.ref);
+      const ref = refShapes((opt && opt.ref !== undefined) ? opt.ref : spec.ref);
       const layout = baseLayout({
         height: spec.height, legend: shown.length > 1, freq: shown[0].freq,
-        yField: shown[0].field, zero: spec.zero !== undefined ? spec.zero : seriesNeedsZero(shown),
+        yField: plotted[0].t.field, zero: spec.zero !== undefined ? spec.zero : seriesNeedsZero(shown),
         rightMargin: endLabels ? 58 : 14,
         extra: {
           shapes: ref.shapes,
@@ -599,7 +634,8 @@ export function lineChart(el, spec) {
         },
       });
       await redraw(ui, data, layout);
-      if (toggle) { ui.setSubtitle(spec.subtitle !== undefined ? spec.subtitle : autoSubtitle(traces)); }
+      if (rb) ui.setSubtitle(spec.subtitle !== undefined && !toggle ? spec.subtitle : rebaseSubtitle(rb, shown[0].freq));
+      else if (toggle) { ui.setSubtitle(spec.subtitle !== undefined ? spec.subtitle : autoSubtitle(traces)); }
       fillFooter(ui.foot, [...current.loaded.values()].filter((d) => shown.some((t) => t.ds === d)), observedOf(shown), { stale: spec.stale });
       ariaLabel(ui, spec.title || autoTitle(traces), spec.subtitle || autoSubtitle(traces), observedOf(shown));
     };
@@ -736,6 +772,28 @@ export function stackedBarChart(el, spec) {
  * Mode B (grouped, e.g. Spain vs EU27 per indicator):
  *   {categories: [{label, bars: [{dataset, series, field, name, color?}]}], orientation?}
  */
+/** Wrap a long category label onto two or more lines for horizontal bars (narrow screens). */
+function wrapLabel(label, max = 22) {
+  const words = String(label).split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    if (cur && (cur + ' ' + w).length > max) { lines.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w;
+  }
+  if (cur) lines.push(cur);
+  return lines.join('<br>');
+}
+
+function oneBarPerCategory(data, horizontal) {
+  if (data.length < 2) return false;
+  const n = (horizontal ? data[0].y : data[0].x).length;
+  for (let k = 0; k < n; k++) {
+    const filled = data.filter((d) => { const v = (horizontal ? d.x : d.y)[k]; return v !== null && v !== undefined; }).length;
+    if (filled > 1) return false;
+  }
+  return true;
+}
+
 export function groupedBarChart(el, spec) {
   return guard(el, spec, async () => {
     placeholder(el, spec);
@@ -790,7 +848,7 @@ export function groupedBarChart(el, spec) {
         });
         const fieldOf = (c) => { const b = c.bars.find((x) => x.name === name); const v = b && val.get(b.spec); return v ? v.t.field : null; };
         const fld = rows.map(fieldOf).find(Boolean) || {};
-        const labels = rows.map((c) => c.label);
+        const labels = rows.map((c) => (horizontal ? wrapLabel(c.label) : c.label));
         let color = colorTrace(name, i);
         if (single && spec.colorBySign) {
           const up = spec.colorBySign === 'neutral' ? COLORS.neutralUp : COLORS.positive;
@@ -821,8 +879,9 @@ export function groupedBarChart(el, spec) {
         legend: !single, freq: 'M', numericX: true, yField: fld0, zero: true,
         rightMargin: horizontal ? 64 : 12,
         extra: {
-          barmode: 'group', bargap: 0.3, hovermode: 'closest',
-          xaxis: horizontal ? { range: valueRange, showgrid: true, gridcolor: COLORS.grid, showline: false, ticksuffix: plotlyNumberFormat(fld0).axisSuffix, zeroline: true, zerolinecolor: COLORS.zero, separatethousands: true, ticks: '' } : { type: 'category' },
+          // One bar per category (e.g. one dataset per index): overlay keeps each bar centred.
+          barmode: oneBarPerCategory(data, horizontal) ? 'overlay' : 'group', bargap: 0.3, hovermode: 'closest',
+          xaxis: horizontal ? { range: valueRange, showgrid: true, gridcolor: COLORS.grid, showline: false, ticksuffix: plotlyNumberFormat(fld0).axisSuffix, zeroline: true, zerolinecolor: COLORS.zero, separatethousands: true, ticks: '', nticks: 5 } : { type: 'category' },
           yaxis: horizontal ? { autorange: 'reversed', showgrid: false, ticksuffix: '', zeroline: false } : { range: valueRange, ticksuffix: plotlyNumberFormat(fld0).axisSuffix },
         },
       });

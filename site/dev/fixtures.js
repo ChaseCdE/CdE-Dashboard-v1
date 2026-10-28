@@ -145,3 +145,15 @@ donutChart($('donut'), {
   title: 'Anillo (prueba de formato con dos series)',
   dataset: 'eurostat.hicp', field: 'yoy',
 });
+
+// Display-only rebasing to a fixed reference period (contract v1.1).
+lineChart($('rebase-year'), {
+  title: 'PIB, índice rebasado a la media de 2019 (prueba de rebase por año)',
+  series: [{ dataset: 'ine.gdp', series: 'es', field: 'value' }],
+  rebase: { year: 2019 }, ref: { y: 100, label: 'Media 2019' },
+});
+lineChart($('rebase-date'), {
+  title: 'IPRI general, base enero 2022 = 100 (prueba de rebase por fecha)',
+  series: [{ dataset: 'ine.ipri', series: 'total', field: 'value' }],
+  rebase: { date: '2022-01-01' },
+});

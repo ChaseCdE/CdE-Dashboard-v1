@@ -13,7 +13,6 @@ export const NAV = [
   { id: 'credito', label: 'Crédito y tipos', path: 'pages/credito.html' },
   { id: 'mercados', label: 'Mercados', path: 'pages/mercados.html' },
   { id: 'ue', label: 'Comparativa UE', path: 'pages/ue.html' },
-  { id: 'consumo', label: 'Consumo', path: 'pages/consumo.html' },
 ];
 
 const SOURCES = [

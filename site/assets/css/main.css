@@ -161,7 +161,8 @@ h3 { font-size: 1.05rem; font-weight: 600; }
 .kpi-link:hover .kpi { border-top-color: var(--beige); }
 .kpi p { margin: 0; }
 .kpi-label { font-size: .8125rem; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .03em; line-height: 1.25; }
-.kpi-value { font-size: 1.75rem; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1.2; margin-top: var(--space-1) !important; overflow-wrap: anywhere; }
+.kpi-value { font-size: 1.75rem; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1.2; margin-top: var(--space-1) !important; overflow-wrap: break-word; }
+@media (max-width: 420px) { .kpi-value { font-size: 1.45rem; } }
 .kpi-change { font-size: .9rem; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: var(--space-1) !important; }
 .kpi-change.tone-good { color: var(--positive); }
 .kpi-change.tone-bad { color: var(--negative); }

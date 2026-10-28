@@ -38,8 +38,9 @@ function currencyUnit(currency, scale) {
 function compactPersons(v, scale, noun) {
   const actual = v * Math.pow(10, scale || 0);
   const abs = Math.abs(actual);
-  if (abs >= 1e6) return `${fmtNumber(actual / 1e6, 1)}${NBSP}M${NBSP}${noun}`;
-  if (abs >= 1e3) return `${fmtNumber(actual / 1e3, 0)}${NBSP}mil${NBSP}${noun}`;
+  // Number and magnitude stay together (NBSP); the noun may wrap to the next line.
+  if (abs >= 1e6) return `${fmtNumber(actual / 1e6, 1)}${NBSP}M ${noun}`;
+  if (abs >= 1e3) return `${fmtNumber(actual / 1e3, 0)}${NBSP}mil ${noun}`;
   return `${fmtNumber(actual, 0)}${NBSP}${noun}`;
 }
 

@@ -1,3 +1,0 @@
-"""
-CdE Macroeconomic Dashboard Application
-"""
