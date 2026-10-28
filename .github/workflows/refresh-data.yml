@@ -1,0 +1,80 @@
+# Scheduled data refresh: fetch -> process -> export -> validate, commit site/data, deploy.
+# See docs/deploy.md.
+name: Refresh data
+
+on:
+  schedule:
+    # Weekdays 12:23 UTC (13:23 Madrid in winter, 14:23 in summer): after INE (09:00)
+    # and Eurostat (11:00) releases and after the previous day's market closes.
+    - cron: "23 12 * * 1-5"
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # data/ is gitignored. Keeping it between runs lets a source whose API is down
+      # fall back to its last download instead of failing the whole refresh.
+      - name: Restore previous downloads
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: pipeline-data-${{ github.run_id }}
+          restore-keys: pipeline-data-
+
+      - name: Run pipeline (fetch, process, export, validate)
+        run: python run_pipeline.py
+
+      - name: Validation report
+        if: always()
+        run: |
+          {
+            echo '## Contract validation'
+            echo '```'
+            python scripts/validate_contract.py || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit site/data if it changed
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/data
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No data changes."
+          else
+            git commit -m "Data refresh $(date -u +%Y-%m-%d)"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Pushes made with GITHUB_TOKEN do not trigger other workflows, so deploy here.
+  deploy:
+    needs: refresh
+    if: needs.refresh.outputs.changed == 'true'
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

@@ -1,0 +1,45 @@
+# Publish site/ to GitHub Pages. Runs on pushes to main that touch site/, on demand,
+# and after a data refresh (called from refresh-data.yml). See docs/deploy.md.
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**"]
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main   # after a refresh, deploy the commit it just pushed
+
+      - name: Validate data before publishing
+        run: python3 scripts/validate_contract.py
+
+      - name: Build site artifact (without developer pages)
+        run: |
+          mkdir _site
+          rsync -a --exclude 'dev/' site/ _site/
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
