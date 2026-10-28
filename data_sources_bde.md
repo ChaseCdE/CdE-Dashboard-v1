@@ -85,6 +85,12 @@ https://app.bde.es/bierest/resources/srdatosapp/listaSeries?idioma=EN&series={co
 | Quarterly (Q) | 1st of first month of quarter (e.g., 2025-04-01 for Q2) |
 | Annual (A) | January 1st of reference year |
 
+**Timestamps.** The API returns every observation stamped `T08:15:00Z` (summer) or `T09:15:00Z` (winter), which is 10:15 in Madrid. The fetcher (`to_local_date` in `bde_client.py`) converts to Europe/Madrid and stores a plain `YYYY-MM-DD`; the processor does the same for older raw files. No observation can shift day.
+
+**Site export.** Each processed series is exported as `site/data/bde/<key>.json` (dataset id `bde.<key>`, `<key>` = CSV stem without `_processed`) by `src/export/bde.py`, using the Spanish titles, URLs and money units in `BDE_EXPORT_META` (`src/fetchers/bde_indicators.py`). The `*_comparison.csv` files and `bde_summary.csv` are still produced but not exported. See `docs/notes/ws-bde.md`.
+
+**Units of money series.** `credit_households_total` and the two balance-of-payments series are in millions of EUR; `credit_nfc_total` is in billions of EUR.
+
 ---
 
 ## Indicator Endpoints

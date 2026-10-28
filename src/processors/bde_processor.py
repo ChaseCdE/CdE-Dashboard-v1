@@ -37,6 +37,21 @@ def _check_time_gaps(df: pd.DataFrame, expected_freq: str, indicator_name: str):
         )
 
 
+def _to_local_naive(series: pd.Series) -> pd.Series:
+    """
+    Parse dates to naive local (Europe/Madrid) calendar dates at midnight.
+
+    Raw files written before the client fix carry timestamps such as
+    '2026-10-26 09:15:00+00:00'. They are converted to Madrid time and the
+    time zone is dropped, so no observation can shift to another day.
+    """
+    parsed = pd.to_datetime(series, utc=True)
+    return parsed.dt.tz_convert("Europe/Madrid").dt.tz_localize(None).dt.normalize()
+
+
+_PERIOD_FREQ = {"M": "MS", "Q": "QS", "A": "YS"}
+
+
 class BdeProcessor:
     """Processor for Banco de Espana economic data."""
 
@@ -65,7 +80,7 @@ class BdeProcessor:
             return pd.DataFrame()
         df = pd.read_csv(filepath)
         if 'date' in df.columns:
-            df['date'] = pd.to_datetime(df['date'])
+            df['date'] = _to_local_naive(df['date'])
         return df
 
     def _save_processed(self, df: pd.DataFrame, filename: str) -> Path:
@@ -78,7 +93,14 @@ class BdeProcessor:
 
     def standardize_dates(self, df: pd.DataFrame, frequency: str = "M") -> pd.DataFrame:
         """
-        Standardize date column and handle frequency alignment.
+        Standardize the date column and align it to the series frequency.
+
+        Dates are naive local dates. Monthly, quarterly and annual series are
+        put on the first day of the period and reindexed to the complete
+        period range, so a missing period appears as a row with NaN value.
+        Growth rates computed afterwards by shifting therefore never span a
+        gap (they are NaN there). Call `_drop_filler` once all calculations
+        are done to remove these placeholder rows.
 
         Args:
             df: DataFrame with date column
@@ -91,25 +113,45 @@ class BdeProcessor:
             return df
 
         df = df.copy()
-        df['date'] = pd.to_datetime(df['date'])
-        df = df.sort_values('date').reset_index(drop=True)
+        df['date'] = _to_local_naive(df['date'])
+        df = df[df['date'].notna()].sort_values('date')
 
-        # Extract date components
-        df['year'] = df['date'].dt.year
-        df['month'] = df['date'].dt.month
-
-        if frequency == "Q":
-            df['quarter'] = df['date'].dt.quarter
-        elif frequency == "M":
-            # Ensure dates are at start of month
+        if frequency == "M":
             df['date'] = df['date'].dt.to_period('M').dt.to_timestamp()
-        elif frequency == "D":
-            # Keep daily dates as-is
-            pass
+        elif frequency == "Q":
+            df['date'] = df['date'].dt.to_period('Q').dt.to_timestamp()
         elif frequency == "A":
             df['date'] = df['date'].dt.to_period('Y').dt.to_timestamp()
 
+        # One observation per period/day (keep the latest published)
+        df = df.drop_duplicates('date', keep='last')
+
+        if frequency in _PERIOD_FREQ and len(df) > 1:
+            full = pd.date_range(df['date'].min(), df['date'].max(), freq=_PERIOD_FREQ[frequency])
+            df = df.set_index('date').reindex(full).rename_axis('date').reset_index()
+
+        df = df.reset_index(drop=True)
+        df['year'] = df['date'].dt.year
+        df['month'] = df['date'].dt.month
+        if frequency == "Q":
+            df['quarter'] = df['date'].dt.quarter
+
         return df
+
+    @staticmethod
+    def _drop_filler(df: pd.DataFrame) -> pd.DataFrame:
+        """Remove placeholder rows (NaN value) added by standardize_dates."""
+        if 'value' not in df.columns:
+            return df
+        return df[df['value'].notna()].reset_index(drop=True)
+
+    @staticmethod
+    def _lookup_asof(df: pd.DataFrame, keys: pd.Series, value_col: str = "value") -> pd.Series:
+        """Value of the last observation dated on or before each key date (NaN if none)."""
+        left = pd.DataFrame({'key': keys.values}, index=df.index).reset_index().sort_values('key')
+        right = df[['date', value_col]].dropna().sort_values('date')
+        merged = pd.merge_asof(left, right, left_on='key', right_on='date', direction='backward')
+        return merged.set_index('index')[value_col].reindex(df.index)
 
     def calculate_changes(
         self,
@@ -134,21 +176,29 @@ class BdeProcessor:
         df = df.copy()
         df = df.sort_values('date').reset_index(drop=True)
 
-        # Period-over-period change
-        df['change_pct'] = df[value_col].pct_change() * 100
+        # Period-over-period change. fill_method=None: a missing observation
+        # yields NaN instead of being forward-filled. Monthly/quarterly/annual
+        # series were reindexed to a complete calendar in standardize_dates,
+        # so shifts never span a gap.
+        df['change_pct'] = df[value_col].pct_change(fill_method=None) * 100
         df['change_abs'] = df[value_col].diff()
 
-        # Year-over-year change
         if frequency == "D":
-            periods_per_year = 252  # Approximate trading days
-        elif frequency == "M":
-            periods_per_year = 12
-        elif frequency == "Q":
-            periods_per_year = 4
-        else:  # Annual
-            periods_per_year = 1
+            # Daily data has no fixed number of observations per year: compare
+            # with the last observation on or before the same date a year ago.
+            prev = self._lookup_asof(df, df['date'] - pd.DateOffset(years=1), value_col)
+            df['yoy_change_pct'] = (df[value_col] / prev - 1) * 100
+            df['yoy_change_abs'] = df[value_col] - prev
+            # Changes over the last 30 days and since the end of the previous
+            # year, in the units of the series (pp for rates).
+            p30 = self._lookup_asof(df, df['date'] - pd.Timedelta(days=30), value_col)
+            pytd = self._lookup_asof(df, pd.to_datetime(df['date'].dt.year.astype(str) + "-01-01") - pd.Timedelta(days=1), value_col)
+            df['change_30d_abs'] = df[value_col] - p30
+            df['change_ytd_abs'] = df[value_col] - pytd
+            return df
 
-        df['yoy_change_pct'] = df[value_col].pct_change(periods=periods_per_year) * 100
+        periods_per_year = {"M": 12, "Q": 4}.get(frequency, 1)
+        df['yoy_change_pct'] = df[value_col].pct_change(periods=periods_per_year, fill_method=None) * 100
         df['yoy_change_abs'] = df[value_col].diff(periods=periods_per_year)
 
         return df
@@ -245,6 +295,9 @@ class BdeProcessor:
             historical_mean = df['value'].mean()
             df['spread_to_avg'] = df['value'] - historical_mean
 
+        # Remove placeholder rows for missing periods (added by standardize_dates)
+        df = self._drop_filler(df)
+
         # Add indicator metadata
         df['indicator'] = indicator_key
         df['name'] = indicator_name
@@ -309,6 +362,9 @@ class BdeProcessor:
                 logger.warning(f"All values are zero for {indicator_key}")
                 df['cumulative_growth_pct'] = None
 
+        # Remove placeholder rows for missing periods (added by standardize_dates)
+        df = self._drop_filler(df)
+
         # Add indicator metadata
         df['indicator'] = indicator_key
         df['name'] = indicator_name
@@ -365,6 +421,9 @@ class BdeProcessor:
             df['distance_from_peak'] = df['value'] - historical_max
             df['distance_from_trough'] = df['value'] - historical_min
 
+        # Remove placeholder rows for missing periods (added by standardize_dates)
+        df = self._drop_filler(df)
+
         # Add indicator metadata
         df['indicator'] = indicator_key
         df['name'] = indicator_name
@@ -417,6 +476,9 @@ class BdeProcessor:
 
         # Calculate moving averages
         df = self.calculate_moving_averages(df, 'value', [3, 6, 12])
+
+        # Remove placeholder rows for missing periods (added by standardize_dates)
+        df = self._drop_filler(df)
 
         # Add indicator metadata
         df['indicator'] = indicator_key
@@ -634,34 +696,38 @@ class BdeProcessor:
             ("spain_15y_bond", 15.0),   # 15 years
         ]
 
-        curve_data = []
-
+        frames = {}
         for key, maturity in yield_curve_indicators:
-            filename = f"{key}_processed.csv"
-            filepath = self.output_dir / filename
+            filepath = self.output_dir / f"{key}_processed.csv"
             if not filepath.exists():
                 continue
+            df = pd.read_csv(filepath, parse_dates=['date'])
+            df = df.dropna(subset=['date', 'value']).sort_values('date')
+            if not df.empty:
+                frames[key] = (maturity, df)
 
-            df = pd.read_csv(filepath)
-            if df.empty:
+        if not frames:
+            return pd.DataFrame()
+
+        # One coherent snapshot: every maturity at the same date. Default is
+        # the most recent date for which all maturities have an observation
+        # (the earliest of the series' last dates); each maturity uses its last
+        # observation on or before that date.
+        if date:
+            target = pd.to_datetime(date)
+        else:
+            target = min(df['date'].max() for _, df in frames.values())
+
+        curve_data = []
+        for key, (maturity, df) in frames.items():
+            sub = df[df['date'] <= target]
+            if sub.empty:
                 continue
-
-            df['date'] = pd.to_datetime(df['date'])
-            df = df.sort_values('date')
-
-            if date:
-                # Find closest date
-                target_date = pd.to_datetime(date)
-                idx = (df['date'] - target_date).abs().idxmin()
-                row = df.loc[idx]
-            else:
-                # Use latest
-                row = df.iloc[-1]
-
+            row = sub.iloc[-1]
             curve_data.append({
                 'maturity_years': maturity,
-                'yield': row.get('value', None),
-                'date': row.get('date', None),
+                'yield': row['value'],
+                'date': row['date'],
                 'indicator': key
             })
 
@@ -745,8 +811,8 @@ class BdeProcessor:
         monthly = monthly.reset_index()
 
         # Recalculate changes
-        monthly['change_pct'] = monthly['value'].pct_change() * 100
-        monthly['yoy_change_pct'] = monthly['value'].pct_change(periods=12) * 100
+        monthly['change_pct'] = monthly['value'].pct_change(fill_method=None) * 100
+        monthly['yoy_change_pct'] = monthly['value'].pct_change(periods=12, fill_method=None) * 100
 
         output_filename = f"{indicator_key}_monthly.csv"
         self._save_processed(monthly, output_filename)
