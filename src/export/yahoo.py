@@ -141,6 +141,6 @@ DATASETS = [
     _etf("euro_govt_bond_etf", "EUNH.DE", "ETF de deuda pública de la zona euro", "EUR", "ez", "iShares Core EUR Govt Bond UCITS ETF (Xetra)."),
     _etf("us_treasury_20y_etf", "TLT", "ETF de bonos del Tesoro EE. UU. a más de 20 años", "USD", "us", "iShares 20+ Year Treasury Bond ETF."),
     _etf("us_treasury_7_10y_etf", "IEF", "ETF de bonos del Tesoro EE. UU. a 7-10 años", "USD", "us", "iShares 7-10 Year Treasury Bond ETF."),
-    _etf("spanish_banks_etf", "EWP", "ETF iShares MSCI España", "USD", "es", "Renta variable española (alto peso financiero), cotizada en dólares."),
+    _etf("msci_spain_etf", "EWP", "ETF iShares MSCI España", "USD", "es", "Renta variable española (alto peso financiero), cotizada en dólares."),
     _etf("european_banks_etf", "EUFN", "ETF iShares MSCI Europa Financiero", "USD", "eu", "Sector financiero europeo, cotizado en dólares."),
 ]

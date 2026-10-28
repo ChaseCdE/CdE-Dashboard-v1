@@ -64,7 +64,7 @@ groupedBarChart($('ytd'), {
 rebasedComparison($('bancos'), {
   title: 'Bolsa española y banca europea, ETF comparados',
   series: [
-    { dataset: 'yahoo.spanish_banks_etf', series: 'es', field: 'close' },
+    { dataset: 'yahoo.msci_spain_etf', series: 'es', field: 'close' },
     { dataset: 'yahoo.european_banks_etf', series: 'eu', field: 'close' },
   ],
   range: { default: '1A' },

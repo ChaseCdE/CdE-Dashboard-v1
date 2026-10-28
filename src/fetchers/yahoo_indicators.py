@@ -330,7 +330,7 @@ YAHOO_INDICATORS: Dict[str, Dict[str, Any]] = {
     # SECTOR INDICES (SPAIN-FOCUSED)
     # ==========================================================================
 
-    "spanish_banks_etf": {
+    "msci_spain_etf": {
         "ticker": "EWP",
         "name": "iShares MSCI Spain ETF",
         "category": "sector",
@@ -375,7 +375,7 @@ INDICATOR_GROUPS = {
         "vix"
     ],
     "sector": [
-        "spanish_banks_etf", "european_banks_etf"
+        "msci_spain_etf", "european_banks_etf"
     ],
     # Key indicators for dashboard overview
     "dashboard_summary": [
@@ -384,7 +384,7 @@ INDICATOR_GROUPS = {
     ],
     # Spain-focused view
     "spain_focus": [
-        "ibex_35", "spanish_banks_etf", "eur_usd"
+        "ibex_35", "msci_spain_etf", "eur_usd"
     ]
 }
 

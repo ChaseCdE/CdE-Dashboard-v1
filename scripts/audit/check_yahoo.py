@@ -34,7 +34,7 @@ EXPECT = {
     "us_tbill_3m": (["13 WEEK"], "USD"), "us_treasury_5y": (["5 YEAR"], "USD"),
     "us_treasury_10y": (["10 YEAR"], "USD"), "us_treasury_30y": (["30 YEAR"], "USD"),
     "euro_govt_bond_etf": (["GOVT BOND"], "EUR"), "us_treasury_20y_etf": (["20+"], "USD"),
-    "us_treasury_7_10y_etf": (["7-10"], "USD"), "spanish_banks_etf": (["MSCI SPAIN"], "USD"),
+    "us_treasury_7_10y_etf": (["7-10"], "USD"), "msci_spain_etf": (["MSCI SPAIN"], "USD"),
     "european_banks_etf": (["EUROPE FINANCIALS"], "USD"),
 }
 

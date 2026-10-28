@@ -95,7 +95,7 @@ Data observations (not bugs):
 
 Backlog:
 - `latestTable` with a per-row field, so BdE (`value`) and Yahoo (`close`) rates fit one table (Mercados currently shows two tables; Comparativa UE has no cross-indicator summary table).
-- `yahoo.spanish_banks_etf` is EWP (iShares MSCI Spain, whole market): rename the id to `yahoo.msci_spain_etf` together with `mercados.js`.
+- `yahoo.spanish_banks_etf` was EWP (iShares MSCI Spain, whole market); the id is now `yahoo.msci_spain_etf` (audit L2, with `mercados.js`).
 - Monthly charts can show an axis tick one month past the last observation (e.g. "ene 2027"); cosmetic.
 - 375 px screenshots were checked only partially for some long pages (Actividad, Comparativa UE).
 
