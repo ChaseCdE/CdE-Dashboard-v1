@@ -161,12 +161,26 @@ class INEProcessor:
             self._raw_cache[ind] = self._load_raw(INDICATORS[ind]["file"])
         return self._raw_cache[ind]
 
-    def _level(self, ind: str, role: str, name: str, gaps: str = None, pp: bool = False) -> pd.DataFrame:
-        """date, year, <name>, yoy_change (+ yoy_pp) for one level series."""
+    def _official(self, ind: str, role: str, dates: pd.Series) -> pd.Series:
+        """INE's published rate (series `role`) at each of `dates`; NaN where INE has none (audit M4)."""
+        return dates.map(self._published(ind, role))
+
+    def _published(self, ind: str, role: str) -> pd.Series:
+        """INE's published series `role`, as a Series indexed by date."""
+        return self._pick(ind, role).drop_duplicates("date", keep="last").set_index("date")["value"]
+
+    def _level(self, ind: str, role: str, name: str, gaps: str = None, pp: bool = False,
+               yoy_role: str = None) -> pd.DataFrame:
+        """
+        date, year, <name>, yoy_change (+ yoy_pp) for one level series.
+        yoy_change is computed from the levels unless `yoy_role` names the rate INE publishes.
+        """
         filtered = self._pick(ind, role)
         if gaps:
             _check_time_gaps(filtered, gaps, ind)
         filtered = self._calculate_yoy_change(filtered)
+        if yoy_role:
+            filtered["yoy_change"] = self._official(ind, yoy_role, filtered["date"])
         result = filtered[["date", "year", "value", "yoy_change"]].copy()
         result = result.rename(columns={"value": name})
         result = result.sort_values("date").drop_duplicates(subset=["date"])
@@ -189,7 +203,7 @@ class INEProcessor:
         variation_df = self._pick("industrial_production", "yoy")[["date", "value"]].rename(columns={"value": "yoy_change"})
         result = index_df.merge(variation_df, on="date", how="left")
         result = result.sort_values("date").drop_duplicates(subset=["date"])
-        result["mom_change"] = pct_change_by_date(result, "ipi_index", 1)
+        result["mom_change"] = self._official("industrial_production", "mom", result["date"])
         self._save_processed(result, "industrial_production.csv")
         return result
 
@@ -305,7 +319,7 @@ class INEProcessor:
     def process_cpi(self) -> pd.DataFrame:
         """CPI, national general index (IPC290751), with yoy."""
         print("Processing CPI...")
-        result = self._level("cpi", "index", "cpi_index", gaps="M")
+        result = self._level("cpi", "index", "cpi_index", gaps="M", yoy_role="yoy")
         result = result.rename(columns={"yoy_change": "inflation_rate"})
         result["yoy_change"] = result["inflation_rate"]
         self._save_processed(result, "cpi.csv")
@@ -314,15 +328,15 @@ class INEProcessor:
     def process_retail_sales(self) -> pd.DataFrame:
         """Retail trade index at constant prices, excluding service stations, SA (ICM4062)."""
         print("Processing Retail Sales...")
-        result = self._level("retail_sales", "index", "retail_index")
-        result["mom_change"] = pct_change_by_date(result, "retail_index", 1)
+        result = self._level("retail_sales", "index", "retail_index", yoy_role="yoy")
+        result["mom_change"] = self._official("retail_sales", "mom", result["date"])
         self._save_processed(result, "retail_sales.csv")
         return result
 
     def process_house_prices(self) -> pd.DataFrame:
         """House price index, national general (IPV1209)."""
         print("Processing House Prices...")
-        result = self._level("house_prices", "index", "hpi_index")
+        result = self._level("house_prices", "index", "hpi_index", yoy_role="yoy")
         self._save_processed(result, "house_prices.csv")
         return result
 
@@ -353,7 +367,7 @@ class INEProcessor:
         result = index_df.merge(variation_df, on="date", how="left")
         print(f"  Found services production: {len(result)} records")
         result = result.sort_values("date").drop_duplicates(subset=["date"])
-        result["mom_change"] = pct_change_by_date(result, "services_prod_index", 1)
+        result["mom_change"] = self._official("services_production", "mom", result["date"])
         self._save_processed(result, "services_production.csv")
         return result
 
@@ -634,12 +648,15 @@ class INEProcessor:
         return result
 
     @staticmethod
-    def _level_growth(sub: pd.DataFrame, sum_12m: bool = True) -> pd.DataFrame:
-        """date, value, yoy_change (by date, relative %) and optionally sum_12m (null unless 12 consecutive months)."""
+    def _level_growth(sub: pd.DataFrame, sum_12m: bool = True, yoy: pd.Series = None) -> pd.DataFrame:
+        """
+        date, value, yoy_change and optionally sum_12m (null unless 12 consecutive months).
+        yoy_change is computed by date (relative %) unless `yoy`, INE's published rate indexed by date, is given.
+        """
         out = sub[["date", "value"]].copy()
         out["value"] = pd.to_numeric(out["value"], errors="coerce")
         out = out.dropna(subset=["value"]).sort_values("date").drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
-        out["yoy_change"] = pct_change_by_date(out, "value", 12)
+        out["yoy_change"] = pct_change_by_date(out, "value", 12) if yoy is None else out["date"].map(yoy)
         if sum_12m:
             out["sum_12m"] = sum_by_date(out, "value", 12)
         return out
@@ -656,14 +673,14 @@ class INEProcessor:
     def process_tourist_arrivals(self) -> pd.DataFrame:
         """FRONTUR: international tourists arriving in Spain (persons, monthly, original data; FREG337)."""
         print("Processing tourist arrivals (FRONTUR)...")
-        result = self._level_growth(self._pick("tourist_arrivals", "level"))
+        result = self._level_growth(self._pick("tourist_arrivals", "level"), yoy=self._published("tourist_arrivals", "yoy"))
         self._save_processed(result, "tourist_arrivals.csv")
         return result
 
     def process_tourist_spending(self) -> pd.DataFrame:
         """EGATUR: total spending of international tourists (millions of euros, monthly, original data; FREG647)."""
         print("Processing tourist spending (EGATUR)...")
-        result = self._level_growth(self._pick("tourist_spending", "level"))
+        result = self._level_growth(self._pick("tourist_spending", "level"), yoy=self._published("tourist_spending", "yoy"))
         self._save_processed(result, "tourist_spending.csv")
         return result
 

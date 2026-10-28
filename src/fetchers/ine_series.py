@@ -61,6 +61,7 @@ INDICATORS = {
     "industrial_production": dict(table=60280, nult=72, file="industrial_production_raw.csv", series={
         "index": _s("IPI15360", "Total Nacional", "Índice", SA, "Total industria"),
         "yoy": _s("IPI15374", "Total Nacional", "Variación anual", SA, "Total industria"),
+        "mom": _s("IPI15381", "Total Nacional", "Variación mensual", SA, "Total industria"),
         "yoy_consumo": _s("IPI15373", "Total Nacional", "Variación anual", SA, "Bienes de consumo"),
         "yoy_equipo": _s("IPI15370", "Total Nacional", "Variación anual", SA, "Bienes de equipo"),
         "yoy_intermedios": _s("IPI15369", "Total Nacional", "Variación anual", SA, "Bienes intermedios"),
@@ -82,6 +83,7 @@ INDICATORS = {
     "services_production": dict(table=60732, nult=72, since="2021-01-01", file="services_production_raw.csv", series={
         "index": _s("IPSS380", "precios corrientes", SA, "Índice General", "Total Nacional", "Índice"),
         "yoy": _s("IPSS490", SA, "Índice General", "Variación anual"),
+        "mom": _s("IPSS491", SA, "Índice general", "Variación mensual"),
         **{f"yoy_{k}": _s(f"IPSS{y}", SA, n, "Total Nacional", "Variación anual") for k, (y, _, n) in _IPSS.items()},
         **{f"ytd_{k}": _s(f"IPSS{y}", SA, n, "Total Nacional", "media en lo que va de año") for k, (_, y, n) in _IPSS.items()},
     }),
@@ -119,6 +121,7 @@ INDICATORS = {
     # Prices
     "cpi": dict(table=79181, nult=60, file="cpi_raw.csv", series={
         "index": _s("IPC290751", "Nacional", "Índice general", "Índice"),
+        "yoy": _s("IPC290750", "Nacional", "Índice general", "Variación anual"),
     }),
     "cpi_special_groups": dict(table=76130, nult=60, file="cpi_special_groups_raw.csv", series={
         "headline": _s("IPC290750", "Nacional", "Índice general", "Variación anual"),
@@ -133,9 +136,12 @@ INDICATORS = {
     }),
     "retail_sales": dict(table=67178, nult=60, file="retail_sales_raw.csv", series={
         "index": _s("ICM4062", "Total Nacional", "precios constantes", "47 sin 473", "General", "Índice", SA),
+        "yoy": _s("ICM4079", "precios constantes", "47 sin 473", "General", "Variación anual", SA),
+        "mom": _s("ICM4080", "precios constantes", "47 sin 473", "General", "Variación mensual", SA),
     }),
     "house_prices": dict(table=80270, nult=40, file="house_prices_raw.csv", series={
         "index": _s("IPV1209", "Nacional", "General", "Índice"),
+        "yoy": _s("IPV1376", "Nacional", "General", "Variación anual"),
     }),
     "ipri": dict(table=76655, nult=60, file="ipri_raw.csv", series={
         f"{part}_{k}": _s(f"IPR{code}", "Nacional", "Mercado interior", n, what)
@@ -167,9 +173,11 @@ INDICATORS = {
     # Extended indicators
     "tourist_arrivals": dict(table=10822, nult=132, file="tourist_arrivals_raw.csv", series={
         "level": _s("FREG337", "Total", "Turista", "Dato base", "Total Nacional"),
+        "yoy": _s("FREG321", "Total", "Turista", "Tasa de variación anual", "Total Nacional"),
     }),
     "tourist_spending": dict(table=10838, nult=132, file="tourist_spending_raw.csv", series={
         "level": _s("FREG647", "Total", "Turista", "Gasto total", "Total Nacional", "Dato base"),
+        "yoy": _s("FREG623", "Total", "Turista", "Gasto total", "Tasa de variación anual"),
     }),
     "hotel_overnight_stays": dict(table=2009, nult=192, file="hotel_overnight_stays_raw.csv", series={
         "total": _s("EOT25", "Nacional", "Pernoctaciones", "Total categorías", "Total"),

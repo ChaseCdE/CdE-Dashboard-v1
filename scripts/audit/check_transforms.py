@@ -33,6 +33,10 @@ OFFICIAL = {
     ("ine.industrial_production", "yoy"), ("ine.services_production", "yoy"),
     ("ine.business_confidence", "yoy"),  # computed, but only for the ICE index: handled below
     ("ine.ipri", "yoy"), ("ine.ipri", "mom"),  # INE's published rates (1 decimal), checked in check_ine.py
+    # Audit M4: INE's published rates replace the rates recomputed from rounded indices (check_ine.py compares them)
+    ("ine.industrial_production", "mom"), ("ine.services_production", "mom"),
+    ("ine.cpi", "yoy"), ("ine.retail_sales", "yoy"), ("ine.retail_sales", "mom"), ("ine.house_prices", "yoy"),
+    ("ine.tourist_arrivals", "yoy"), ("ine.tourist_spending", "yoy"),
 }
 LEVEL_FIELD = {"yahoo": "close"}
 
