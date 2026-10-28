@@ -535,101 +535,53 @@ class INEProcessor:
 
     def process_gdp_productivity(self) -> pd.DataFrame:
         """
-        Process GDP productivity indices.
-        Calculates indices for: PIB, PIB per capita, PIB per working-age person,
-        PIB per occupied, PIB per hour worked.
-        All rebased to 2019Q1 = 100.
+        GDP productivity indices, rebased to 2019Q1 = 100: GDP, per inhabitant, per person of working
+        age (16-64), per employed person and per hour worked.
+
+        Inputs are the processed gdp.csv, cntr_employment.csv and population.csv. Every input must
+        be present (audit M5): a missing file, column or base-period value raises instead of
+        silently dropping a line from the chart.
         """
         print("Processing GDP Productivity Indices...")
+        need = {
+            "gdp.csv": ["gdp_index"],
+            "cntr_employment.csv": ["employed_persons", "hours_worked"],
+            "population.csv": ["total_population", "working_age_population"],
+        }
+        frames = {}
+        for fname, cols in need.items():
+            path = self.output_dir / fname
+            if not path.exists():
+                raise SeriesNotFound(f"gdp_productivity: {fname} not found; process its source first")
+            f = pd.read_csv(path, parse_dates=["date"])
+            absent = [c for c in cols if c not in f.columns]
+            if absent:
+                raise SeriesNotFound(f"gdp_productivity: {fname} lacks {absent}")
+            frames[fname] = f[["date"] + cols]
 
-        # Load required data
-        gdp_path = self.output_dir / "gdp.csv"
-        employment_path = self.output_dir / "cntr_employment.csv"
-        population_path = self.output_dir / "population.csv"
-
-        if not gdp_path.exists():
-            print("  WARNING: GDP data not found, run process_gdp first")
-            return pd.DataFrame()
-
-        gdp_df = pd.read_csv(gdp_path, parse_dates=["date"])
-        gdp_df = gdp_df[["date", "gdp_index"]].copy()
-
-        if employment_path.exists():
-            empl_df = pd.read_csv(employment_path, parse_dates=["date"])
-        else:
-            print("  WARNING: Employment data not found, run process_cntr_employment first")
-            empl_df = pd.DataFrame()
-
-        if population_path.exists():
-            pop_df = pd.read_csv(population_path, parse_dates=["date"])
-        else:
-            print("  WARNING: Population data not found, run process_population_age first")
-            pop_df = pd.DataFrame()
-
-        # Merge all data
-        result = gdp_df.copy()
-        if not empl_df.empty:
-            result = result.merge(empl_df, on="date", how="left")
-        if not pop_df.empty:
-            result = result.merge(pop_df, on="date", how="left")
-
-        result = result.sort_values("date")
-
-        # Find 2019Q1 for rebasing
-        base_mask = (result["date"].dt.year == 2019) & (result["date"].dt.quarter == 1)
-        if base_mask.sum() == 0:
-            print("  WARNING: 2019Q1 not found for rebasing")
-            return pd.DataFrame()
-
+        result = frames["gdp.csv"].merge(frames["cntr_employment.csv"], on="date", how="left") \
+                                  .merge(frames["population.csv"], on="date", how="left").sort_values("date")
+        inputs = ["gdp_index", "employed_persons", "hours_worked", "total_population", "working_age_population"]
+        base_mask = result["date"] == pd.Timestamp("2019-01-01")
+        if base_mask.sum() != 1 or result.loc[base_mask, inputs].isna().any(axis=None):
+            raise SeriesNotFound("gdp_productivity: 2019Q1 base period missing or incomplete in the inputs")
         base_row = result[base_mask].iloc[0]
+        for c in inputs:
+            # Latest quarters may lag by a release or two, but a column must not be (nearly) empty.
+            if result[c].notna().sum() < len(result) - 2:
+                raise SeriesNotFound(f"gdp_productivity: input {c} has only {int(result[c].notna().sum())} of {len(result)} quarters")
 
-        # Calculate productivity indices (2019Q1 = 100)
-        # PIB index (already have this, just rebase)
-        if "gdp_index" in result.columns and pd.notna(base_row["gdp_index"]):
-            result["pib_index"] = (result["gdp_index"] / base_row["gdp_index"] * 100).round(2)
-        else:
-            result["pib_index"] = None
+        result["pib_index"] = (result["gdp_index"] / base_row["gdp_index"] * 100).round(2)
+        for col, out in (("total_population", "pib_per_capita_index"),
+                         ("working_age_population", "pib_per_working_age_index"),
+                         ("employed_persons", "pib_per_employed_index"),
+                         ("hours_worked", "pib_per_hour_index")):
+            base = base_row["gdp_index"] / base_row[col]
+            result[out] = ((result["gdp_index"] / result[col]) / base * 100).round(2)
 
-        # PIB per capita
-        if "total_population" in result.columns and pd.notna(base_row.get("total_population")):
-            base_pc = base_row["gdp_index"] / base_row["total_population"]
-            result["gdp_per_capita_raw"] = result["gdp_index"] / result["total_population"]
-            result["pib_per_capita_index"] = (result["gdp_per_capita_raw"] / base_pc * 100).round(2)
-        else:
-            result["pib_per_capita_index"] = None
-
-        # PIB per working-age person
-        if "working_age_population" in result.columns and pd.notna(base_row.get("working_age_population")):
-            base_wa = base_row["gdp_index"] / base_row["working_age_population"]
-            result["gdp_per_working_age_raw"] = result["gdp_index"] / result["working_age_population"]
-            result["pib_per_working_age_index"] = (result["gdp_per_working_age_raw"] / base_wa * 100).round(2)
-        else:
-            result["pib_per_working_age_index"] = None
-
-        # PIB per occupied (employment)
-        if "employed_persons" in result.columns and pd.notna(base_row.get("employed_persons")):
-            base_empl = base_row["gdp_index"] / base_row["employed_persons"]
-            result["gdp_per_employed_raw"] = result["gdp_index"] / result["employed_persons"]
-            result["pib_per_employed_index"] = (result["gdp_per_employed_raw"] / base_empl * 100).round(2)
-        else:
-            result["pib_per_employed_index"] = None
-
-        # PIB per hour worked
-        if "hours_worked" in result.columns and pd.notna(base_row.get("hours_worked")):
-            base_hr = base_row["gdp_index"] / base_row["hours_worked"]
-            result["gdp_per_hour_raw"] = result["gdp_index"] / result["hours_worked"]
-            result["pib_per_hour_index"] = (result["gdp_per_hour_raw"] / base_hr * 100).round(2)
-        else:
-            result["pib_per_hour_index"] = None
-
-        # Filter from 2019 onward
         result = result[result["date"] >= "2019-01-01"]
-
-        # Select only the columns we need
-        output_cols = ["date", "pib_index", "pib_per_capita_index", "pib_per_working_age_index",
-                       "pib_per_employed_index", "pib_per_hour_index"]
-        result = result[[c for c in output_cols if c in result.columns]]
-
+        result = result[["date", "pib_index", "pib_per_capita_index", "pib_per_working_age_index",
+                         "pib_per_employed_index", "pib_per_hour_index"]]
         self._save_processed(result, "gdp_productivity.csv")
         return result
 
