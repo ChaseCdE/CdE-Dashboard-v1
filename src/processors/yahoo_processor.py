@@ -11,6 +11,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 import logging
 
+from .series_ops import diff_asof, pct_change_asof
+
 logger = logging.getLogger(__name__)
 
 
@@ -119,14 +121,15 @@ class YahooProcessor:
             df['return_1w_pct'] = df['Close'].pct_change(periods=5, fill_method=None) * 100
             df['return_1m_pct'] = df['Close'].pct_change(periods=21, fill_method=None) * 100
             df['return_3m_pct'] = df['Close'].pct_change(periods=63, fill_method=None) * 100
-            df['return_1y_pct'] = df['Close'].pct_change(periods=252, fill_method=None) * 100
+            # 1 year = calendar year (last close on or before the same date a year earlier), not 252 sessions (audit L3)
+            df['return_1y_pct'] = pct_change_asof(df, 'Close', pd.DateOffset(years=1))
 
             # Absolute changes, used for yields: a yield moving from 4,0 % to
             # 4,2 % is +0,2 pp, not "+5 %" (contract v1.1, chg_* fields).
             df['daily_change_abs'] = df['Close'].diff()
             df['change_1w_abs'] = df['Close'].diff(5)
             df['change_1m_abs'] = df['Close'].diff(21)
-            df['change_1y_abs'] = df['Close'].diff(252)
+            df['change_1y_abs'] = diff_asof(df, 'Close', pd.DateOffset(years=1))
             df['ytd_change_abs'] = df['Close'] - base
             df.loc[~(base > 0), 'ytd_change_abs'] = float('nan')
 

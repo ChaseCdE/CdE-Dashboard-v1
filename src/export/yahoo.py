@@ -7,7 +7,7 @@ Daily data on the exchange's local trading date (see yahoo_client.py).
 Fields exported (only what markets/overview display):
   close       closing level/price
   ret_1d      daily change (%)
-  ret_1w/1m/1y  change over 5 / 21 / 252 trading sessions (%)
+  ret_1w/1m/1y  change over 5 / 21 trading sessions and 1 calendar year (%)
   ret_ytd     change vs last close of the previous calendar year (%)
   sma_200     200-session simple moving average (equity indices only; drawn on
               the single-index chart of the Markets page)
@@ -49,7 +49,7 @@ def _make(key, ticker, title, desc, close_field, series_key, series_label, sma=F
             note = {
                 "chg_1w": "5 sesiones",
                 "chg_1m": "21 sesiones",
-                "chg_1y": "252 sesiones",
+                "chg_1y": "1 año natural",
                 "chg_ytd": "Frente al último cierre del año anterior",
             }.get(fkey)
             fields.append(Field(fkey, label, "pp", 2, column=col, note_es=note))
@@ -62,7 +62,7 @@ def _make(key, ticker, title, desc, close_field, series_key, series_label, sma=F
         note = {
             "ret_1w": "5 sesiones",
             "ret_1m": "21 sesiones",
-            "ret_1y": "252 sesiones",
+            "ret_1y": "1 año natural",
             "ret_ytd": "Frente al último cierre del año anterior",
         }.get(fkey)
         fields.append(Field(fkey, label, "pct_change", 1, column=col, note_es=note))
