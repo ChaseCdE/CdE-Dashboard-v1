@@ -6,8 +6,8 @@ so the site keeps working, but that must never look like a successful refresh.
 run_pipeline.py records every failure the fetchers log (via a logging handler) in
 data/.fetch_failures.jsonl, resets the file at the start of a run, and reports it in the
 summary and exit code.
-A file is used (not a module-level list) because fetchers are imported under two
-package paths ("fetchers." and "src.fetchers.").
+A file is used (not a module-level list) so that the record survives process boundaries
+and is easy to inspect after a run.
 """
 
 import json

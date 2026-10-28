@@ -810,7 +810,7 @@ class BdeProcessor:
         calendar, so a missing month yields NaN instead of a change across the gap.
         """
         if derived_config is None:
-            from fetchers.bde_indicators import BDE_DERIVED
+            from ..fetchers.bde_indicators import BDE_DERIVED
             derived_config = BDE_DERIVED
 
         results = {}
@@ -935,5 +935,5 @@ def run_processing(indicators_config: Dict[str, Dict[str, Any]]) -> None:
 
 
 if __name__ == "__main__":
-    from fetchers.bde_indicators import BDE_INDICATORS
+    from ..fetchers.bde_indicators import BDE_INDICATORS
     run_processing(BDE_INDICATORS)

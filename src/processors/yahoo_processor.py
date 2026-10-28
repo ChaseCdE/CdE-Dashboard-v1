@@ -433,5 +433,5 @@ def run_processing(indicators_config: Dict[str, Dict[str, Any]]) -> None:
 
 
 if __name__ == "__main__":
-    from fetchers.yahoo_indicators import YAHOO_INDICATORS
+    from ..fetchers.yahoo_indicators import YAHOO_INDICATORS
     run_processing(YAHOO_INDICATORS)

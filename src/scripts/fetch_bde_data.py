@@ -9,9 +9,9 @@ import logging
 from pathlib import Path
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # project root: packages are imported as src.*
 
-from fetchers.bde_indicators import (
+from src.fetchers.bde_indicators import (
     BdeIndicatorFetcher,
     BDE_INDICATORS,
     INDICATOR_GROUPS,
