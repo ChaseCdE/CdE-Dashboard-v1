@@ -29,7 +29,7 @@ TABLE_IDS = {
     "activity_rate": 65295,    # EPA Tasas de actividad por edad, sexo y CCAA
     "employed": 65109,         # EPA Ocupados por sexo y grupo de edad
     "temporary_rate": 65194,   # EPA Asalariados por tipo de contrato
-    "parttime_rate": 65970,    # EPA Ocupados por tipo de jornada
+    "parttime_rate": 65148,    # EPA Ocupados por tipo de jornada, sexo y grupo de edad (trimestral; 65970 es la versión anual y se quedó en 2025)
     "youth_unemployment": 65334,  # EPA Tasas de paro por grupos de edad
     # Labor Market - ETCL (Labor Costs)
     "labor_cost": 6030,        # ETCL Coste laboral por trabajador por sectores (current, 2008+)
@@ -41,7 +41,7 @@ TABLE_IDS = {
     "cpi_weights": 76156,      # IPC Ponderaciones de grupos ECOICOP ver.2
     "cpi_special_weights": 76161,  # IPC Ponderaciones de grupos especiales
     # Consumer
-    "retail_sales": 75809,     # ICM Índice nacional
+    "retail_sales": 67178,     # ICM Índices de especiales agregados (incluye "General"; 75809 solo tiene modos de distribución, sin total)
     "house_prices": 80270,     # IPV Índices por CCAA trimestrales (replaces frozen 25171)
     # Industrial Prices
     "ipri": 76655,             # IPRI Índices nacionales: general y por destino económico
@@ -495,8 +495,9 @@ class INEIndicatorFetcher:
         raw_data = self.client.get_table_data(TABLE_IDS["ipri"], nult=nult)
         df = parse_ine_data(raw_data)
 
-        # Filter only national data (Total Nacional)
-        df = df[df["series_name"].str.contains("Total Nacional", case=False, na=False)]
+        # Filter only national data. After the 2026 rebase INE names these series
+        # "Nacional. Mercado interior. ..." (before: "Total Nacional. ..."); accept both.
+        df = df[df["series_name"].str.contains(r"^(?:Total )?Nacional\.", case=False, na=False, regex=True)]
 
         self._save_csv(df, "ipri_raw.csv")
         return df
@@ -543,10 +544,12 @@ class INEIndicatorFetcher:
         raw_data = self.client.get_table_data(TABLE_IDS["population_age"], nult=nult)
         df = parse_ine_data(raw_data)
 
-        # Filter national totals (Ambos sexos, Personas - not percentages)
+        # Filter national totals (Ambos sexos, absolute persons - not percentages).
+        # INE renamed the series in 2026: "... Personas." became "... Valor absoluto.";
+        # accept both (the old filter only knew "Personas" and returned an empty frame).
         df = df[
             (df["series_name"].str.contains("Ambos sexos", case=False, na=False)) &
-            (df["series_name"].str.contains("Personas", case=False, na=False)) &
+            (df["series_name"].str.contains(r"Personas|Valor absoluto", case=False, na=False, regex=True)) &
             (~df["series_name"].str.contains("Porcentaje", case=False, na=False))
         ]
 
@@ -631,6 +634,7 @@ class INEIndicatorFetcher:
         results["cntr_employment"] = self.fetch_cntr_employment()
         results["population_age"] = self.fetch_population_age()
         results["cpi_ccaa"] = self.fetch_cpi_ccaa()
+        results["business_confidence"] = self.fetch_business_confidence()
 
         logger.info("=" * 50)
         logger.info("All indicators fetched successfully!")

@@ -139,11 +139,14 @@ In series names and descriptions, periods may appear as:
 
 | Indicator | Base Year | Notes |
 |-----------|-----------|-------|
-| IPC (CPI) | 2021 → 2025 | Changed January 2026 |
-| PIB (GDP) | 2015 | CNE base 2015 |
+| IPC (CPI) | 2025 | Changed January 2026 (ECOICOP v2); 2025 average = 100 in the data |
+| PIB (GDP) | 2020 | CNTR chain-volume index; 2020 average = 100 in the data |
 | IPI (Industrial Production) | 2021 | |
-| IPV (House Prices) | 2015 | |
+| IPSS (Services, turnover) | 2021 | 2021 average = 100 in the data |
+| IPV (House Prices) | 2025 | 2025 average = 100 in the data |
 | ICM (Retail Sales) | 2021 | |
+| IPRI (Industrial Prices) | 2021 | per table code `2021_NAC-CCAA_MDOINT` |
+| ICE (Business Confidence) | 2013 | |
 
 **Warning:** Base year changes affect table IDs. When a base year changes, new table IDs are created and old ones become historical.
 
@@ -202,3 +205,23 @@ Base year changes and methodological updates can cause breaks in series. Check f
 
 ### Issue 4: Multiple Series per Table
 Tables contain many series (by region, sex, age, etc.). Always filter to the specific series needed.
+Taking "the first matching series" is fragile: table 75809 (retail) has no total, so the first
+`Índice` series was a sub-universe (`Empresas unilocalizadas`). Anchor the filter on the full
+series name and check the chosen name when a table is repointed.
+
+### Issue 5: Series renames after a rebase
+In 2026 INE renamed `Total Nacional.` to `Nacional.` (CPI, IPV, IPRI, ICN, IAS) and EPA population
+series (`Todas las edades. Personas.` to `Total. Valor absoluto.`). A filter that no longer matches
+produces an empty frame and the fetcher keeps the old cached file (`Skipping save of empty
+DataFrame`), so the data silently stop updating. Look for that message in the pipeline log.
+
+### Issue 6: Year-over-year by date, not by position
+The processor computes yoy / qoq / mom by calendar date (`pct_change_by_date`), never with
+`pct_change(periods=n)`: a missing period gives NaN instead of a comparison with the wrong period,
+and no implicit forward fill happens. Changes of rates (unemployment, activity...) are in
+percentage points (`yoy_pp`), not relative %.
+
+### Issue 7: Dates
+`Fecha` is local midnight of the first day of the period expressed in UTC milliseconds
+(for example 22:00 UTC the day before). Convert to Europe/Madrid before taking the date
+(`parse_ine_data` does).

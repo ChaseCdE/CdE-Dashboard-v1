@@ -179,6 +179,9 @@ Use table 50904 or 50937 and filter by appropriate categories.
 | Operation | Índice de Precios Industriales |
 | Operation Code | `IPRI` |
 | Frequency | Monthly |
+| Table used | **76655** (national + CCAA, general and by economic destination; mercado interior) |
+
+Since the 2026 rebase the series are named `Nacional. Mercado interior. <categoría>. Índice.` (before: `Total Nacional. ...`). The fetcher and processor accept both prefixes and anchor the category (`. Energía.` cannot match `Total industria sin energía`). Data reach the latest published month (2026-09 at the time of writing).
 
 **To get tables:**
 ```
@@ -223,11 +226,14 @@ https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/ICE
 
 | Table ID | Description |
 |----------|-------------|
-| 75809 | Índice nacional: comercio sin estaciones de servicio |
+| 67178 | Índices de especiales agregados: contiene `General` (ICM4062), el índice usado |
+| 75809 | Por modos de distribución: **no tiene total**; no usar (la primera serie era "Empresas unilocalizadas") |
+
+Series used: `Total Nacional. Cifra de negocio a precios constantes. Comercio al por menor sin Estaciones de Servicio (47 sin 473). General. Índice. Datos ajustados de estacionalidad y calendario.` (base 2021).
 
 **Example URL:**
 ```
-https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/75809?nult=24
+https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/67178?nult=24
 ```
 
 ---
@@ -255,28 +261,31 @@ https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/25171?nult=20
 
 | Indicator | Table ID | Frequency | Status |
 |-----------|----------|-----------|--------|
-| GDP Growth | 30679 | Quarterly | Ready |
-| Industrial Production | 70178 | Monthly | Ready |
-| Business Confidence | TBD (via ICE) | Quarterly | Need table ID |
+| GDP Growth | 67822 | Quarterly | Ready |
+| Industrial Production | 60280 | Monthly | Ready |
+| Business Confidence | 8027 | Quarterly | Ready |
 | Unemployment Rate | 65349 | Quarterly | Ready |
 | Employment Growth | 65349 | Quarterly | Ready |
 | Labor Force Participation | 65349 | Quarterly | Ready |
-| Wage Growth | TBD (via ETCL) | Quarterly | Need table ID |
-| CPI (Headline) | 50904 | Monthly | Ready |
-| Core Inflation | 50904 (filtered) | Monthly | Ready |
-| PPI | TBD (via IPRI) | Monthly | Need table ID |
+| Wage Growth | 6030 / 6034 (ETCL) | Quarterly | Ready |
+| CPI (Headline) | 79181 | Monthly | Ready |
+| Core Inflation | 76130 | Monthly | Ready |
+| PPI | 76655 | Monthly | Ready |
 | Trade Balance | N/A | Monthly | Use Eurostat |
 | Consumer Confidence | TBD (via ICE) | Quarterly | Need table ID |
-| Retail Sales | 75809 | Monthly | Ready |
-| House Price Index | 25171 | Quarterly | Ready |
+| Retail Sales | 67178 | Monthly | Ready |
+| House Price Index | 80270 | Quarterly | Ready |
 
 ---
 
 ## Next Steps
 
-1. **Fetch remaining table IDs** for: ICE, ETCL, IPRI operations
-2. **Proceed to Stage 2**: Build Python fetcher scripts using confirmed endpoints
-3. **Trade Balance**: Use Eurostat API instead of INE
+The authoritative list of table ids is `TABLE_IDS` in `src/fetchers/ine_indicators.py`; the site export (`src/export/ine.py`) reads source ids and URLs from it. Notes on current choices are in `docs/notes/ws-ine.md`.
+
+Other table notes (2026-10):
+- Part-time rate: table **65148** (EPA, quarterly). Table 65970 is the annual version and stopped at 2025.
+- Population by age: table 65061. Series were renamed in 2026 (`... Todas las edades. Personas.` became `... Total. Valor absoluto.`); the fetcher filter accepts both.
+- Trade Balance: use Eurostat API instead of INE.
 
 ---
 
