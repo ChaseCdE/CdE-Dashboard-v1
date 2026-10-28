@@ -111,7 +111,10 @@ class INEProcessor:
     def _raw(self, ind: str) -> pd.DataFrame:
         """Raw file of an indicator, loaded once per processor."""
         if ind not in self._raw_cache:
-            self._raw_cache[ind] = self._load_raw(INDICATORS[ind]["file"])
+            try:
+                self._raw_cache[ind] = self._load_raw(INDICATORS[ind]["file"])
+            except FileNotFoundError as exc:
+                raise SeriesNotFound(f"{ind}: raw file {INDICATORS[ind]['file']} not found; fetch INE first") from exc
         return self._raw_cache[ind]
 
     def _official(self, ind: str, role: str, dates: pd.Series) -> pd.Series:
