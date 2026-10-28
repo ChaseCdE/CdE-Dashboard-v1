@@ -53,6 +53,25 @@ TABLE_IDS = {
     "cpi_ccaa": 76136,         # IPC por CCAA y grupos ECOICOP
     # Business Confidence
     "business_confidence": 8027,  # Índice de Confianza Empresarial Armonizado (ICEA)
+    # Extended indicators (ext/ine). Verified against the API on 2026-10-28.
+    "tourist_arrivals": 10822,     # FRONTUR Número de turistas según país de residencia (serie "Total. Turista. Dato base"); 75719 es una copia que va un mes por detrás
+    "tourist_spending": 10838,     # EGATUR Gasto de los turistas internacionales según país de residencia (serie "Total. Turista. Gasto total", millones de euros)
+    "hotel_overnight_stays": 2009,  # Encuesta de Ocupación Hotelera: viajeros y pernoctaciones por categorías (Nacional, total categorías, residentes / no residentes)
+    "housing_transactions": 6150,   # ETDP Compraventa de viviendas según régimen y estado (general, nueva, segunda mano)
+    "mortgages": 13896,             # Hipotecas constituidas sobre el total de fincas por naturaleza de la finca (serie Viviendas: número e importe en miles de euros)
+    "companies": 13912,             # Sociedades Mercantiles: resumen (constituidas y disueltas, número)
+    "household_saving_rate": 62275,  # CTNFSI Hogares e ISFLSH: tasa de ahorro (SA y NSA), saldos contables
+    "population_nationality": 59587,  # ECP Población residente por fecha, sexo, grupo de edad y nacionalidad (española/extranjera)
+}
+
+# Estadística del Procedimiento Concursal (operación 13, tablas 3181/3182/2992...): el INE dejó de elaborarla
+# (último dato 2020; pasó al Colegio de Registradores). No se exporta ningún dataset de concursos.
+
+# Series codes for the population-by-nationality table (59587 has 3600 series, too big to download whole).
+POPULATION_NATIONALITY_CODES = {
+    "total": "ECP4961",      # Total Nacional. Total. Todas las edades. Total. Población. Número.
+    "espanola": "ECP4901",   # Total Nacional. Española. ...
+    "extranjera": "ECP701",  # Total Nacional. Extranjera. ...
 }
 
 # Series filtering: use seasonally adjusted data where available
@@ -595,6 +614,60 @@ class INEIndicatorFetcher:
         self._save_csv(df, "business_confidence_raw.csv")
         return df
 
+    # ------------------------------------------------------------------
+    # Extended indicators (ext/ine)
+    # ------------------------------------------------------------------
+    def _fetch_table_to_csv(self, key: str, filename: str, nult: int, label: str) -> pd.DataFrame:
+        logger.info(f"Fetching {label}...")
+        raw_data = self.client.get_table_data(TABLE_IDS[key], nult=nult)
+        df = parse_ine_data(raw_data)
+        self._save_csv(df, filename)
+        return df
+
+    def fetch_tourist_arrivals(self, nult: int = 132) -> pd.DataFrame:
+        """FRONTUR: international tourist arrivals (monthly), table 10822."""
+        return self._fetch_table_to_csv("tourist_arrivals", "tourist_arrivals_raw.csv", nult, "FRONTUR tourist arrivals")
+
+    def fetch_tourist_spending(self, nult: int = 132) -> pd.DataFrame:
+        """EGATUR: spending of international tourists (monthly, millions of euros), table 10838."""
+        return self._fetch_table_to_csv("tourist_spending", "tourist_spending_raw.csv", nult, "EGATUR tourist spending")
+
+    def fetch_hotel_overnight_stays(self, nult: int = 192) -> pd.DataFrame:
+        """Encuesta de Ocupación Hotelera: overnight stays (monthly), table 2009."""
+        return self._fetch_table_to_csv("hotel_overnight_stays", "hotel_overnight_stays_raw.csv", nult, "hotel overnight stays")
+
+    def fetch_housing_transactions(self, nult: int = 192) -> pd.DataFrame:
+        """ETDP: home purchases (monthly), table 6150."""
+        return self._fetch_table_to_csv("housing_transactions", "housing_transactions_raw.csv", nult, "housing transactions (ETDP)")
+
+    def fetch_mortgages(self, nult: int = 192) -> pd.DataFrame:
+        """Hipotecas sobre viviendas (monthly), table 13896."""
+        return self._fetch_table_to_csv("mortgages", "mortgages_raw.csv", nult, "mortgages on dwellings")
+
+    def fetch_companies(self, nult: int = 192) -> pd.DataFrame:
+        """Sociedades Mercantiles: created and dissolved (monthly), table 13912."""
+        return self._fetch_table_to_csv("companies", "companies_raw.csv", nult, "commercial companies created / dissolved")
+
+    def fetch_household_saving_rate(self, nult: int = 80) -> pd.DataFrame:
+        """CTNFSI: household and NPISH saving rate (quarterly), table 62275."""
+        return self._fetch_table_to_csv("household_saving_rate", "household_saving_rate_raw.csv", nult, "household saving rate")
+
+    def fetch_population_nationality(self, nult: int = 70) -> pd.DataFrame:
+        """
+        ECP: resident population by nationality (Spanish / foreign), table 59587.
+
+        The table has 3600 series, so the three national series are requested by code.
+        """
+        logger.info("Fetching population by nationality (ECP)...")
+        raw = []
+        for key, code in POPULATION_NATIONALITY_CODES.items():
+            item = self.client.get_series_data(code, nult=nult)
+            if isinstance(item, dict):
+                raw.append(item)
+        df = parse_ine_data(raw)
+        self._save_csv(df, "population_nationality_raw.csv")
+        return df
+
     def fetch_all(self) -> dict:
         """
         Fetch all available indicators.
@@ -635,6 +708,14 @@ class INEIndicatorFetcher:
         results["population_age"] = self.fetch_population_age()
         results["cpi_ccaa"] = self.fetch_cpi_ccaa()
         results["business_confidence"] = self.fetch_business_confidence()
+        results["tourist_arrivals"] = self.fetch_tourist_arrivals()
+        results["tourist_spending"] = self.fetch_tourist_spending()
+        results["hotel_overnight_stays"] = self.fetch_hotel_overnight_stays()
+        results["housing_transactions"] = self.fetch_housing_transactions()
+        results["mortgages"] = self.fetch_mortgages()
+        results["companies"] = self.fetch_companies()
+        results["household_saving_rate"] = self.fetch_household_saving_rate()
+        results["population_nationality"] = self.fetch_population_nationality()
 
         logger.info("=" * 50)
         logger.info("All indicators fetched successfully!")

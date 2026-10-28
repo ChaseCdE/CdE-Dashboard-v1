@@ -62,6 +62,51 @@ def diff_by_date(df: pd.DataFrame, col: str, months: int) -> pd.Series:
     return df[col] - _value_months_earlier(df, col, months)
 
 
+def sum_by_date(df: pd.DataFrame, col: str, months: int = 12) -> pd.Series:
+    """
+    Rolling sum of `col` over the `months` calendar months ending at each row's date.
+
+    Date-based, not positional: the sum is NaN unless every one of the `months`
+    consecutive monthly periods (date, date - 1 month, ..., date - (months - 1))
+    is present and not null. Intended for monthly series.
+    """
+    base = df.drop_duplicates(subset=["date"], keep="last").set_index("date")[col].dropna()
+    lookup = base.to_dict()
+    out = []
+    for d in df["date"]:
+        total = 0.0
+        for k in range(months):
+            v = lookup.get(d - pd.DateOffset(months=k))
+            if v is None:
+                total = float("nan")
+                break
+            total += v
+        out.append(total)
+    return pd.Series(out, index=df.index)
+
+
+def select_series(df: pd.DataFrame, pattern: str, code: str, label: str) -> pd.DataFrame:
+    """
+    Rows of the raw frame for one INE series, chosen by an anchored regex on the series name.
+
+    INE renames series now and then ("Total Nacional." -> "Nacional."), so if the name
+    no longer matches, fall back to the known series code and warn. Returns an empty
+    frame (and warns) if neither is found. Several distinct codes matching is an error
+    in the pattern: the first one is used and a warning is logged.
+    """
+    mask = df["series_name"].str.contains(pattern, case=False, na=False, regex=True)
+    codes = list(dict.fromkeys(df.loc[mask, "series_code"]))
+    if len(codes) > 1:
+        logger.warning(f"{label}: pattern matches {len(codes)} series {codes}; using {codes[0]}")
+    if codes:
+        return df[df["series_code"] == codes[0]].copy()
+    if code in set(df["series_code"]):
+        logger.warning(f"{label}: series name no longer matches the pattern, using code {code}")
+        return df[df["series_code"] == code].copy()
+    logger.warning(f"{label}: series not found (pattern {pattern!r}, code {code})")
+    return df.iloc[0:0].copy()
+
+
 class INEProcessor:
     """Processor for INE economic indicators."""
 
@@ -1771,6 +1816,132 @@ class INEProcessor:
         self._save_processed(result, "business_confidence.csv")
         return result
 
+    # ------------------------------------------------------------------
+    # Extended indicators (ext/ine)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _level_growth(sub: pd.DataFrame, sum_12m: bool = True) -> pd.DataFrame:
+        """date, value, yoy_change (by date, relative %) and optionally sum_12m (null unless 12 consecutive months)."""
+        out = sub[["date", "value"]].copy()
+        out["value"] = pd.to_numeric(out["value"], errors="coerce")
+        out = out.dropna(subset=["value"]).sort_values("date").drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
+        out["yoy_change"] = pct_change_by_date(out, "value", 12)
+        if sum_12m:
+            out["sum_12m"] = sum_by_date(out, "value", 12)
+        return out
+
+    def _long_level_growth(self, raw: pd.DataFrame, specs: list, sum_12m: bool = True) -> pd.DataFrame:
+        """Stack several series (key, pattern, code, label) into one long frame with a `series` column."""
+        frames = []
+        for key, pattern, code, label in specs:
+            sub = select_series(raw, pattern, code, label)
+            if sub.empty:
+                continue
+            f = self._level_growth(sub, sum_12m=sum_12m)
+            f.insert(1, "series", key)
+            frames.append(f)
+        if not frames:
+            return pd.DataFrame(columns=["date", "series", "value", "yoy_change", "sum_12m"])
+        return pd.concat(frames, ignore_index=True)
+
+    def process_tourist_arrivals(self) -> pd.DataFrame:
+        """FRONTUR: international tourists arriving in Spain (persons, monthly, original data)."""
+        print("Processing tourist arrivals (FRONTUR)...")
+        raw = self._load_raw("tourist_arrivals_raw.csv")
+        sub = select_series(raw, r"^Total\. Turista\. Dato base\. (?:Total )?Nacional\.$", "FREG337", "tourist_arrivals")
+        result = self._level_growth(sub)
+        self._save_processed(result, "tourist_arrivals.csv")
+        return result
+
+    def process_tourist_spending(self) -> pd.DataFrame:
+        """EGATUR: total spending of international tourists (millions of euros, monthly, original data)."""
+        print("Processing tourist spending (EGATUR)...")
+        raw = self._load_raw("tourist_spending_raw.csv")
+        sub = select_series(raw, r"^Total\. Turista\. Gasto total\. (?:Total )?Nacional\. Dato base\.$", "FREG647", "tourist_spending")
+        result = self._level_growth(sub)
+        self._save_processed(result, "tourist_spending.csv")
+        return result
+
+    def process_hotel_overnight_stays(self) -> pd.DataFrame:
+        """Hotel overnight stays: total, residents in Spain, residents abroad (monthly, original data)."""
+        print("Processing hotel overnight stays...")
+        raw = self._load_raw("hotel_overnight_stays_raw.csv")
+        base = r"^(?:Total )?Nacional\. Pernoctaciones\. Total categorías\. "
+        result = self._long_level_growth(raw, [
+            ("total", base + r"Total\.$", "EOT25", "hotel_overnight_stays total"),
+            ("residentes", base + r"Residentes en España\.$", "EOT33", "hotel_overnight_stays residentes"),
+            ("no_residentes", base + r"Residentes en el extranjero\.$", "EOT41", "hotel_overnight_stays no_residentes"),
+        ])
+        self._save_processed(result, "hotel_overnight_stays.csv")
+        return result
+
+    def process_housing_transactions(self) -> pd.DataFrame:
+        """ETDP: home purchases (compraventas): total, new, second-hand (monthly)."""
+        print("Processing housing transactions (ETDP)...")
+        raw = self._load_raw("housing_transactions_raw.csv")
+        base = r"^(?:Total )?Nacional\. "
+        result = self._long_level_growth(raw, [
+            ("total", base + r"General\. Compraventa\. Número\.$", "ETDP1826", "housing_transactions total"),
+            ("nueva", base + r"Vivienda nueva\. Compraventa\. Número\.$", "ETDP1825", "housing_transactions nueva"),
+            ("usada", base + r"Vivienda segunda mano\. Compraventa\. Número\.$", "ETDP1824", "housing_transactions usada"),
+        ])
+        self._save_processed(result, "housing_transactions.csv")
+        return result
+
+    def process_mortgages(self) -> pd.DataFrame:
+        """Mortgages on dwellings: number, 12-month sum and average amount in euros (monthly)."""
+        print("Processing mortgages on dwellings...")
+        raw = self._load_raw("mortgages_raw.csv")
+        n = select_series(raw, r"^Viviendas\. Número de hipotecas\. (?:Total )?Nacional\. Base nueva\. Mensual\.$", "HPT34618", "mortgages number")
+        amount = select_series(raw, r"^Viviendas\. Importe de hipotecas\. (?:Total )?Nacional\. Base nueva\. Mensual\.$", "HPT34565", "mortgages amount")
+        result = self._level_growth(n)
+        amt = amount[["date", "value"]].rename(columns={"value": "amount_thousand_eur"})
+        result = result.merge(amt, on="date", how="left")
+        # importe is in thousands of euros
+        result["avg_amount"] = result["amount_thousand_eur"] * 1000 / result["value"]
+        result = result.drop(columns=["amount_thousand_eur"])
+        self._save_processed(result, "mortgages.csv")
+        return result
+
+    def process_companies(self) -> pd.DataFrame:
+        """Commercial companies created and dissolved (number, monthly)."""
+        print("Processing commercial companies...")
+        raw = self._load_raw("companies_raw.csv")
+        result = self._long_level_growth(raw, [
+            ("created", r"^Sociedades Constitu[ií]das\. Número de Sociedades\. (?:Total )?Nacional\. Mercantiles\.$", "SM21483", "companies created"),
+            ("dissolved", r"^Disueltas\. Número de Sociedades\. (?:Total )?Nacional\. Mercantiles\.$", "SM21486", "companies dissolved"),
+        ])
+        self._save_processed(result, "companies.csv")
+        return result
+
+    def process_household_saving_rate(self) -> pd.DataFrame:
+        """Household and NPISH saving rate, % of gross disposable income, seasonally and calendar adjusted (quarterly)."""
+        print("Processing household saving rate...")
+        raw = self._load_raw("household_saving_rate_raw.csv")
+        sub = select_series(
+            raw,
+            r"^Hogares e Instituciones sin fines de lucro al servicio de los hogares\. Tasa de ahorro\. Dato base\. (?:Total )?Nacional\. Datos ajustados de estacionalidad y calendario",
+            "CTNFSI11270", "household_saving_rate")
+        result = sub[["date", "value"]].copy()
+        result["value"] = pd.to_numeric(result["value"], errors="coerce")
+        result = result.dropna(subset=["value"]).sort_values("date").drop_duplicates(subset=["date"], keep="last")
+        self._save_processed(result, "household_saving_rate.csv")
+        return result
+
+    def process_population_nationality(self) -> pd.DataFrame:
+        """Resident population by nationality: total, Spanish, foreign (persons, quarterly since 2021, half-yearly before)."""
+        print("Processing population by nationality...")
+        raw = self._load_raw("population_nationality_raw.csv")
+        base = r"^(?:Total )?Nacional\. "
+        tail = r"\. Todas las edades\. Total\. Población\. Número\.$"
+        result = self._long_level_growth(raw, [
+            ("total", base + "Total" + tail, "ECP4961", "population total"),
+            ("espanola", base + "Española" + tail, "ECP4901", "population espanola"),
+            ("extranjera", base + "Extranjera" + tail, "ECP701", "population extranjera"),
+        ], sum_12m=False)
+        self._save_processed(result, "population_nationality.csv")
+        return result
+
     def process_all(self) -> dict:
         """
         Process all indicators.
@@ -1819,6 +1990,15 @@ class INEProcessor:
         results["gdp_productivity"] = self.process_gdp_productivity()
         results["cpi_ccaa"] = self.process_cpi_ccaa()
         results["business_confidence"] = self.process_business_confidence()
+        # Extended indicators (ext/ine)
+        results["tourist_arrivals"] = self.process_tourist_arrivals()
+        results["tourist_spending"] = self.process_tourist_spending()
+        results["hotel_overnight_stays"] = self.process_hotel_overnight_stays()
+        results["housing_transactions"] = self.process_housing_transactions()
+        results["mortgages"] = self.process_mortgages()
+        results["companies"] = self.process_companies()
+        results["household_saving_rate"] = self.process_household_saving_rate()
+        results["population_nationality"] = self.process_population_nationality()
 
         print("=" * 50)
         print("All indicators processed successfully!")

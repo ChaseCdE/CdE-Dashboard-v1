@@ -46,6 +46,14 @@ AVAILABLE_INDICATORS = [
     "population_age",
     "cpi_ccaa",
     "business_confidence",
+    "tourist_arrivals",
+    "tourist_spending",
+    "hotel_overnight_stays",
+    "housing_transactions",
+    "mortgages",
+    "companies",
+    "household_saving_rate",
+    "population_nationality",
 ]
 
 

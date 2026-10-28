@@ -295,3 +295,22 @@ Other table notes (2026-10):
 - [INE API Reference](https://www.ine.es/dyngs/DAB/index.htm?cid=1100)
 - [Table/Series Identifier Codes](https://www.ine.es/dyngs/DAB/index.htm?cid=1104)
 - [datos.gob.es Catalog](https://datos.gob.es)
+
+---
+
+## Extended indicators (ext/ine)
+
+Table ids verified against the API on 2026-10-28. Series are selected in the processor by anchored name regex with fallback to the series code. See `docs/notes/ext-ine.md` for definitions and checks.
+
+| Indicator | Operation | Table | Series codes | Frequency | Notes |
+|-----------|-----------|-------|--------------|-----------|-------|
+| `tourist_arrivals` | FRONTUR (`FR`) | 10822 | `FREG337` | Monthly | Total turistas, original data; starts 2015-10 |
+| `tourist_spending` | EGATUR (`EG`) | 10838 | `FREG647` | Monthly | Gasto total, **millions of euros** |
+| `hotel_overnight_stays` | EOH (`EOH`) | 2009 | `EOT25`, `EOT33`, `EOT41` | Monthly | Total / residentes en España / en el extranjero |
+| `housing_transactions` | ETDP | 6150 | `ETDP1826`, `ETDP1825`, `ETDP1824` | Monthly | Compraventa: general / nueva / segunda mano |
+| `mortgages` | HPT | 13896 | `HPT34618` (number), `HPT34565` (amount, thousand euros) | Monthly | Viviendas, base nueva |
+| `companies` | SM | 13912 | `SM21483` (created), `SM21486` (dissolved) | Monthly | Mercantiles, total nacional |
+| `household_saving_rate` | CTNFSI | 62275 | `CTNFSI11270` | Quarterly | Hogares e ISFLSH, seasonally and calendar adjusted |
+| `population_nationality` | ECP | 59587 | `ECP4961`, `ECP4901`, `ECP701` | Quarterly (half-yearly before 2021) | Fetched by series code: the table has 3600 series |
+
+Not available: Estadística del Procedimiento Concursal (operation 13) was discontinued by INE after 2020 (moved to the Colegio de Registradores).
