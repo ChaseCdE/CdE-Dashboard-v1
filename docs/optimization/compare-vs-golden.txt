@@ -1,0 +1,285 @@
+site bde.credit_households_total                             DIFFERS n_diff=64 max_abs=4.5017 +new=0 -gone=0
+      /fields[1]/label_es: 'Variación mensual' -> 'Variación mensual del saldo'
+      /fields[1]/note_es: key only in new
+      /fields[2]/note_es: key only in new
+site bde.credit_nfc_total                                    DIFFERS n_diff=64 max_abs=0.7228 +new=0 -gone=0
+      /fields[1]/label_es: 'Variación mensual' -> 'Variación mensual del saldo'
+      /fields[1]/note_es: key only in new
+      /fields[2]/note_es: key only in new
+site ine.cpi                                                 DIFFERS n_diff=60 max_abs=0.0497 +new=0 -gone=0
+      series[es]@2021-12-01[2]: None -> 6.5
+      series[es]@2026-06-01[2]: 3.2038 -> 3.2
+      series[es]@2025-07-01[2]: 2.6947 -> 2.7
+site ine.cpi_ecoicop_groups                                  DIFFERS n_diff=467 max_abs=11.9144 +new=0 -gone=0
+      /description_es: 'Variación anual, peso y aportación a la inflación (en puntos porcentuales) de los grupos especiales del IPC. La aportación es aproximada: aplica los pesos de 2026 a todo el periodo.' -> 'Variación anual, peso y aportación a la inflación (en puntos porcentuales) de los grupos especiales del IPC. La aportación usa el peso que el INE publica para cada año.'
+      /fields[1]/note_es: 'Peso de 2026 aplicado a todo el periodo' -> 'Peso del año de cada observación, según el INE'
+      series[servicios]@2021-12-01[2]: 50.31 -> 38.3956
+site ine.house_prices                                        DIFFERS n_diff=40 max_abs=0.0505 +new=0 -gone=0
+      series[es]@2025-07-01[2]: 12.8408 -> 12.8
+      series[es]@2016-10-01[2]: None -> 4.5
+      series[es]@2025-01-01[2]: 12.2382 -> 12.2
+site ine.industrial_production                               DIFFERS n_diff=72 max_abs=0.0502 +new=0 -gone=0
+      series[es]@2021-12-01[3]: 0.7945 -> 0.8
+      series[es]@2026-06-01[3]: -0.5865 -> -0.6
+      series[es]@2025-07-01[3]: -0.6494 -> -0.6
+site ine.retail_sales                                        DIFFERS n_diff=120 max_abs=0.0504 +new=0 -gone=0
+      series[es]@2021-12-01[2]: None -> -0.4
+      series[es]@2021-12-01[3]: -3.9307 -> -3.9
+      series[es]@2026-06-01[2]: 1.7615 -> 1.8
+site ine.services_production                                 DIFFERS n_diff=66 max_abs=0.0501 +new=0 -gone=0
+      series[es]@2021-12-01[3]: -0.7366 -> -0.7
+      series[es]@2026-06-01[3]: 0.7531 -> 0.8
+      series[es]@2025-07-01[3]: 0.4002 -> 0.4
+site ine.tourist_arrivals                                    DIFFERS n_diff=126 max_abs=0.005 +new=0 -gone=0
+      series[es]@2020-06-01[2]: -97.6876 -> -97.69
+      series[es]@2020-11-01[2]: -90.1866 -> -90.19
+      series[es]@2020-07-01[2]: -75.0358 -> -75.04
+site ine.tourist_spending                                    DIFFERS n_diff=126 max_abs=0.0661 +new=0 -gone=0
+      series[es]@2020-06-01[2]: -98.6177 -> -98.62
+      series[es]@2020-11-01[2]: -90.4797 -> -90.48
+      series[es]@2020-07-01[2]: -79.4168 -> -79.42
+site manifest                                                DIFFERS n_diff=47 max_abs=4.3747 +new=0 -gone=0
+      /datasets[3]/series[0]/latest/mom[1]: -0.7151 -> -0.7
+      /datasets[7]/series[0]/latest/mom[1]: -0.1265 -> -0.1
+      /datasets[20]/series[0]/latest/yoy[1]: 4.9161 -> 4.9
+site yahoo.brent_crude                                       DIFFERS n_diff=546 max_abs=10.882 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2023-02-02[5]: -7.8398 -> -8.1592
+      series[global]@2023-08-31[5]: -12.5365 -> -9.9803
+site yahoo.cac_40                                            DIFFERS n_diff=1028 max_abs=13.9096 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[fr]@2026-01-19[5]: 3.504 -> 5.2177
+      series[fr]@2023-02-02[5]: 0.9114 -> 0.7168
+site yahoo.dax                                               DIFFERS n_diff=1021 max_abs=14.2537 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[de]@2026-01-19[5]: 18.9075 -> 19.402
+      series[de]@2023-02-02[5]: 0.121 -> -0.6698
+site yahoo.dxy                                               DIFFERS n_diff=504 max_abs=2.0707 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2023-02-02[5]: 5.5607 -> 6.0559
+      series[global]@2023-08-31[5]: -4.7348 -> -4.6734
+site yahoo.eur_chf                                           DIFFERS n_diff=1047 max_abs=3.6784 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2026-01-19[5]: -1.7711 -> -1.0888
+      series[global]@2023-02-02[5]: -4.42 -> -3.7821
+site yahoo.eur_gbp                                           DIFFERS n_diff=1045 max_abs=10.9211 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2026-01-19[5]: 2.8547 -> 3.0087
+      series[global]@2023-02-02[5]: 6.4199 -> 6.6651
+site yahoo.eur_jpy                                           DIFFERS n_diff=1047 max_abs=6.3636 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2026-01-19[5]: 12.5996 -> 14.4268
+      series[global]@2023-02-02[5]: 8.4327 -> 9.5244
+site yahoo.eur_usd                                           DIFFERS n_diff=1047 max_abs=6.8342 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2026-01-19[5]: 11.6063 -> 12.8421
+      series[global]@2023-02-02[5]: -2.5957 -> -2.316
+site yahoo.euro_govt_bond_etf                                DIFFERS n_diff=1017 max_abs=4.1599 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[ez]@2026-01-19[5]: -0.6069 -> -0.4626
+      series[ez]@2023-02-02[5]: -12.0808 -> -14.3096
+site yahoo.euro_stoxx_50                                     DIFFERS n_diff=836 max_abs=16.3983 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[ez]@2026-01-19[5]: 18.9811 -> 15.1025
+      series[ez]@2023-02-02[5]: 3.7816 -> 0.4517
+site yahoo.european_banks_etf                                DIFFERS n_diff=769 max_abs=15.5647 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[eu]@2023-02-02[5]: -5.3377 -> -5.9155
+      series[eu]@2023-08-31[5]: 26.3469 -> 26.5132
+site yahoo.ftse_100                                          DIFFERS n_diff=886 max_abs=5.8867 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[uk]@2026-01-19[5]: 19.6573 -> 19.8726
+      series[uk]@2023-02-02[5]: 3.774 -> 3.1281
+site yahoo.gbp_usd                                           DIFFERS n_diff=1047 max_abs=8.8317 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2026-01-19[5]: 8.5023 -> 9.5398
+      series[global]@2023-02-02[5]: -8.445 -> -8.3942
+site yahoo.gold                                              DIFFERS n_diff=546 max_abs=5.7987 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2023-02-02[5]: 7.1774 -> 6.6564
+      series[global]@2023-08-31[5]: 13.2235 -> 13.886
+site yahoo.ibex_35                                           DIFFERS n_diff=1026 max_abs=17.4552 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[es]@2026-01-19[5]: 48.664 -> 48.2449
+      series[es]@2023-02-02[5]: 3.8655 -> 5.9278
+site yahoo.nasdaq_composite                                  DIFFERS n_diff=785 max_abs=16.1409 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[us]@2023-02-02[5]: -14.9532 -> -15.3752
+      series[us]@2023-08-31[5]: 18.1083 -> 18.7774
+site yahoo.natural_gas                                       DIFFERS n_diff=549 max_abs=42.9913 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2023-02-02[5]: -48.3056 -> -55.3536
+      series[global]@2023-08-31[5]: -69.3873 -> -69.6724
+site yahoo.silver                                            DIFFERS n_diff=509 max_abs=21.379 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2023-02-02[5]: 4.1512 -> 3.6238
+      series[global]@2023-08-31[5]: 34.7651 -> 37.7773
+site yahoo.sp_500                                            DIFFERS n_diff=785 max_abs=13.7152 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[us]@2023-02-02[5]: -8.0672 -> -8.9254
+      series[us]@2023-08-31[5]: 13.0828 -> 13.9737
+site yahoo.spanish_banks_etf                                 DIFFERS  (missing in new output)
+site yahoo.stoxx_600                                         DIFFERS n_diff=836 max_abs=16.2754 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[eu]@2026-01-19[5]: 19.4342 -> 15.9352
+      series[eu]@2023-02-02[5]: -0.6383 -> -3.7337
+site yahoo.us_tbill_3m                                       DIFFERS n_diff=723 max_abs=0.245 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[us]@2023-02-02[5]: 4.307 -> 4.325
+      series[us]@2023-08-31[5]: 2.425 -> 2.438
+site yahoo.us_treasury_10y                                   DIFFERS n_diff=777 max_abs=0.322 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[us]@2023-02-02[5]: 1.596 -> 1.63
+      series[us]@2023-08-31[5]: 0.983 -> 0.96
+site yahoo.us_treasury_20y_etf                               DIFFERS n_diff=783 max_abs=4.768 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[us]@2023-02-02[5]: -23.5676 -> -23.8256
+      series[us]@2023-08-31[5]: -14.4476 -> -13.6217
+site yahoo.us_treasury_30y                                   DIFFERS n_diff=776 max_abs=0.327 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[us]@2023-02-02[5]: 1.431 -> 1.461
+      series[us]@2023-08-31[5]: 0.984 -> 0.949
+site yahoo.us_treasury_5y                                    DIFFERS n_diff=782 max_abs=0.385 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[us]@2023-02-02[5]: 1.859 -> 1.883
+      series[us]@2023-08-31[5]: 0.967 -> 0.96
+site yahoo.us_treasury_7_10y_etf                             DIFFERS n_diff=778 max_abs=2.1333 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[us]@2023-02-02[5]: -11.2546 -> -11.4359
+      series[us]@2023-08-31[5]: -6.472 -> -6.0828
+site yahoo.usd_jpy                                           DIFFERS n_diff=1046 max_abs=6.6942 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2026-01-19[5]: 0.8837 -> 1.4026
+      series[global]@2023-02-02[5]: 11.3263 -> 12.1026
+site yahoo.vix                                               DIFFERS n_diff=721 max_abs=59.0227 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[us]@2023-02-02[5]: -14.7086 -> -15.2105
+      series[us]@2023-08-31[5]: -48.2259 -> -47.5454
+site yahoo.wti_crude                                         DIFFERS n_diff=508 max_abs=13.4343 +new=0 -gone=0
+      /fields[4]/note_es: '252 sesiones' -> '1 año natural'
+      series[global]@2023-02-02[5]: -13.9683 -> -14.0267
+      series[global]@2023-08-31[5]: -8.7407 -> -6.6108
+site files only in new output (not compared): ['yahoo/msci_spain_etf.json']
+site summary: {'identical': 85, 'DIFFERS': 40}
+csv  bde.bde_summary                                         DIFFERS n_diff=2 max_abs=2.69403 +new=2 -gone=0
+      yoy_change_pct@credit_households_total: 2.4659725003723487 -> 5.16
+csv  bde.credit_households_total_processed                   DIFFERS n_diff=61 max_abs=4.50172 +new=0 -gone=0
+      columns only in reference: []; only in new: ['yoy_stock_change_pct']
+      yoy_change_pct@2021-08-01: nan -> 0.91
+csv  bde.credit_nfc_total_processed                          DIFFERS n_diff=61 max_abs=0.722844 +new=0 -gone=0
+      columns only in reference: []; only in new: ['yoy_stock_change_pct']
+      yoy_change_pct@2021-08-01: nan -> -2.03
+csv  cpi                                                     DIFFERS n_diff=120 max_abs=0.0496688 +new=0 -gone=0
+      inflation_rate@2021-10-01: nan -> 5.4
+      yoy_change@2021-10-01: nan -> 5.4
+csv  cpi_ecoicop_groups                                      DIFFERS n_diff=180 max_abs=119.144 +new=0 -gone=0
+      weight@2021-10-01: 503.1 -> 383.956
+      contribution@2021-10-01: 0.70434 -> 0.5375384
+      weight_pct@2021-10-01: 50.31 -> 38.3956
+csv  house_prices                                            DIFFERS n_diff=40 max_abs=0.0504627 +new=0 -gone=0
+      yoy_change@2016-07-01: nan -> 4.0
+csv  industrial_production                                   DIFFERS n_diff=72 max_abs=0.0501645 +new=0 -gone=0
+      mom_change@2020-09-01: nan -> -0.2
+csv  retail_sales                                            DIFFERS n_diff=120 max_abs=0.050399 +new=0 -gone=0
+      yoy_change@2021-09-01: nan -> 1.9
+      mom_change@2021-09-01: nan -> 0.7
+csv  services_production                                     DIFFERS n_diff=66 max_abs=0.0501276 +new=0 -gone=0
+      mom_change@2021-02-01: 0.9293129016312518 -> 0.9
+csv  summary                                                 DIFFERS n_diff=3 max_abs=0.0315479 +new=0 -gone=0
+      yoy_change@Inflation (CPI): 4.916099501294236 -> 4.9
+csv  tourist_arrivals                                        DIFFERS n_diff=127 max_abs=0.00496571 +new=0 -gone=0
+      yoy_change@2015-10-01: nan -> 8.89
+csv  tourist_spending                                        DIFFERS n_diff=127 max_abs=0.0661102 +new=0 -gone=0
+      yoy_change@2015-10-01: nan -> 4.06
+csv  yahoo.brent_crude_processed                             DIFFERS n_diff=1090 max_abs=16.84 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 5.554126719752661 -> 3.9503608313199656
+      change_1y_abs@2023-01-03: 4.319999694824219 -> 3.1199951171875
+csv  yahoo.cac_40_processed                                  DIFFERS n_diff=2054 max_abs=931.71 +new=0 -gone=0
+      return_1y_pct@2022-10-20: -10.884377035595438 -> nan
+      change_1y_abs@2022-10-20: -743.43994140625 -> nan
+csv  yahoo.dax_processed                                     DIFFERS n_diff=2040 max_abs=1732.58 +new=0 -gone=0
+      return_1y_pct@2022-10-24: -17.575115310638456 -> nan
+      change_1y_abs@2022-10-24: -2757.3193359375 -> nan
+csv  yahoo.dxy_processed                                     DIFFERS n_diff=1006 max_abs=2.34 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 9.250547343476168 -> 8.60349019439659
+      change_1y_abs@2023-01-03: 8.84999847412108 -> 8.27999877929689
+csv  yahoo.eur_chf_processed                                 DIFFERS n_diff=2092 max_abs=3.6784 +new=0 -gone=0
+      return_1y_pct@2022-10-18: -7.995680950960937 -> nan
+      change_1y_abs@2022-10-18: -0.0851500034332276 -> nan
+csv  yahoo.eur_gbp_processed                                 DIFFERS n_diff=2088 max_abs=10.9211 +new=0 -gone=0
+      return_1y_pct@2022-10-18: 2.4362565933562896 -> nan
+      change_1y_abs@2022-10-18: 0.0206199884414672 -> nan
+csv  yahoo.eur_jpy_processed                                 DIFFERS n_diff=2092 max_abs=9.399 +new=0 -gone=0
+      return_1y_pct@2022-10-18: 10.482729918540002 -> nan
+      change_1y_abs@2022-10-18: 13.912994384765623 -> nan
+csv  yahoo.eur_usd_processed                                 DIFFERS n_diff=2092 max_abs=6.83423 +new=0 -gone=0
+      return_1y_pct@2022-10-18: -15.724695668907009 -> nan
+      change_1y_abs@2022-10-18: -0.1837211847305294 -> nan
+csv  yahoo.euro_govt_bond_etf_processed                      DIFFERS n_diff=2032 max_abs=4.915 +new=0 -gone=0
+      return_1y_pct@2022-10-24: -17.907595632468986 -> nan
+      change_1y_abs@2022-10-24: -23.39000701904297 -> nan
+csv  yahoo.euro_stoxx_50_processed                           DIFFERS n_diff=1670 max_abs=681.81 +new=0 -gone=0
+      return_1y_pct@2022-10-27: -15.199174695154484 -> nan
+      change_1y_abs@2022-10-27: -646.050048828125 -> nan
+csv  yahoo.european_banks_etf_processed                      DIFFERS n_diff=1536 max_abs=15.5647 +new=0 -gone=0
+      return_1y_pct@2023-01-03: -11.22194556417282 -> -12.098769199700998
+      change_1y_abs@2023-01-03: -2.25 -> -2.450000762939453
+csv  yahoo.ftse_100_processed                                DIFFERS n_diff=1770 max_abs=352.9 +new=0 -gone=0
+      return_1y_pct@2022-10-31: nan -> -1.9771760766747803
+      change_1y_abs@2022-10-31: nan -> -143.10009765625
+csv  yahoo.gbp_usd_processed                                 DIFFERS n_diff=2092 max_abs=8.83167 +new=0 -gone=0
+      return_1y_pct@2022-10-18: -17.729205301497032 -> nan
+      change_1y_abs@2022-10-18: -0.2446757555007936 -> nan
+csv  yahoo.gold_processed                                    DIFFERS n_diff=1090 max_abs=250.3 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 0.9570163093977068 -> 2.55541362279208
+      change_1y_abs@2023-01-03: 17.5 -> 45.99999999999977
+csv  yahoo.ibex_35_processed                                 DIFFERS n_diff=2050 max_abs=1564.4 +new=0 -gone=0
+      return_1y_pct@2022-10-24: -15.204744754360744 -> nan
+      change_1y_abs@2022-10-24: -1377.2001953125 -> nan
+csv  yahoo.market_summary                                    DIFFERS n_diff=27 max_abs=4.37471 +new=1 -gone=1
+      return_1y_pct@ibex_35: 19.452877082606943 -> 19.752249193659388
+csv  yahoo.nasdaq_composite_processed                        DIFFERS n_diff=1568 max_abs=2013.26 +new=0 -gone=0
+      return_1y_pct@2023-01-03: -33.60817789813506 -> -34.39580745741001
+      change_1y_abs@2023-01-03: -5257.9892578125 -> -5445.8193359375
+csv  yahoo.natural_gas_processed                             DIFFERS n_diff=1096 max_abs=42.9913 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 6.916887283750195 -> 4.53472755600024
+      change_1y_abs@2023-01-03: 0.2579998970031738 -> 0.1729998588562011
+csv  yahoo.silver_processed                                  DIFFERS n_diff=1016 max_abs=21.379 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 3.133577366259521 -> 5.5682275065941145
+      change_1y_abs@2023-01-03: 0.7310009002685547 -> 1.268999099731445
+csv  yahoo.sp_500_processed                                  DIFFERS n_diff=1568 max_abs=596.89 +new=0 -gone=0
+      return_1y_pct@2023-01-03: -19.76510011077604 -> -20.27328239690004
+      change_1y_abs@2023-01-03: -942.040283203125 -> -972.420166015625
+csv  yahoo.spanish_banks_etf_processed                       DIFFERS  (missing in new output)
+csv  yahoo.stoxx_600_processed                               DIFFERS n_diff=1670 max_abs=67.03 +new=0 -gone=0
+      return_1y_pct@2022-10-27: -13.73683118814142 -> nan
+      change_1y_abs@2022-10-27: -65.3200073242187 -> nan
+csv  yahoo.us_tbill_3m_processed                             DIFFERS n_diff=1444 max_abs=4865.64 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 12793.939810597234 -> 7928.302197520662
+      change_1y_abs@2023-01-03: 4.222000114619732 -> 4.202000115066767
+csv  yahoo.us_treasury_10y_processed                         DIFFERS n_diff=1552 max_abs=20.2143 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 150.8597930788441 -> 132.9852539282316
+      change_1y_abs@2023-01-03: 2.281000018119812 -> 2.164999961853028
+csv  yahoo.us_treasury_20y_etf_processed                     DIFFERS n_diff=1564 max_abs=4.83 +new=0 -gone=0
+      return_1y_pct@2023-01-03: -31.53384343549792 -> -29.68815180961515
+      change_1y_abs@2023-01-03: -46.7300033569336 -> -42.84000396728516
+csv  yahoo.us_treasury_30y_processed                         DIFFERS n_diff=1550 max_abs=11.2518 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 104.35695254243696 -> 93.1051500422732
+      change_1y_abs@2023-01-03: 1.9879999160766608 -> 1.8769998550415044
+csv  yahoo.us_treasury_5y_processed                          DIFFERS n_diff=1562 max_abs=32.3517 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 212.35153582715768 -> 189.01098210114012
+      change_1y_abs@2023-01-03: 2.681999921798706 -> 2.5799999237060547
+csv  yahoo.us_treasury_7_10y_etf_processed                   DIFFERS n_diff=1554 max_abs=2.13326 +new=0 -gone=0
+      return_1y_pct@2023-01-03: -16.060870626698364 -> -15.27253706597983
+      change_1y_abs@2023-01-03: -18.470001220703125 -> -17.400001525878906
+csv  yahoo.usd_jpy_processed                                 DIFFERS n_diff=2090 max_abs=9.18401 +new=0 -gone=0
+      return_1y_pct@2022-10-18: 31.117973316457917 -> nan
+      change_1y_abs@2022-10-18: 35.35499572753906 -> nan
+csv  yahoo.vix_processed                                     DIFFERS n_diff=1440 max_abs=59.0227 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 32.984904365070555 -> 37.95180176075854
+      change_1y_abs@2023-01-03: 5.680000305175785 -> 6.29999923706055
+csv  yahoo.wti_crude_processed                               DIFFERS n_diff=1014 max_abs=15 +new=0 -gone=0
+      return_1y_pct@2023-01-03: 2.2869315804289414 -> 1.117242972744159
+      change_1y_abs@2023-01-03: 1.720001220703125 -> 0.8499984741210938
+csv  files only in new output (not compared): ['bde/credit_households_growth_processed.csv', 'bde/credit_nfc_growth_processed.csv', 'yahoo/msci_spain_etf_processed.csv']
+csv  summary: {'identical': 144, 'DIFFERS': 42}
