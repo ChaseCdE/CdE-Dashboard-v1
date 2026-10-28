@@ -49,6 +49,14 @@ AVAILABLE_INDICATORS = [
     "gdp_productivity",
     "cpi_ccaa",
     "business_confidence",
+    "tourist_arrivals",
+    "tourist_spending",
+    "hotel_overnight_stays",
+    "housing_transactions",
+    "mortgages",
+    "companies",
+    "household_saving_rate",
+    "population_nationality",
 ]
 
 

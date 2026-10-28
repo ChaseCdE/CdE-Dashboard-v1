@@ -225,3 +225,12 @@ percentage points (`yoy_pp`), not relative %.
 `Fecha` is local midnight of the first day of the period expressed in UTC milliseconds
 (for example 22:00 UTC the day before). Convert to Europe/Madrid before taking the date
 (`parse_ine_data` does).
+
+### Issue 8: Large tables and monthly sums (ext/ine)
+`DATOS_TABLA` refuses very large tables ("No puede mostrarse por restricciones de volumen", for
+example FRONTUR 75723) and `SERIES_TABLA` often does too. Use `DATOS_SERIE/<code>` for a few
+known series (population by nationality, table 59587). Inside a `DATOS_TABLA` response the order of
+`Data` is not guaranteed to be ascending: sort by date before taking "the last value".
+`sum_12m` is built with `sum_by_date` (null unless 12 consecutive monthly periods exist).
+Money amounts: check `T3_Escala` with `tip=AM` (EGATUR is in millions of euros, mortgage amounts
+in thousands of euros).
