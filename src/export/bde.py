@@ -43,6 +43,22 @@ def _value_label(key: str, kind: str) -> str:
     return "Tipo de interés"
 
 
+# The yoy of the credit stocks is BdE's transaction-based growth rate (audit M3). It does not
+# measure exactly the same aggregate as the stock shown as the level, so the note says which.
+_CREDIT_GROWTH_NOTE = {
+    "credit_households_total": "Tasa interanual de la financiación total a hogares e ISFLSH (préstamos y valores), "
+                               "basada en operaciones (Banco de España, Boletín Estadístico 3.21). Agregado más amplio "
+                               "que el saldo de préstamos mostrado como nivel",
+    "credit_nfc_total": "Tasa interanual de los préstamos de entidades de crédito a sociedades no financieras, basada "
+                        "en operaciones (Banco de España, Boletín Estadístico 3.20). No coincide exactamente con el "
+                        "saldo mostrado como nivel",
+}
+_CREDIT_GROWTH_CODE = {
+    "credit_households_total": "credit_households_growth",
+    "credit_nfc_total": "credit_nfc_growth",
+}
+
+
 def _fields(key: str, meta: dict, decimals: int) -> list:
     kind = meta["kind"]
     money = {"currency": meta.get("currency"), "scale": meta.get("scale", 0)}
@@ -66,7 +82,7 @@ def _fields(key: str, meta: dict, decimals: int) -> list:
             Field("mom", "Variación mensual del saldo", "pct_change", 1, column="change_pct",
                   note_es="Variación del saldo: incluye reclasificaciones, fallidos y titulizaciones"),
             Field("yoy", "Variación interanual", "pct_change", 1, column="yoy_change_pct",
-                  note_es="Tasa de crecimiento interanual basada en operaciones, publicada por el Banco de España"),
+                  note_es=_CREDIT_GROWTH_NOTE[key]),
         ]
     elif kind == "ratio":
         fields.append(Field("qoq_pp", "Variación trimestral", "pp", 1, column="change_abs"))
@@ -93,7 +109,8 @@ def _build() -> list:
             csv=f"bde/{key}_processed.csv",
             title_es=meta["title_es"],
             description_es=meta.get("description_es"),
-            source_dataset=cfg["series_code"],
+            source_dataset=(cfg["series_code"] if key not in _CREDIT_GROWTH_CODE else
+                            f'{cfg["series_code"]} (saldo); {BDE_INDICATORS[_CREDIT_GROWTH_CODE[key]]["series_code"]} (tasa interanual)'),
             source_url=meta["url"],
             frequency=freq,
             fields=_fields(key, meta, decimals),
