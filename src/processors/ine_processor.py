@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 import logging
 
+from .series_ops import diff_by_date, pct_change_by_date, sum_by_date
 from ..fetchers.ine_series import CPI_GROUP_LABELS, INDICATORS, code as ine_code, codes
 
 logger = logging.getLogger(__name__)
@@ -33,54 +34,6 @@ def _check_time_gaps(df: pd.DataFrame, expected_freq: str, indicator_name: str):
             f"{indicator_name}: {len(gaps)} gap(s) detected in time series. "
             f"Largest gap: {gaps.max().days} days. YoY calculations may be affected."
         )
-
-
-def _value_months_earlier(df: pd.DataFrame, col: str, months: int) -> pd.Series:
-    """
-    Value of `col` exactly `months` calendar months before each row's date.
-
-    Gaps are handled deliberately: if the comparison period is missing the
-    result is NaN. Positional shifts (pct_change(periods=n)) would silently
-    compare against the wrong period when an observation is missing, and the
-    default fill_method='pad' of pct_change would fill the gap with stale data.
-    """
-    base = df.drop_duplicates(subset=["date"], keep="last").set_index("date")[col]
-    prior = pd.Series(base.values, index=base.index + pd.DateOffset(months=months))
-    return df["date"].map(prior)
-
-
-def pct_change_by_date(df: pd.DataFrame, col: str, months: int) -> pd.Series:
-    """Percent change of `col` versus `months` calendar months earlier (NaN if that period is missing)."""
-    prev = _value_months_earlier(df, col, months).replace(0, float("nan"))
-    return (df[col] / prev - 1) * 100
-
-
-def diff_by_date(df: pd.DataFrame, col: str, months: int) -> pd.Series:
-    """Difference of `col` versus `months` calendar months earlier (percentage points for rates)."""
-    return df[col] - _value_months_earlier(df, col, months)
-
-
-def sum_by_date(df: pd.DataFrame, col: str, months: int = 12) -> pd.Series:
-    """
-    Rolling sum of `col` over the `months` calendar months ending at each row's date.
-
-    Date-based, not positional: the sum is NaN unless every one of the `months`
-    consecutive monthly periods (date, date - 1 month, ..., date - (months - 1))
-    is present and not null. Intended for monthly series.
-    """
-    base = df.drop_duplicates(subset=["date"], keep="last").set_index("date")[col].dropna()
-    lookup = base.to_dict()
-    out = []
-    for d in df["date"]:
-        total = 0.0
-        for k in range(months):
-            v = lookup.get(d - pd.DateOffset(months=k))
-            if v is None:
-                total = float("nan")
-                break
-            total += v
-        out.append(total)
-    return pd.Series(out, index=df.index)
 
 
 class SeriesNotFound(ValueError):

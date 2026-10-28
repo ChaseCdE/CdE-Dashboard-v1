@@ -11,6 +11,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import logging
 
+from .series_ops import asof_values
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -148,10 +150,7 @@ class BdeProcessor:
     @staticmethod
     def _lookup_asof(df: pd.DataFrame, keys: pd.Series, value_col: str = "value") -> pd.Series:
         """Value of the last observation dated on or before each key date (NaN if none)."""
-        left = pd.DataFrame({'key': keys.values}, index=df.index).reset_index().sort_values('key')
-        right = df[['date', value_col]].dropna().sort_values('date')
-        merged = pd.merge_asof(left, right, left_on='key', right_on='date', direction='backward')
-        return merged.set_index('index')[value_col].reindex(df.index)
+        return asof_values(df, keys, value_col)
 
     def calculate_changes(
         self,
