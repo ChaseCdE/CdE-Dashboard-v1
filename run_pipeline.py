@@ -77,13 +77,44 @@ def run_step(module_path: str, label: str) -> bool:
         return False
 
 
-def run_fetch(sources: list[str]) -> dict[str, bool]:
-    """Run fetch step for each source. Returns dict of source -> success."""
+def run_fetch(sources: list[str]) -> dict[str, object]:
+    """
+    Run fetch step for each source. Returns source -> True (all fetched), False (the
+    fetch step raised) or an int (number of files kept from a previous download
+    because the request failed or returned nothing; audit H1).
+    """
+    import logging
+    import re
+    from src.fetchers import fetch_status
+
+    # Every fetcher logs when a request fails or returns nothing, and then keeps the
+    # previous download. Listening to those log records catches every such path,
+    # including future ones, without instrumenting each fetcher.
+    failure_re = re.compile(r"no data|failed|error|skipping save|not found|empty", re.I)
+
+    class FetchFailureHandler(logging.Handler):
+        def __init__(self):
+            super().__init__(level=logging.WARNING)
+            self.source = None
+
+        def emit(self, record):
+            if "fetchers" in record.name and failure_re.search(record.getMessage()):
+                fetch_status.record(self.source, record.name, record.getMessage()[:300])
+
+    handler = FetchFailureHandler()
+    logging.getLogger().addHandler(handler)
+    fetch_status.reset()
     results = {}
-    for src in sources:
-        fetch_mod, _ = PIPELINE_MODULES[src]
-        ok = run_step(fetch_mod, f"FETCH {src.upper()}")
-        results[src] = ok
+    try:
+        for src in sources:
+            handler.source = src
+            fetch_mod, _ = PIPELINE_MODULES[src]
+            before = len(fetch_status.read())
+            ok = run_step(fetch_mod, f"FETCH {src.upper()}")
+            problems = len(fetch_status.read()) - before
+            results[src] = ok if (not ok or problems == 0) else problems
+    finally:
+        logging.getLogger().removeHandler(handler)
     return results
 
 
@@ -131,13 +162,29 @@ def print_summary(fetch_results: dict, process_results: dict):
             continue
         f = fetch_results.get(src)
         p = process_results.get(src)
-        f_str = "[OK]" if f else ("[FAIL]" if f is not None else "-")
+        if f is True:
+            f_str = "[OK]"
+        elif f is False:
+            f_str = "[FAIL]"
+        elif isinstance(f, int):
+            f_str = f"[WARN {f}]"
+        else:
+            f_str = "-"
         p_str = "[OK]" if p else ("[FAIL]" if p is not None else "-")
         print(f"  {src.upper():<12} {f_str:<12} {p_str:<12}")
 
     total_ok = sum(1 for v in process_results.values() if v)
     total = len(process_results)
     print(f"\n  Processed: {total_ok}/{total} sources successful")
+    from src.fetchers import fetch_status
+    failures = fetch_status.read()
+    if failures or any(v is False for v in fetch_results.values()):
+        print("\n  WARNING: some data were NOT refreshed and are served from a previous download:")
+        for f in failures:
+            print(f"    - {f['source']}: {f['reason']}")
+        for src, v in fetch_results.items():
+            if v is False:
+                print(f"    - {src}: fetch step failed; every {src} file is from a previous download")
     print(f"{'='*60}")
 
 
@@ -191,6 +238,10 @@ def main():
 
     if not export_ok or not all(process_results.values()):
         sys.exit(1)
+    # 3 = site/data published, but some sources could not be refreshed (audit H1).
+    # CI publishes what did refresh and then marks the run as failed.
+    if any(v is not True for v in fetch_results.values()):
+        sys.exit(3)
 
 
 if __name__ == "__main__":

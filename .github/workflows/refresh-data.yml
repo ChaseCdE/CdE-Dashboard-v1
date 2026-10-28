@@ -41,8 +41,16 @@ jobs:
           key: pipeline-data-${{ github.run_id }}
           restore-keys: pipeline-data-
 
+      # Exit 0 = all fresh; 3 = published, but some sources served from a previous
+      # download (see the run log); anything else = failure, nothing is committed.
       - name: Run pipeline (fetch, process, export, validate)
-        run: python run_pipeline.py
+        id: pipeline
+        run: |
+          set +e
+          python run_pipeline.py
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -ne 0 ] && [ "$code" -ne 3 ]; then exit "$code"; fi
 
       - name: Validation report
         if: always()
@@ -69,10 +77,18 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Fail the run if some sources were not refreshed
+        if: steps.pipeline.outputs.code == '3'
+        run: |
+          echo "::error::Some sources could not be refreshed; their data come from a previous download. See the pipeline step log."
+          cat data/.fetch_failures.jsonl || true
+          exit 1
+
   # Pushes made with GITHUB_TOKEN do not trigger other workflows, so deploy here.
   deploy:
     needs: refresh
-    if: needs.refresh.outputs.changed == 'true'
+    # always(): publish what did refresh even when the run is marked failed for stale sources.
+    if: always() && needs.refresh.outputs.changed == 'true'
     uses: ./.github/workflows/deploy.yml
     permissions:
       contents: read

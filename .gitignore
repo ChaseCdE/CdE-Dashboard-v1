@@ -43,3 +43,4 @@ Thumbs.db
 .claude/settings.local.json
 tmpclaude-*
 site/data.tmp/
+data/.fetch_failures.jsonl
