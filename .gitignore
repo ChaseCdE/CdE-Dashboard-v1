@@ -38,3 +38,7 @@ Thumbs.db
 
 # Credentials
 .env
+
+# Local tooling
+.claude/settings.local.json
+tmpclaude-*
