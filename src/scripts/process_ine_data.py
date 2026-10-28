@@ -74,4 +74,10 @@ def main():
 
         # Create summary dataset
         print("\n")
-        summary = processor.create_su
+        summary = processor.create_summary_dataset()
+        print("\nLatest values:")
+        print(summary.to_string())
+
+
+if __name__ == "__main__":
+    main()

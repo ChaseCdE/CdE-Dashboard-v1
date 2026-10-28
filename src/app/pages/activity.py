@@ -130,8 +130,9 @@ def _build_gdp_comparison_chart(df):
 
     fig = go.Figure()
 
-    # Add each country's line
+    # Add each country's line, and collect last-point info for end-of-line labels
     countries = ["spain", "germany", "france", "italy", "eu27"]
+    last_points = []
     for country in countries:
         col = f"gdp_index_{country}"
         if col not in df.columns:
@@ -141,29 +142,68 @@ def _build_gdp_comparison_chart(df):
         if country_df.empty:
             continue
 
+        color = GDP_COUNTRY_COLORS.get(country, COLORS["neutral"])
+        label = GDP_COUNTRY_LABELS.get(country, country)
+
         fig.add_trace(go.Scatter(
             x=country_df["date"],
             y=country_df[col],
             mode="lines+markers",
-            name=GDP_COUNTRY_LABELS.get(country, country),
-            line=dict(color=GDP_COUNTRY_COLORS.get(country, COLORS["neutral"]), width=2.5),
-            marker=dict(size=5, color=GDP_COUNTRY_COLORS.get(country, COLORS["neutral"])),
-            hovertemplate=f"{GDP_COUNTRY_LABELS.get(country, country)}: %{{y:.1f}}<extra></extra>",
+            name=label,
+            line=dict(color=color, width=2.5),
+            marker=dict(size=5, color=color),
+            hovertemplate=f"{label}: %{{y:.1f}}<extra></extra>",
         ))
 
-        # Add label on last observation
-        last_val = country_df[col].iloc[-1]
-        last_date = country_df["date"].iloc[-1]
-        fig.add_annotation(
-            x=last_date,
-            y=last_val,
-            text=f"<b>{last_val:.1f}</b>",
-            showarrow=False,
-            font=dict(size=10, color=GDP_COUNTRY_COLORS.get(country, COLORS["neutral"])),
-            xshift=25,
-            yshift=0,
-            xanchor="left",
-        )
+        last_points.append({
+            "date": country_df["date"].iloc[-1],
+            "value": float(country_df[col].iloc[-1]),
+            "color": color,
+            "label": label,
+        })
+
+    # De-collide end-of-line labels: spread labels bidirectionally from center
+    # when values are close, to avoid bunching at top or bottom.
+    if last_points:
+        last_points.sort(key=lambda p: p["value"])
+        values = [p["value"] for p in last_points]
+        y_range = max(values) - min(values) if len(values) > 1 else 1
+        min_gap = max(y_range * 0.12, 2.8)  # ≥ ~2.8 index points or 12% of spread
+
+        # Calculate ideal spread centered around the mean of actual values
+        center = sum(values) / len(values)
+        n = len(last_points)
+        total_span = min_gap * (n - 1)
+        start_y = center - total_span / 2
+
+        for i, p in enumerate(last_points):
+            ideal_y = start_y + i * min_gap
+            # Blend between actual value and ideal spread position
+            # to keep labels reasonably close to their data points
+            p["display_y"] = p["value"] * 0.3 + ideal_y * 0.7
+
+        for p in last_points:
+            shifted = abs(p["display_y"] - p["value"]) > 1e-6
+            fig.add_annotation(
+                x=p["date"],
+                y=p["display_y"],
+                # When the label is offset from the actual point, draw a thin
+                # leader line back to the true value so the chart stays honest.
+                ax=p["date"] if shifted else None,
+                ay=p["value"] if shifted else None,
+                xref="x", yref="y",
+                axref="x" if shifted else None,
+                ayref="y" if shifted else None,
+                text=f"<b>{p['label']}: {p['value']:.1f}</b>",
+                showarrow=shifted,
+                arrowhead=0,
+                arrowwidth=1,
+                arrowcolor=p["color"],
+                font=dict(size=10, color=p["color"]),
+                xshift=28,
+                xanchor="left",
+                yanchor="middle",
+            )
 
     # Reference line at 100
     fig.add_hline(y=100, line_dash="dot", line_color=COLORS["neutral"], line_width=1,
@@ -175,9 +215,8 @@ def _build_gdp_comparison_chart(df):
                    showgrid=False, dtick="M12"),
         yaxis=dict(title="", showgrid=True, gridcolor=COLORS["grid"],
                    tickformat=".0f", zeroline=False),
-        legend=dict(orientation="h", yanchor="top", y=-0.08, xanchor="left", x=0,
-                    font=dict(size=11)),
-        margin=dict(l=50, r=60, t=16, b=55),
+        showlegend=False,
+        margin=dict(l=50, r=140, t=16, b=30),
         font=dict(family="Arial"), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         hovermode="x unified", height=340,
     )
@@ -545,16 +584,29 @@ CONFIDENCE_LABELS = {
 }
 
 
-def _build_business_confidence_chart(df, period="all"):
+def _build_business_confidence_chart(df, period="all", mode="index"):
     """
     Build Business Confidence chart.
-    Shows: ICE (main index), Situación trimestre anterior, Expectativas trimestre entrante.
+    Shows only ICE (Índice de Confianza Empresarial).
+    mode: "index" for raw values, "yoy" for year-over-year change.
     """
     if df.empty:
         return None
 
     df = df.copy()
     df["date"] = pd.to_datetime(df["date"])
+
+    # Only keep ICE indicator
+    df = df[df["indicator"] == "ice"].copy()
+    if df.empty:
+        return None
+
+    df = df.sort_values("date")
+
+    # Calculate YoY if needed
+    if mode == "yoy":
+        df["value"] = df["value"].pct_change(periods=4) * 100  # Quarterly data, 4 periods = 1 year
+        df = df.dropna(subset=["value"])
 
     # Filter by period
     if period == "1y":
@@ -570,57 +622,48 @@ def _build_business_confidence_chart(df, period="all"):
 
     fig = go.Figure()
 
-    # Add each indicator (ice first as main, then others)
-    for indicator in ["ice", "situacion", "expectativas"]:
-        indicator_df = df[df["indicator"] == indicator].copy()
-        if indicator_df.empty:
-            continue
+    fig.add_trace(go.Scatter(
+        x=df["date"],
+        y=df["value"],
+        mode="lines+markers",
+        name="ICE",
+        line=dict(color=CONFIDENCE_COLORS.get("ice", COLORS["primary"]), width=2.5),
+        marker=dict(size=5, color=CONFIDENCE_COLORS.get("ice", COLORS["primary"])),
+        hovertemplate="ICE: %{y:.1f}" + ("%" if mode == "yoy" else "") + "<extra></extra>",
+    ))
 
-        indicator_df = indicator_df.sort_values("date")
+    # Add label on last observation
+    if not df.empty:
+        last_val = df["value"].iloc[-1]
+        last_date = df["date"].iloc[-1]
+        fig.add_annotation(
+            x=last_date,
+            y=last_val,
+            text=f"<b>{last_val:.1f}{'%' if mode == 'yoy' else ''}</b>",
+            showarrow=False,
+            font=dict(size=10, color=CONFIDENCE_COLORS.get("ice", COLORS["primary"])),
+            xshift=30,
+            yshift=0,
+            xanchor="left",
+        )
 
-        # Main index (ICE) gets thicker line
-        line_width = 2.5 if indicator == "ice" else 2
-
-        fig.add_trace(go.Scatter(
-            x=indicator_df["date"],
-            y=indicator_df["value"],
-            mode="lines+markers",
-            name=CONFIDENCE_LABELS.get(indicator, indicator),
-            line=dict(color=CONFIDENCE_COLORS.get(indicator, COLORS["neutral"]), width=line_width),
-            marker=dict(size=5, color=CONFIDENCE_COLORS.get(indicator, COLORS["neutral"])),
-            hovertemplate=f"{CONFIDENCE_LABELS.get(indicator, indicator)}: %{{y:.1f}}<extra></extra>",
-        ))
-
-        # Add label on last observation (only for ICE to avoid clutter)
-        if indicator == "ice" and not indicator_df.empty:
-            last_val = indicator_df["value"].iloc[-1]
-            last_date = indicator_df["date"].iloc[-1]
-            fig.add_annotation(
-                x=last_date,
-                y=last_val,
-                text=f"<b>{last_val:.1f}</b>",
-                showarrow=False,
-                font=dict(size=10, color=CONFIDENCE_COLORS.get(indicator, COLORS["neutral"])),
-                xshift=30,
-                yshift=0,
-                xanchor="left",
-            )
-
-    # Reference line at 100 (neutral level)
-    fig.add_hline(y=100, line_dash="dot", line_color=COLORS["neutral"], line_width=1,
-                  annotation_text="100 = Neutro", annotation_position="left",
-                  annotation_font_size=10, annotation_font_color=COLORS["neutral"])
+    # Reference line at 100 (neutral level) only for index mode
+    if mode == "index":
+        fig.add_hline(y=100, line_dash="dot", line_color=COLORS["neutral"], line_width=1,
+                      annotation_text="100 = Neutro", annotation_position="left",
+                      annotation_font_size=10, annotation_font_color=COLORS["neutral"])
+    else:
+        fig.add_hline(y=0, line_dash="dot", line_color=COLORS["neutral"], line_width=1)
 
     fig.update_layout(
         xaxis=dict(title="", type="date", tickformat="%Y", hoverformat="Q%q %Y",
                    showgrid=False, dtick="M12"),
         yaxis=dict(title="", showgrid=True, gridcolor=COLORS["grid"],
-                   tickformat=".0f", zeroline=False),
-        legend=dict(orientation="h", yanchor="top", y=-0.12, xanchor="left", x=0,
-                    font=dict(size=10)),
-        margin=dict(l=50, r=70, t=16, b=80),
+                   tickformat=".1f" if mode == "yoy" else ".0f", zeroline=False),
+        showlegend=False,
+        margin=dict(l=50, r=70, t=16, b=30),
         font=dict(family="Arial"), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        hovermode="x unified", height=380,
+        hovermode="x unified", height=340,
     )
     return fig
 
@@ -663,7 +706,7 @@ def page_ui(data_store):
         "Actividad",
         ui.div(
             # --- Row 1: GDP chart (YoY, QoQ, or Index) ---
-            ui.h5("Producto Interior Bruto",
+            ui.h5("Producto Interior Bruto (PIB)",
                    class_="chart-title"),
 
             ui.div(
@@ -696,7 +739,11 @@ def page_ui(data_store):
                     gdp_comparison_html,
                 ),
                 ui.card(
-                    ui.card_header(ui.tags.strong("Descomposicion del crecimiento del PIB (aportacion, en pp)")),
+                    ui.card_header(ui.div(
+                        ui.tags.strong("Descomposición del crecimiento del PIB"),
+                        ui.tags.br(),
+                        ui.tags.small("Aportación en puntos porcentuales", style="color: #6c757d;"),
+                    )),
                     demand_html,
                 ),
                 col_widths={"sm": 12, "md": 6},
@@ -707,7 +754,7 @@ def page_ui(data_store):
             ui.layout_columns(
                 ui.card(
                     ui.card_header(ui.div(
-                        ui.tags.strong("Productividad del PIB"),
+                        ui.tags.strong("PIB y productividad"),
                         ui.tags.br(),
                         ui.tags.small("Índice 2019T1=100", style="color: #6c757d;"),
                     )),
@@ -715,15 +762,15 @@ def page_ui(data_store):
                 ),
                 ui.card(
                     ui.card_header(ui.div(
-                        ui.tags.strong("Confianza Empresarial"),
+                        ui.tags.strong("Índice de Confianza Empresarial"),
                         ui.tags.br(),
                         ui.tags.small("Total Nacional, desde 2021", style="color: #6c757d;"),
                     )),
                     ui.div(
                         ui.input_radio_buttons(
-                            "confidence_period", None,
-                            choices={"all": "Todo", "2y": "2 años", "1y": "1 año"},
-                            selected="all", inline=True,
+                            "confidence_mode", None,
+                            choices={"index": "Índice", "yoy": "Var. interanual"},
+                            selected="index", inline=True,
                         ),
                         class_="toggle-btn-group",
                     ),
@@ -738,7 +785,9 @@ def page_ui(data_store):
             ),
 
             # --- Row 4: Combined production chart ---
-            ui.h5("Indices de Produccion", class_="chart-title", style="margin-top: 2rem;"),
+            ui.h5("Índices de Producción", class_="chart-title", style="margin-top: 2rem;"),
+            ui.p("Variación de la producción industrial y de servicios",
+                 style="color: #6c757d; font-size: 0.9rem; margin-top: -0.5rem; margin-bottom: 0.5rem;"),
 
             ui.div(
                 ui.input_radio_buttons(
@@ -841,10 +890,10 @@ def page_server(input, output, session, data_store):
 
     # --- Business Confidence ---
     @render.ui
-    @reactive.event(input.confidence_period)
+    @reactive.event(input.confidence_mode)
     def confidence_chart():
-        period = input.confidence_period()
-        fig = _build_business_confidence_chart(DATA.get("business_confidence", pd.DataFrame()), period)
+        mode = input.confidence_mode()
+        fig = _build_business_confidence_chart(DATA.get("business_confidence", pd.DataFrame()), period="all", mode=mode)
         hide = ui.tags.script(
             "document.querySelectorAll('#confidence_chart_container > :not(#confidence_chart)')"
             ".forEach(function(el){ el.style.display='none'; });")

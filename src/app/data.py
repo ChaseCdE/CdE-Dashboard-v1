@@ -66,6 +66,7 @@ def load_all_indicators() -> dict:
         # Labor Market - Labor Costs
         "labor_cost": load_indicator("labor_cost.csv"),
         "labor_cost_hour": load_indicator("labor_cost_hour.csv"),
+        "labor_cost_components": load_indicator("labor_cost_components.csv"),
         # Prices
         "cpi": load_indicator("cpi.csv"),
         "cpi_special_groups": load_indicator("cpi_special_groups.csv"),

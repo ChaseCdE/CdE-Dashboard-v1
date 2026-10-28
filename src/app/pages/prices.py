@@ -39,9 +39,11 @@ IPRI_LABELS = {
     "energia": "Energía",
 }
 
-# Spanish month names
+# Spanish month names (abbreviated and full)
 MESES = {1: "ene", 2: "feb", 3: "mar", 4: "abr", 5: "may", 6: "jun",
          7: "jul", 8: "ago", 9: "sep", 10: "oct", 11: "nov", 12: "dic"}
+MESES_FULL = {1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
+              7: "julio", 8: "agosto", 9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"}
 
 
 def _build_weights_pie_chart(ecoicop_df):
@@ -242,6 +244,98 @@ def _build_inflation_chart(cpi_df, cpi_groups_df):
             showgrid=True, gridcolor=COLORS["grid"], gridwidth=0.5,
             ticksuffix="%",
         ),
+    )
+
+    return fig
+
+
+LABOR_COST_COLORS = {
+    "total": "#1e40af",      # Blue - Coste laboral total
+    "salarial": "#dc2626",   # Red - Coste salarial
+}
+
+LABOR_COST_LABELS = {
+    "total": "Coste laboral total",
+    "salarial": "Coste salarial",
+}
+
+
+def _build_labor_cost_chart(lc_df, metric="yoy_change"):
+    """
+    Build labor cost chart for Total and Coste Salarial subcomponent.
+    metric: "index_2019q1", "yoy_change" or "qoq_change".
+    """
+    if lc_df is None or lc_df.empty:
+        return None
+
+    df = lc_df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+
+    if metric == "index_2019q1":
+        y_col, suffix, hover_suffix = "index_2019q1", "", ""
+    elif metric == "qoq_change":
+        y_col, suffix, hover_suffix = "qoq_change", "%", "%"
+    else:
+        y_col, suffix, hover_suffix = "yoy_change", "%", "%"
+
+    if y_col not in df.columns:
+        return None
+
+    fig = go.Figure()
+
+    for component in ["total", "salarial"]:
+        sub = df[df["component"] == component].copy().sort_values("date")
+        sub = sub.dropna(subset=[y_col])
+        if sub.empty:
+            continue
+
+        # Spanish-friendly quarter label for hover (e.g., "T1 2019")
+        sub["date_es"] = sub["date"].apply(
+            lambda d: f"T{((d.month - 1) // 3) + 1} {d.year}"
+        )
+
+        color = LABOR_COST_COLORS.get(component, "#6b7280")
+        label = LABOR_COST_LABELS.get(component, component)
+
+        fig.add_trace(go.Scatter(
+            x=sub["date"],
+            y=sub[y_col],
+            mode="lines+markers",
+            name=label,
+            line=dict(color=color, width=2.5),
+            marker=dict(size=5, color=color),
+            customdata=sub["date_es"],
+            hovertemplate=f"<b>{label}</b><br>%{{customdata}}<br>%{{y:.1f}}{hover_suffix}<extra></extra>",
+        ))
+
+        last_date = sub["date"].iloc[-1]
+        last_val = sub[y_col].iloc[-1]
+        fig.add_annotation(
+            x=last_date, y=last_val,
+            text=f"<b>{last_val:.1f}{suffix}</b>",
+            showarrow=False,
+            font=dict(size=10, color=color),
+            xshift=35,
+            xanchor="left",
+        )
+
+    if metric in ["yoy_change", "qoq_change"]:
+        fig.add_hline(y=0, line_dash="dot", line_color="#666", line_width=1)
+
+    fig.update_layout(
+        **COMMON_LAYOUT,
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        margin=dict(l=50, r=70, t=40, b=50),
+        xaxis=dict(
+            showgrid=True, gridcolor=COLORS["grid"], gridwidth=0.5,
+            tickformat="%b %Y",
+        ),
+        yaxis=dict(
+            showgrid=True, gridcolor=COLORS["grid"], gridwidth=0.5,
+            ticksuffix="%" if metric != "index_2019q1" else "",
+        ),
+        height=400,
     )
 
     return fig
@@ -605,6 +699,7 @@ def _build_cpi_ccaa_map(cpi_ccaa_df):
         ),
         paper_bgcolor="rgba(0,0,0,0)",
         geo=dict(bgcolor="rgba(0,0,0,0)"),
+        font=dict(family="Arial"),
         height=450,
         shapes=[canarias_separator],
     )
@@ -622,7 +717,7 @@ def page_ui(data_store):
             # Row 1: Inflation chart: General vs Subyacente (YoY change)
             ui.card(
                 ui.card_header(ui.div(
-                    ui.tags.strong("Inflación (variación, en %)"),
+                    ui.tags.strong("Índice de precios de consumo"),
                     ui.tags.br(),
                     ui.tags.small("Variación interanual del IPC", style="color: #6c757d;"),
                 )),
@@ -713,6 +808,32 @@ def page_ui(data_store):
                 ),
             ),
 
+            # Row: Spanish labour cost (Total + Coste Salarial)
+            ui.card(
+                ui.card_header(ui.div(
+                    ui.tags.strong("Coste laboral (España)"),
+                    ui.tags.br(),
+                    ui.tags.small(
+                        "Coste laboral total y Coste salarial por trabajador (ETCL, trimestral)",
+                        style="color: #6c757d;",
+                    ),
+                )),
+                ui.div(
+                    ui.input_radio_buttons(
+                        "labor_cost_metric", None,
+                        choices={
+                            "index_2019q1": "Índice (2019T1=100)",
+                            "yoy_change": "Var. interanual",
+                            "qoq_change": "Var. trimestral",
+                        },
+                        selected="yoy_change", inline=True,
+                    ),
+                    class_="toggle-btn-group",
+                ),
+                ui.output_ui("labor_cost_components_chart", height="400px"),
+                full_screen=True,
+            ),
+
             # Row 4: CPI Map by CCAA (left) and Table (right)
             ui.row(
                 ui.column(
@@ -777,7 +898,7 @@ def page_server(input, output, session, data_store):
         ecoicop_df["date"] = pd.to_datetime(ecoicop_df["date"])
         latest_date = ecoicop_df["date"].max()
         period_str = latest_date.strftime("%B %Y")
-        return ui.tags.small(f"Aportación de cada grupo a la inflación. Últimos 12 meses hasta {period_str}", style="color: #6c757d;")
+        return ui.tags.small("Aportación de cada grupo a la inflación", style="color: #6c757d;")
 
     @render.ui
     def contributions_bar_chart():
@@ -811,6 +932,14 @@ def page_server(input, output, session, data_store):
         fig = _build_ipri_sectors_chart(ipri_df, metric, period)
         return ui.HTML(fig.to_html(full_html=False, include_plotlyjs="cdn")) if fig else ui.div("No data", class_="no-data-placeholder")
 
+    # Labor cost components (Total + Coste Salarial)
+    @render.ui
+    def labor_cost_components_chart():
+        lc_df = DATA.get("labor_cost_components", pd.DataFrame())
+        metric = input.labor_cost_metric()
+        fig = _build_labor_cost_chart(lc_df, metric)
+        return ui.HTML(fig.to_html(full_html=False, include_plotlyjs="cdn")) if fig else ui.div("No data", class_="no-data-placeholder")
+
     # CPI by CCAA Map
     @render.ui
     def cpi_ccaa_map_subtitle():
@@ -819,7 +948,7 @@ def page_server(input, output, session, data_store):
             return ui.tags.small("Sin datos", style="color: #6c757d;")
         cpi_ccaa_df["date"] = pd.to_datetime(cpi_ccaa_df["date"])
         latest_date = cpi_ccaa_df["date"].max()
-        period_str = latest_date.strftime("%B %Y")
+        period_str = f"{MESES_FULL[latest_date.month].capitalize()} {latest_date.year}"
         return ui.tags.small(f"Variación interanual del IPC. {period_str}", style="color: #6c757d;")
 
     @render.ui
@@ -839,7 +968,7 @@ def page_server(input, output, session, data_store):
             return ui.tags.small("Sin datos", style="color: #6c757d;")
         cpi_ccaa_df["date"] = pd.to_datetime(cpi_ccaa_df["date"])
         latest_date = cpi_ccaa_df["date"].max()
-        period_str = latest_date.strftime("%B %Y")
+        period_str = f"{MESES_FULL[latest_date.month].capitalize()} {latest_date.year}"
         return ui.tags.small(f"Datos a {period_str}", style="color: #6c757d;")
 
     @render.ui
@@ -870,7 +999,7 @@ def page_server(input, output, session, data_store):
             """)
 
         table_html = f"""
-        <div style="max-height: 420px; overflow-y: auto;">
+        <div style="max-height: 420px; overflow-y: auto; font-family: Arial, sans-serif;">
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background: #f9fafb; position: sticky; top: 0;">

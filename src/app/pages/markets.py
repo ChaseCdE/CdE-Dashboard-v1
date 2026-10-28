@@ -205,12 +205,20 @@ def _build_comparison_chart(data, period):
 # Interest rate indicator display names
 RATE_NAMES = {
     "ester_daily": "€STR (overnight)",
+    "fed_funds": "Fed Funds (efectivo)",
     "euribor_3m_daily": "Euribor 3M",
     "euribor_12m_daily": "Euribor 12M",
     "spain_5y_bond": "España 5Y",
     "spain_10y_bond": "España 10Y",
     "us_treasury_5y": "US Treasury 5Y",
     "us_treasury_10y": "US Treasury 10Y",
+}
+
+# Exchange rate display names
+FX_NAMES = {
+    "eur_usd": "EUR/USD",
+    "gbp_usd": "GBP/USD",
+    "usd_jpy": "USD/JPY",
 }
 
 
@@ -257,10 +265,11 @@ def _calculate_bp_change(df, days=None, ytd=False):
 
 
 def _build_interest_rates_table_html(bde_data, yahoo_data):
-    """Build HTML table with interest rates and changes in basis points."""
-    # Define indicators: (key, source)
-    indicators = [
+    """Build HTML table with interest rates, exchange rates, and changes."""
+    # Define interest rate indicators: (key, source)
+    rate_indicators = [
         ("ester_daily", "bde"),
+        ("fed_funds", "yahoo"),
         ("euribor_3m_daily", "bde"),
         ("euribor_12m_daily", "bde"),
         ("spain_5y_bond", "bde"),
@@ -269,8 +278,78 @@ def _build_interest_rates_table_html(bde_data, yahoo_data):
         ("us_treasury_10y", "yahoo"),
     ]
 
-    rows = []
-    for key, source in indicators:
+    # Define exchange rate indicators: (key, source)
+    fx_indicators = [
+        ("eur_usd", "yahoo"),
+        ("gbp_usd", "yahoo"),
+        ("usd_jpy", "yahoo"),
+    ]
+
+    # Helper functions
+    def format_rate(val):
+        if val is None or pd.isna(val):
+            return "-"
+        return f"{val:.2f}%"
+
+    def format_fx(val):
+        if val is None or pd.isna(val):
+            return "-"
+        return f"{val:.4f}"
+
+    def format_bp(val):
+        if val is None or pd.isna(val):
+            return "-"
+        return f"{val:+.0f} pb"
+
+    def format_pct_change(val):
+        if val is None or pd.isna(val):
+            return "-"
+        return f"{val:+.2f}%"
+
+    def get_color_style(val, invert=False):
+        if val is None or pd.isna(val):
+            return ""
+        positive_color = "#2d8659" if invert else "#b94a48"
+        negative_color = "#b94a48" if invert else "#2d8659"
+        if val > 0:
+            return f"color: {positive_color};"
+        elif val < 0:
+            return f"color: {negative_color};"
+        return ""
+
+    def calculate_pct_change(df, days=None, ytd=False):
+        """Calculate percentage change for exchange rates."""
+        if df.empty:
+            return None
+        df = df.copy()
+        df["date"] = pd.to_datetime(df["date"])
+        if df["date"].dt.tz is not None:
+            df["date"] = df["date"].dt.tz_localize(None)
+        df = df.sort_values("date")
+        value_col = "value" if "value" in df.columns else "Close"
+        if value_col not in df.columns:
+            return None
+        current_val = df[value_col].iloc[-1]
+        max_date = df["date"].max()
+        if ytd:
+            start_of_year = pd.Timestamp(max_date.year, 1, 1)
+            past_df = df[df["date"] < start_of_year]
+            if past_df.empty:
+                return None
+            past_val = past_df[value_col].iloc[-1]
+        else:
+            target_date = max_date - pd.Timedelta(days=days)
+            past_df = df[df["date"] <= target_date]
+            if past_df.empty:
+                return None
+            past_val = past_df[value_col].iloc[-1]
+        if pd.isna(current_val) or pd.isna(past_val) or past_val == 0:
+            return None
+        return ((current_val - past_val) / past_val) * 100
+
+    # Process interest rate indicators
+    rate_rows = []
+    for key, source in rate_indicators:
         data = bde_data if source == "bde" else yahoo_data
         df = data.get(key, pd.DataFrame())
         if df.empty:
@@ -280,7 +359,6 @@ def _build_interest_rates_table_html(bde_data, yahoo_data):
         df["date"] = pd.to_datetime(df["date"])
         df = df.sort_values("date")
 
-        # Get current value
         value_col = "value" if "value" in df.columns else "Close"
         if value_col not in df.columns:
             continue
@@ -288,12 +366,11 @@ def _build_interest_rates_table_html(bde_data, yahoo_data):
         current = df[value_col].iloc[-1]
         name = RATE_NAMES.get(key, key)
 
-        # Calculate changes in basis points
         change_30d = _calculate_bp_change(df, days=30)
         change_ytd = _calculate_bp_change(df, ytd=True)
         change_1y = _calculate_bp_change(df, days=365)
 
-        rows.append({
+        rate_rows.append({
             "name": name,
             "current": current,
             "change_30d": change_30d,
@@ -301,30 +378,42 @@ def _build_interest_rates_table_html(bde_data, yahoo_data):
             "change_1y": change_1y,
         })
 
-    if not rows:
+    # Process exchange rate indicators
+    fx_rows = []
+    for key, source in fx_indicators:
+        data = bde_data if source == "bde" else yahoo_data
+        df = data.get(key, pd.DataFrame())
+        if df.empty:
+            continue
+
+        df = df.copy()
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.sort_values("date")
+
+        value_col = "value" if "value" in df.columns else "Close"
+        if value_col not in df.columns:
+            continue
+
+        current = df[value_col].iloc[-1]
+        name = FX_NAMES.get(key, key)
+
+        change_30d = calculate_pct_change(df, days=30)
+        change_ytd = calculate_pct_change(df, ytd=True)
+        change_1y = calculate_pct_change(df, days=365)
+
+        fx_rows.append({
+            "name": name,
+            "current": current,
+            "change_30d": change_30d,
+            "change_ytd": change_ytd,
+            "change_1y": change_1y,
+        })
+
+    if not rate_rows and not fx_rows:
         return "<p>No hay datos disponibles</p>"
 
-    def format_rate(val):
-        if val is None or pd.isna(val):
-            return "-"
-        return f"{val:.2f}%"
-
-    def format_bp(val):
-        if val is None or pd.isna(val):
-            return "-"
-        return f"{val:+.0f} pb"
-
-    def get_color_style(val):
-        if val is None or pd.isna(val):
-            return ""
-        if val > 0:
-            return "color: #b94a48;"  # red for rate increases
-        elif val < 0:
-            return "color: #2d8659;"  # green for rate decreases
-        return ""
-
     html = """
-    <table class="rates-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <table class="rates-table" style="width: 100%; border-collapse: collapse; font-size: 13px; font-family: Arial, sans-serif;">
         <thead>
             <tr style="border-bottom: 2px solid #dee2e6; text-align: right;">
                 <th style="text-align: left; padding: 8px 4px;">Indicador</th>
@@ -337,7 +426,8 @@ def _build_interest_rates_table_html(bde_data, yahoo_data):
         <tbody>
     """
 
-    for row in rows:
+    # Interest rates section
+    for row in rate_rows:
         html += f"""
             <tr style="border-bottom: 1px solid #eee;">
                 <td style="text-align: left; padding: 10px 4px; font-weight: 600;">{row['name']}</td>
@@ -347,6 +437,22 @@ def _build_interest_rates_table_html(bde_data, yahoo_data):
                 <td style="text-align: right; padding: 10px 4px; {get_color_style(row['change_1y'])}">{format_bp(row['change_1y'])}</td>
             </tr>
         """
+
+    # Exchange rates section (if any)
+    if fx_rows:
+        html += """
+            <tr><td colspan="5" style="padding: 8px 4px; font-weight: 700; background: #f8f9fa; border-top: 2px solid #dee2e6;">Tipos de cambio</td></tr>
+        """
+        for row in fx_rows:
+            html += f"""
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="text-align: left; padding: 10px 4px; font-weight: 600;">{row['name']}</td>
+                <td style="text-align: right; padding: 10px 4px;">{format_fx(row['current'])}</td>
+                <td style="text-align: right; padding: 10px 4px; {get_color_style(row['change_30d'], invert=True)}">{format_pct_change(row['change_30d'])}</td>
+                <td style="text-align: right; padding: 10px 4px; {get_color_style(row['change_ytd'], invert=True)}">{format_pct_change(row['change_ytd'])}</td>
+                <td style="text-align: right; padding: 10px 4px; {get_color_style(row['change_1y'], invert=True)}">{format_pct_change(row['change_1y'])}</td>
+            </tr>
+            """
 
     html += """
         </tbody>
@@ -662,7 +768,7 @@ def page_ui(data_store):
                         ui.card_header(ui.div(
                             ui.tags.strong("Índices Bursátiles"),
                             ui.tags.br(),
-                            ui.tags.small("Precio de cierre diario con media móvil 200 días (desde ene-2022)", style="color: #6c757d;"),
+                            ui.tags.small("Cierre diario con media móvil de 200 días anteriores", style="color: #6c757d;"),
                         )),
                         ui.div(
                             ui.input_radio_buttons(

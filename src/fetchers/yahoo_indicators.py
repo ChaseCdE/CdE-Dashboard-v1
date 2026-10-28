@@ -100,6 +100,20 @@ YAHOO_INDICATORS: Dict[str, Dict[str, Any]] = {
     },
 
     # ==========================================================================
+    # US INTEREST RATES
+    # ==========================================================================
+
+    "fed_funds": {
+        "ticker": "^IRX",
+        "name": "Fed Funds Rate (proxy)",
+        "category": "interest_rates",
+        "description": "13-week T-Bill rate as proxy for Fed Funds effective rate",
+        "geography": "US",
+        "currency": "%",
+        "frequency": "daily"
+    },
+
+    # ==========================================================================
     # US TREASURY YIELDS
     # ==========================================================================
 
@@ -184,6 +198,26 @@ YAHOO_INDICATORS: Dict[str, Dict[str, Any]] = {
         "description": "Index measuring value of USD against basket of major currencies",
         "geography": "International",
         "currency": "Index",
+        "frequency": "daily"
+    },
+
+    "gbp_usd": {
+        "ticker": "GBPUSD=X",
+        "name": "GBP/USD",
+        "category": "currencies",
+        "description": "British Pound to US Dollar exchange rate",
+        "geography": "International",
+        "currency": "USD",
+        "frequency": "daily"
+    },
+
+    "usd_jpy": {
+        "ticker": "JPY=X",
+        "name": "USD/JPY",
+        "category": "currencies",
+        "description": "US Dollar to Japanese Yen exchange rate",
+        "geography": "International",
+        "currency": "JPY",
         "frequency": "daily"
     },
 

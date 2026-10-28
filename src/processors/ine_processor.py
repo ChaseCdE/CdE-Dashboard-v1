@@ -1788,4 +1788,21 @@ class INEProcessor:
                 df = pd.read_csv(filepath, parse_dates=["date"])
                 if df.empty:
                     continue
-     
+                # Skip if required columns are missing
+                if value_col not in df.columns:
+                    continue
+                df = df.sort_values("date", ascending=False)
+                latest = df.iloc[0]
+
+                summary_data.append({
+                    "indicator": name,
+                    "latest_date": latest["date"],
+                    "latest_value": latest[value_col],
+                    "yoy_change": latest[change_col] if change_col in df.columns and pd.notna(latest.get(change_col)) else None,
+                    "frequency": frequency,
+                })
+
+        summary_df = pd.DataFrame(summary_data)
+        self._save_processed(summary_df, "summary.csv")
+        return summary_df
+
