@@ -8,6 +8,7 @@ import pandas as pd
 from typing import Dict, List, Optional, Union
 from datetime import datetime, timedelta
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +57,7 @@ class YahooFinanceClient:
         end = end or self.end_date
 
         try:
-            ticker_obj = yf.Ticker(ticker)
-            df = ticker_obj.history(start=start, end=end, interval=interval, auto_adjust=False)  # traded close (audit H2)
+            df = self._history_with_retry(ticker, start, end, interval)
 
             if df.empty:
                 logger.warning(f"No data returned for {ticker}")
@@ -89,6 +89,18 @@ class YahooFinanceClient:
         except Exception as e:
             logger.error(f"Error fetching {ticker}: {e}")
             return pd.DataFrame()
+
+    @staticmethod
+    def _history_with_retry(ticker: str, start: str, end: str, interval: str, attempts: int = 3) -> pd.DataFrame:
+        """yfinance history (traded close, audit H2), retrying with backoff (1 s, 2 s) when Yahoo errors, e.g. rate limits."""
+        for attempt in range(1, attempts + 1):
+            try:
+                return yf.Ticker(ticker).history(start=start, end=end, interval=interval, auto_adjust=False)
+            except Exception as exc:  # noqa: BLE001 - yfinance raises several types (rate limit, network)
+                if attempt == attempts:
+                    raise
+                logger.warning(f"{ticker}: attempt {attempt} failed ({exc}); retrying")
+                time.sleep(2 ** (attempt - 1))
 
     def get_multiple_tickers(
         self,

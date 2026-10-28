@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import logging
 from .yahoo_client import YahooFinanceClient
+from .http_session import map_bounded
+
+MAX_WORKERS = 4  # concurrent requests to query1.finance.yahoo.com
 
 logger = logging.getLogger(__name__)
 
@@ -482,143 +485,79 @@ class YahooIndicatorFetcher:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def _save_csv(self, df: pd.DataFrame, filename: str) -> Path:
-        """Save DataFrame to CSV. Skips writing if df is empty to preserve cached data."""
+        """Write the raw CSV if its content changed. Never overwrite cached data with an empty frame."""
         filepath = self.output_dir / filename
         if df.empty:
             logger.warning(f"Skipping save of empty DataFrame to {filepath} (preserving cached data)")
             return filepath
-        df.to_csv(filepath, index=False, encoding="utf-8")
+        text = df.to_csv(index=False)
+        if filepath.exists() and filepath.read_bytes() == text.encode("utf-8"):
+            logger.info(f"Unchanged: {filepath}")
+            return filepath
+        filepath.write_text(text, encoding="utf-8", newline="")
         logger.info(f"Saved: {filepath}")
         return filepath
 
-    def fetch_indicator(self, key: str) -> pd.DataFrame:
-        """
-        Fetch a single indicator by its key.
-
-        Args:
-            key: Indicator key (e.g., 'ibex_35')
-
-        Returns:
-            DataFrame with OHLCV data
-        """
-        if key not in YAHOO_INDICATORS:
-            logger.warning(f"Unknown indicator key: {key}")
-            return pd.DataFrame()
-
+    def _fetch_frame(self, key: str) -> pd.DataFrame:
+        """Download one indicator and add its metadata columns (no file I/O; runs in worker threads)."""
         config = YAHOO_INDICATORS[key]
-        ticker = config["ticker"]
-        name = config["name"]
-
+        ticker, name = config["ticker"], config["name"]
         logger.info(f"Fetching {name} ({ticker})...")
-
         df = self.client.get_historical_data(ticker)
-
         if df.empty:
-            logger.warning(f"No data for {key}")
+            logger.error(f"No data for {key} ({ticker}): fetch failed, keeping the previous {key}_raw.csv")
             return df
-
-        # Add metadata columns
         df['indicator'] = key
         df['name'] = name
         df['ticker'] = ticker
-
-        # Save to CSV
-        filename = f"{key}_raw.csv"
-        self._save_csv(df, filename)
-
-        logger.info(f"Fetched {len(df)} rows")
         return df
 
+    def fetch_keys(self, keys: List[str]) -> Dict[str, pd.DataFrame]:
+        """
+        Fetch several indicators, MAX_WORKERS at a time. (Yahoo's chart endpoint is one request per
+        symbol; yf.download only runs the same requests in threads, so it gains nothing here.)
+        A failed indicator keeps its previous raw file and logs an error (audit H1).
+        """
+        results: Dict[str, pd.DataFrame] = {}
+        valid = []
+        for key in keys:
+            if key not in YAHOO_INDICATORS:
+                logger.warning(f"Unknown indicator key: {key}")
+                results[key] = pd.DataFrame()
+            else:
+                valid.append(key)
+        for key, (df, exc) in zip(valid, map_bounded(self._fetch_frame, valid, MAX_WORKERS)):
+            if exc is not None:
+                logger.error(f"Yahoo {key}: fetch failed: {exc}")
+                df = pd.DataFrame()
+            if not df.empty:
+                self._save_csv(df, f"{key}_raw.csv")
+                logger.info(f"Fetched {key}: {len(df)} rows")
+            results[key] = df
+        return results
+
+    def fetch_indicator(self, key: str) -> pd.DataFrame:
+        """Fetch a single indicator by its key (e.g., 'ibex_35')."""
+        return self.fetch_keys([key])[key]
+
     def fetch_group(self, group_name: str) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch all indicators in a group.
-
-        Args:
-            group_name: Name of the indicator group
-
-        Returns:
-            Dictionary mapping indicator keys to DataFrames
-        """
+        """Fetch all indicators in a group."""
         if group_name not in INDICATOR_GROUPS:
             logger.warning(f"Unknown group: {group_name}")
             return {}
-
-        logger.info(f"\n{'='*60}")
-        logger.info(f"Fetching group: {group_name}")
-        logger.info(f"{'='*60}\n")
-
-        results = {}
-        keys = INDICATOR_GROUPS[group_name]
-
-        for key in keys:
-            df = self.fetch_indicator(key)
-            results[key] = df
-
-        return results
+        return self.fetch_keys(list(INDICATOR_GROUPS[group_name]))
 
     def fetch_category(self, category: str) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch all indicators in a category.
-
-        Args:
-            category: Category name (e.g., 'stock_indices', 'currencies')
-
-        Returns:
-            Dictionary mapping indicator keys to DataFrames
-        """
-        logger.info(f"\n{'='*60}")
-        logger.info(f"Fetching category: {category}")
-        logger.info(f"{'='*60}\n")
-
-        results = {}
-        indicators = get_indicators_by_category(category)
-
-        for key in indicators:
-            df = self.fetch_indicator(key)
-            results[key] = df
-
-        return results
+        """Fetch all indicators in a category (e.g., 'stock_indices', 'currencies')."""
+        return self.fetch_keys(list(get_indicators_by_category(category)))
 
     def fetch_all(self) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch all configured indicators.
-
-        Returns:
-            Dictionary mapping indicator keys to DataFrames
-        """
-        logger.info("\n" + "="*60)
-        logger.info("YAHOO FINANCE DATA FETCH")
-        logger.info("="*60 + "\n")
-
-        results = {}
-
-        for key in YAHOO_INDICATORS:
-            df = self.fetch_indicator(key)
-            results[key] = df
-
-        # Log summary
-        logger.info("\n" + "="*60)
-        logger.info("FETCH SUMMARY")
-        logger.info("="*60)
+        """Fetch all configured indicators."""
+        results = self.fetch_keys(list(YAHOO_INDICATORS))
         success = sum(1 for df in results.values() if not df.empty)
-        logger.info(f"Total indicators: {len(results)}")
-        logger.info(f"Successfully fetched: {success}")
-        logger.info(f"Failed: {len(results) - success}")
-
+        logger.info(f"Yahoo fetch: {success} of {len(results)} indicators fetched")
         return results
 
     def fetch_selected(self, keys: List[str]) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch selected indicators by key.
-
-        Args:
-            keys: List of indicator keys to fetch
-
-        Returns:
-            Dictionary mapping indicator keys to DataFrames
-        """
-        results = {}
-        for key in keys:
-            df = self.fetch_indicator(key)
-            results[key] = df
-        return results
+        """Fetch selected indicators by key."""
+        return self.fetch_keys(list(keys))
