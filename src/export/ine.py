@@ -9,7 +9,7 @@ Not exported on purpose (see docs/notes/ws-ine.md):
 - population.csv: input to gdp_productivity.csv, which is exported.
 
 Metadata conventions
-- Table ids come from TABLE_IDS in src/fetchers/ine_indicators.py so a repoint of a
+- Table ids come from TABLE_IDS in src/fetchers/ine_series.py so a repoint of a
   fetcher table is picked up here automatically.
 - Rates of change that INE publishes or that the processor computes are exported as
   fields (yoy / qoq / mom, unit pct_change). Changes of a rate are exported as
@@ -18,7 +18,7 @@ Metadata conventions
   averages 100 in the data (CPI and house prices: 2025 = 100).
 """
 
-from ..fetchers.ine_indicators import TABLE_IDS
+from ..fetchers.ine_series import TABLE_IDS
 from .core import Dataset, Field, Series, long_series
 
 INE_TABLE_URL = "https://www.ine.es/jaxiT3/Tabla.htm?t={}"
