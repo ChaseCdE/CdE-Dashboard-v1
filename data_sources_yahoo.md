@@ -227,7 +227,7 @@ Since Yahoo Finance doesn't provide direct bond yield data, we use ETFs as proxi
 | Field | Value |
 |-------|-------|
 | Ticker | `EWP` |
-| Key | `spanish_banks_etf` |
+| Key | `msci_spain_etf` |
 | Description | ETF tracking Spanish equity market |
 | Currency | USD |
 | Notes | Heavy weighting in financial sector |

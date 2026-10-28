@@ -9,10 +9,10 @@ import logging
 from pathlib import Path
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # project root: packages are imported as src.*
 
-from fetchers.bde_indicators import BDE_INDICATORS, list_categories
-from processors.bde_processor import BdeProcessor, run_processing
+from src.fetchers.bde_indicators import BDE_INDICATORS, list_categories
+from src.processors.bde_processor import BdeProcessor, run_processing
 
 # Configure logging
 logging.basicConfig(

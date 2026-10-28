@@ -1,12 +1,18 @@
 """
-Eurostat Indicator Fetchers
-Functions to fetch specific economic indicators from Eurostat.
+Eurostat Indicator Fetcher
+
+Every indicator is one server-filtered request (see eurostat_client.py), defined in
+EUROSTAT_INDICATORS: dataset, one value per non-geo dimension, geographies, first year.
+The requests run a few at a time; a failed one keeps the previous raw file and logs an error
+(run_pipeline.py reports it and exits 3, audit H1). A raw file is rewritten only when its
+content changed.
 """
 
 import pandas as pd
 from pathlib import Path
-from typing import Optional, List
+from typing import Dict, List, Optional
 import logging
+from .http_session import CircuitBreaker, map_bounded
 from .eurostat_client import (
     EurostatClient,
     parse_eurostat_data,
@@ -68,6 +74,53 @@ GEO_EXT_RD = ['ES', 'EU27_2020', 'DE', 'FR', 'IT']
 EXT_ANNUAL_START = 2005
 
 
+
+MAX_WORKERS = 4  # concurrent requests to ec.europa.eu
+
+_COMPARISON_GEOS = ['ES', 'FR', 'IT', 'DE', 'EU27_2020']
+
+
+def _ind(dataset_key, filters, geos=None, start=None, geo_filter=None):
+    """geos: geographies requested (default ES, EU27_2020); geo_filter: geographies kept (default = geos)."""
+    return {"dataset": DATASET_CODES[dataset_key], "filters": filters, "geos": geos, "start": start, "geo_filter": geo_filter}
+
+
+# name -> request. The raw file is data/raw/eurostat/<name>_raw.csv.
+EUROSTAT_INDICATORS = {
+    "gdp_growth": _ind("gdp_growth", {'unit': ['CLV_PCH_PRE'], 's_adj': ['SCA'], 'na_item': ['B1GQ']}),
+    # Levels (chain-linked volumes 2010) for the European comparison
+    "gdp_index_comparison": _ind("gdp_growth", {'unit': ['CLV10_MNAC'], 's_adj': ['SCA'], 'na_item': ['B1GQ']},
+                                 geos=_COMPARISON_GEOS),
+    "industrial_production": _ind("industrial_production", {'unit': ['I21'], 's_adj': ['SCA'], 'nace_r2': ['B-D']}),
+    "economic_sentiment": _ind("economic_sentiment", {'indic': ['BS-ESI-I'], 's_adj': ['SA']}),
+    # age TOTAL = 15-74, the headline rate (audit C1; Y25-74 understated it by ~1 pp)
+    "unemployment": _ind("unemployment", {'unit': ['PC_ACT'], 's_adj': ['SA'], 'sex': ['T'], 'age': ['TOTAL']}),
+    "employment_growth": _ind("employment_growth", {'unit': ['PCH_PRE_PER'], 's_adj': ['SCA'], 'nace_r2': ['TOTAL'], 'na_item': ['EMP_DC']}),
+    "labor_participation": _ind("labor_participation", {'unit': ['PC_POP'], 's_adj': ['SA'], 'sex': ['T'], 'age': ['Y15-64'], 'indic_em': ['ACT']}),
+    "hicp": _ind("hicp", {'coicop18': ['TOTAL'], 'unit': ['RCH_A']}),
+    "core_inflation": _ind("core_inflation", {'coicop18': ['TOT_X_NRG_FOOD'], 'unit': ['RCH_A']}),
+    "producer_prices": _ind("producer_prices", {'unit': ['I21'], 'nace_r2': ['B-D']}),
+    # Spain only; exports and imports with the whole world, million EUR, not seasonally adjusted
+    "trade_balance": _ind("trade_balance", {'partner': ['WORLD'], 'bclas_bec': ['TOTAL'], 'indic_et': ['TRD_VAL'], 'stk_flow': ['EXP', 'IMP']},
+                          geos=['ES'], geo_filter=['ES', 'EU27_2020']),
+    "government_debt": _ind("government_debt", {'unit': ['PC_GDP'], 'na_item': ['GD'], 'sector': ['S13']}),
+    "budget_deficit": _ind("budget_deficit", {'unit': ['PC_GDP'], 'na_item': ['B9'], 'sector': ['S13']}),
+    "consumer_confidence": _ind("consumer_confidence", {'indic': ['BS-CSMCI'], 's_adj': ['SA']}),
+    "retail_trade": _ind("retail_trade", {'unit': ['I21'], 's_adj': ['SCA'], 'nace_r2': ['G47'], 'indic_bt': ['VOL_SLS']}),
+    "house_prices": _ind("house_prices", {'unit': ['I15_Q'], 'purchase': ['TOTAL']}),
+    # Extension indicators
+    "gdp_per_capita_pps": _ind("gdp_per_capita_pps", {'unit': ['PC_EU27_2020_HAB_MPPS_CP'], 'na_item': ['B1GQ']},
+                               geos=GEO_EXT_PEERS, start=EXT_ANNUAL_START),
+    "labour_productivity_pps": _ind("labour_productivity_pps", {'unit': ['PC_EU27_2020_MPPS_CP'], 'na_item': ['NLPR_HW']},
+                                    geos=GEO_EXT_PEERS, start=EXT_ANNUAL_START),
+    "rd_expenditure": _ind("rd_expenditure", {'sectperf': ['TOTAL'], 'unit': ['PC_GDP']},
+                           geos=GEO_EXT_RD, start=EXT_ANNUAL_START),
+    "youth_unemployment": _ind("youth_unemployment", {'unit': ['PC_ACT'], 's_adj': ['SA'], 'sex': ['T'], 'age': ['Y_LT25']}),
+    "long_term_unemployment": _ind("long_term_unemployment", {'indic_em': ['LTU'], 'age': ['Y15-74'], 'unit': ['PC_ACT'], 's_adj': ['SA'], 'sex': ['T']}),
+    "hicp_energy": _ind("hicp_energy", {'coicop18': ['NRG'], 'unit': ['RCH_A']}),
+}
+
+
 class EurostatIndicatorFetcher:
     """Fetcher for Eurostat economic indicators."""
 
@@ -78,8 +131,6 @@ class EurostatIndicatorFetcher:
         geo_codes: List[str] = None
     ):
         """
-        Initialize the fetcher.
-
         Args:
             output_dir: Directory to save CSV files
             start_period: Start year for data fetching
@@ -89,506 +140,56 @@ class EurostatIndicatorFetcher:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.geo_codes = geo_codes or [EurostatClient.GEO_SPAIN, EurostatClient.GEO_EU27]
+        self.breaker = CircuitBreaker()
 
     def _save_csv(self, df: pd.DataFrame, filename: str) -> Path:
-        """Save DataFrame to CSV. Skips writing if df is empty to preserve cached data."""
+        """Write the raw CSV if its content changed. Never overwrite cached data with an empty frame."""
         filepath = self.output_dir / filename
         if df.empty:
             logger.warning(f"Skipping save of empty DataFrame to {filepath} (preserving cached data)")
             return filepath
-        df.to_csv(filepath, index=False, encoding="utf-8")
+        text = df.to_csv(index=False)
+        if filepath.exists() and filepath.read_bytes() == text.encode("utf-8"):
+            logger.info(f"Unchanged: {filepath}")
+            return filepath
+        filepath.write_text(text, encoding="utf-8", newline="")
         logger.info(f"Saved: {filepath}")
         return filepath
 
-    def _process_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Process raw data: melt if needed, parse dates, clean."""
+    def _fetch_one(self, name: str) -> pd.DataFrame:
+        spec = EUROSTAT_INDICATORS[name]
+        geos = spec["geos"] or self.geo_codes
+        filter_pars = {'geo': geos, **spec["filters"]}
+        if spec["start"] is not None:
+            filter_pars['startPeriod'] = spec["start"]
+        logger.info(f"Fetching Eurostat {name} ({spec['dataset']})...")
+        try:
+            self.breaker.check()
+        except ConnectionError as exc:
+            logger.error(f"Error fetching {spec['dataset']}: {exc}")
+            return pd.DataFrame()
+        df = self.client.get_data(spec["dataset"], filter_pars)
+        (self.breaker.failure if df.empty else self.breaker.success)()
         if df.empty:
             return df
-
-        # Melt wide format to long format (time periods as columns -> rows)
         df = melt_eurostat_data(df)
+        return parse_eurostat_data(df, spec["geo_filter"] or geos)
 
-        # Parse, filter by geography, and convert dates
-        df = parse_eurostat_data(df, self.geo_codes)
-
-        return df
-
-    # === Economic Activity Indicators ===
-
-    def fetch_gdp_growth(self) -> pd.DataFrame:
-        """
-        Fetch GDP Growth data (quarterly).
-
-        Returns:
-            DataFrame with GDP growth data for Spain and EU27
-        """
-        logger.info("Fetching GDP Growth...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['CLV_PCH_PRE'],  # Chain linked volumes, % change
-            's_adj': ['SCA'],  # Seasonally and calendar adjusted
-            'na_item': ['B1GQ']  # GDP at market prices
-        }
-        df = self.client.get_data(DATASET_CODES["gdp_growth"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "gdp_growth_raw.csv")
-        return df
-
-    def fetch_industrial_production(self) -> pd.DataFrame:
-        """
-        Fetch Industrial Production Index (monthly).
-
-        Returns:
-            DataFrame with IPI data for Spain and EU27
-        """
-        logger.info("Fetching Industrial Production Index...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['I21'],  # Index, 2021=100
-            's_adj': ['SCA'],
-            'nace_r2': ['B-D']  # Industry except construction
-        }
-        df = self.client.get_data(DATASET_CODES["industrial_production"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "industrial_production_raw.csv")
-        return df
-
-    def fetch_economic_sentiment(self) -> pd.DataFrame:
-        """
-        Fetch Economic Sentiment Indicator (monthly).
-
-        Returns:
-            DataFrame with ESI data for Spain and EU27
-        """
-        logger.info("Fetching Economic Sentiment Indicator...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'indic': ['BS-ESI-I'],
-            's_adj': ['SA']
-        }
-        df = self.client.get_data(DATASET_CODES["economic_sentiment"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "economic_sentiment_raw.csv")
-        return df
-
-    # === Labor Market Indicators ===
-
-    def fetch_unemployment(self) -> pd.DataFrame:
-        """
-        Fetch Unemployment Rate (monthly).
-
-        Returns:
-            DataFrame with unemployment data for Spain and EU27
-        """
-        logger.info("Fetching Unemployment Rate...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['PC_ACT'],  # % of active population
-            's_adj': ['SA'],
-            'sex': ['T'],  # Total
-            'age': ['TOTAL']  # 15-74 years: the headline rate (audit C1; Y25-74 understated it by ~1 pp)
-        }
-        df = self.client.get_data(DATASET_CODES["unemployment"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "unemployment_raw.csv")
-        return df
-
-    def fetch_employment_growth(self) -> pd.DataFrame:
-        """
-        Fetch Employment Growth (quarterly).
-
-        Returns:
-            DataFrame with employment growth data for Spain and EU27
-        """
-        logger.info("Fetching Employment Growth...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['PCH_PRE_PER'],  # % change on previous period
-            's_adj': ['SCA'],
-            'nace_r2': ['TOTAL'],
-            'na_item': ['EMP_DC']  # Total employment domestic concept
-        }
-        df = self.client.get_data(DATASET_CODES["employment_growth"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "employment_growth_raw.csv")
-        return df
-
-    def fetch_labor_participation(self) -> pd.DataFrame:
-        """
-        Fetch Labor Force Participation Rate (quarterly).
-
-        Returns:
-            DataFrame with participation rate data for Spain and EU27
-        """
-        logger.info("Fetching Labor Force Participation Rate...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['PC_POP'],  # % of population
-            's_adj': ['SA'],
-            'sex': ['T'],
-            'age': ['Y15-64'],
-            'indic_em': ['ACT']  # Activity rate
-        }
-        df = self.client.get_data(DATASET_CODES["labor_participation"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "labor_participation_raw.csv")
-        return df
-
-    # === Prices & Inflation Indicators ===
-
-    def fetch_hicp(self) -> pd.DataFrame:
-        """
-        Fetch HICP Inflation (monthly, annual rate of change).
-
-        Returns:
-            DataFrame with HICP data for Spain and EU27
-        """
-        logger.info("Fetching HICP Inflation...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'coicop18': ['TOTAL'],  # All items (ECOICOP ver. 2; was CP00)
-            'unit': ['RCH_A']  # Annual rate of change
-        }
-        df = self.client.get_data(DATASET_CODES["hicp"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "hicp_raw.csv")
-        return df
-
-    def fetch_core_inflation(self) -> pd.DataFrame:
-        """
-        Fetch Core Inflation - HICP excluding energy and food (monthly).
-
-        Returns:
-            DataFrame with core inflation data for Spain and EU27
-        """
-        logger.info("Fetching Core Inflation...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'coicop18': ['TOT_X_NRG_FOOD'],  # Excluding energy and food
-            'unit': ['RCH_A']
-        }
-        df = self.client.get_data(DATASET_CODES["core_inflation"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "core_inflation_raw.csv")
-        return df
-
-    def fetch_producer_prices(self) -> pd.DataFrame:
-        """
-        Fetch Producer Price Index (monthly).
-
-        Returns:
-            DataFrame with PPI data for Spain and EU27
-        """
-        logger.info("Fetching Producer Price Index...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['I21'],  # Index, 2021=100
-            'nace_r2': ['B-D']
-        }
-        df = self.client.get_data(DATASET_CODES["producer_prices"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "producer_prices_raw.csv")
-        return df
-
-    # === External Sector Indicators ===
-
-    def fetch_trade_balance(self) -> pd.DataFrame:
-        """
-        Fetch Trade in goods (monthly, Spain only): exports and imports with the
-        whole world, million EUR, not seasonally adjusted. The balance is derived
-        in the processor (exports - imports).
-
-        Returns:
-            DataFrame with export and import values for Spain
-        """
-        logger.info("Fetching Trade Balance...")
-        filter_pars = {
-            'geo': ['ES'],  # Spain only
-            'partner': ['WORLD'],
-            'bclas_bec': ['TOTAL'],  # All products
-            'indic_et': ['TRD_VAL'],  # Trade value, million EUR
-            'stk_flow': ['EXP', 'IMP'],
-        }
-        df = self.client.get_data(DATASET_CODES["trade_balance"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "trade_balance_raw.csv")
-        return df
-
-    # === Public Finances Indicators ===
-
-    def fetch_government_debt(self) -> pd.DataFrame:
-        """
-        Fetch Government Debt-to-GDP (quarterly).
-
-        Returns:
-            DataFrame with debt data for Spain and EU27
-        """
-        logger.info("Fetching Government Debt-to-GDP...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['PC_GDP'],
-            'na_item': ['GD'],  # Government gross debt
-            'sector': ['S13']  # General government
-        }
-        df = self.client.get_data(DATASET_CODES["government_debt"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "government_debt_raw.csv")
-        return df
-
-    def fetch_budget_deficit(self) -> pd.DataFrame:
-        """
-        Fetch Budget Deficit as % of GDP (annual).
-
-        Returns:
-            DataFrame with deficit data for Spain and EU27
-        """
-        logger.info("Fetching Budget Deficit...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['PC_GDP'],
-            'na_item': ['B9'],  # Net lending/borrowing
-            'sector': ['S13']
-        }
-        df = self.client.get_data(DATASET_CODES["budget_deficit"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "budget_deficit_raw.csv")
-        return df
-
-    # === Consumer & Household Indicators ===
-
-    def fetch_consumer_confidence(self) -> pd.DataFrame:
-        """
-        Fetch Consumer Confidence Indicator (monthly).
-
-        Returns:
-            DataFrame with consumer confidence data for Spain and EU27
-        """
-        logger.info("Fetching Consumer Confidence...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'indic': ['BS-CSMCI'],  # Consumer confidence indicator
-            's_adj': ['SA']
-        }
-        df = self.client.get_data(DATASET_CODES["consumer_confidence"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "consumer_confidence_raw.csv")
-        return df
-
-    def fetch_retail_trade(self) -> pd.DataFrame:
-        """
-        Fetch Retail Trade Volume Index (monthly).
-
-        Returns:
-            DataFrame with retail trade data for Spain and EU27
-        """
-        logger.info("Fetching Retail Trade Volume...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['I21'],
-            's_adj': ['SCA'],
-            'nace_r2': ['G47'],
-            'indic_bt': ['VOL_SLS']  # Volume of sales (deflated turnover)
-        }
-        df = self.client.get_data(DATASET_CODES["retail_trade"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "retail_trade_raw.csv")
-        return df
-
-    def fetch_house_prices(self) -> pd.DataFrame:
-        """
-        Fetch House Price Index (quarterly).
-
-        Returns:
-            DataFrame with house price data for Spain and EU27
-        """
-        logger.info("Fetching House Price Index...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['I15_Q'],  # Index 2015=100, quarterly
-            'purchase': ['TOTAL']
-        }
-        df = self.client.get_data(DATASET_CODES["house_prices"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "house_prices_raw.csv")
-        return df
-
-    def fetch_gdp_index_comparison(self) -> pd.DataFrame:
-        """
-        Fetch GDP index data for European comparison (ES, FR, IT, DE, EU27).
-        Uses chain-linked volumes (2010 prices) for level comparison.
-
-        Returns:
-            DataFrame with GDP index data for multiple countries
-        """
-        logger.info("Fetching GDP Index Comparison (ES, FR, IT, DE, EU27)...")
-        comparison_geos = ['ES', 'FR', 'IT', 'DE', 'EU27_2020']
-        filter_pars = {
-            'geo': comparison_geos,
-            'unit': ['CLV10_MNAC'],  # Chain linked volumes (2010), million units of national currency
-            's_adj': ['SCA'],  # Seasonally and calendar adjusted
-            'na_item': ['B1GQ']  # GDP at market prices
-        }
-        df = self.client.get_data(DATASET_CODES["gdp_growth"], filter_pars)
-        df = melt_eurostat_data(df)
-        df = parse_eurostat_data(df, comparison_geos)
-        self._save_csv(df, "gdp_index_comparison_raw.csv")
-        return df
-
-    # === Extension indicators (ext/eurostat) ===
-
-    def fetch_gdp_per_capita_pps(self) -> pd.DataFrame:
-        """GDP per head in PPS, index EU27_2020 = 100 (annual; ES, DE, FR, IT, PT)."""
-        logger.info("Fetching GDP per capita in PPS...")
-        filter_pars = {
-            'geo': GEO_EXT_PEERS,
-            'unit': ['PC_EU27_2020_HAB_MPPS_CP'],  # EU27_2020 = 100, current prices, PPS
-            'na_item': ['B1GQ'],  # GDP at market prices
-            'startPeriod': EXT_ANNUAL_START,
-        }
-        df = self.client.get_data(DATASET_CODES["gdp_per_capita_pps"], filter_pars)
-        df = melt_eurostat_data(df)
-        df = parse_eurostat_data(df, GEO_EXT_PEERS)
-        self._save_csv(df, "gdp_per_capita_pps_raw.csv")
-        return df
-
-    def fetch_labour_productivity_pps(self) -> pd.DataFrame:
-        """Nominal labour productivity per hour worked, PPS, EU27_2020 = 100 (annual)."""
-        logger.info("Fetching labour productivity per hour (PPS)...")
-        filter_pars = {
-            'geo': GEO_EXT_PEERS,
-            'unit': ['PC_EU27_2020_MPPS_CP'],
-            'na_item': ['NLPR_HW'],  # per hour worked (NLPR_PER = per person employed)
-            'startPeriod': EXT_ANNUAL_START,
-        }
-        df = self.client.get_data(DATASET_CODES["labour_productivity_pps"], filter_pars)
-        df = melt_eurostat_data(df)
-        df = parse_eurostat_data(df, GEO_EXT_PEERS)
-        self._save_csv(df, "labour_productivity_pps_raw.csv")
-        return df
-
-    def fetch_rd_expenditure(self) -> pd.DataFrame:
-        """GERD as % of GDP, all sectors (annual; ES, EU27, DE, FR, IT)."""
-        logger.info("Fetching R&D expenditure...")
-        filter_pars = {
-            'geo': GEO_EXT_RD,
-            'sectperf': ['TOTAL'],
-            'unit': ['PC_GDP'],
-            'startPeriod': EXT_ANNUAL_START,
-        }
-        df = self.client.get_data(DATASET_CODES["rd_expenditure"], filter_pars)
-        df = melt_eurostat_data(df)
-        df = parse_eurostat_data(df, GEO_EXT_RD)
-        self._save_csv(df, "rd_expenditure_raw.csv")
-        return df
-
-    def fetch_youth_unemployment(self) -> pd.DataFrame:
-        """Unemployment rate under 25, SA (monthly; ES, EU27)."""
-        logger.info("Fetching Youth Unemployment...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'unit': ['PC_ACT'],
-            's_adj': ['SA'],
-            'sex': ['T'],
-            'age': ['Y_LT25'],
-        }
-        df = self.client.get_data(DATASET_CODES["youth_unemployment"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "youth_unemployment_raw.csv")
-        return df
-
-    def fetch_long_term_unemployment(self) -> pd.DataFrame:
-        """Long-term unemployed (12 months or more) as % of active population, SA (quarterly)."""
-        logger.info("Fetching Long-term Unemployment...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'indic_em': ['LTU'],
-            'age': ['Y15-74'],
-            'unit': ['PC_ACT'],
-            's_adj': ['SA'],
-            'sex': ['T'],
-        }
-        df = self.client.get_data(DATASET_CODES["long_term_unemployment"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "long_term_unemployment_raw.csv")
-        return df
-
-    def fetch_hicp_energy(self) -> pd.DataFrame:
-        """HICP energy, annual rate of change (monthly; ES, EU27)."""
-        logger.info("Fetching HICP Energy...")
-        filter_pars = {
-            'geo': self.geo_codes,
-            'coicop18': ['NRG'],  # Energy (ECOICOP ver. 2)
-            'unit': ['RCH_A'],
-        }
-        df = self.client.get_data(DATASET_CODES["hicp_energy"], filter_pars)
-        df = self._process_data(df)
-        self._save_csv(df, "hicp_energy_raw.csv")
-        return df
+    def fetch_indicators(self, names: Optional[List[str]] = None) -> Dict[str, pd.DataFrame]:
+        """Fetch the given indicators (default: all), a few requests at a time, and save their raw files."""
+        names = list(names or EUROSTAT_INDICATORS)
+        outcomes = map_bounded(self._fetch_one, names, MAX_WORKERS)
+        results = {}
+        for name, (df, exc) in zip(names, outcomes):
+            if exc is not None:
+                logger.error(f"Eurostat {name}: fetch failed: {exc}")
+                df = pd.DataFrame()
+            self._save_csv(df, f"{name}_raw.csv")
+            results[name] = df
+        for name, df in results.items():
+            logger.info(f"{name}: {len(df)} rows")
+        return results
 
     def fetch_all(self) -> dict:
-        """
-        Fetch all available indicators.
-
-        Returns:
-            Dictionary with indicator names as keys and DataFrames as values
-        """
-        results = {}
-
-        logger.info("=" * 60)
-        logger.info("Fetching all Eurostat indicators...")
-        logger.info("=" * 60)
-
-        # Economic Activity
-        logger.info("[Economic Activity]")
-        results["gdp_growth"] = self.fetch_gdp_growth()
-        results["gdp_index_comparison"] = self.fetch_gdp_index_comparison()
-        results["industrial_production"] = self.fetch_industrial_production()
-        results["economic_sentiment"] = self.fetch_economic_sentiment()
-
-        # Labor Market
-        logger.info("[Labor Market]")
-        results["unemployment"] = self.fetch_unemployment()
-        results["employment_growth"] = self.fetch_employment_growth()
-        results["labor_participation"] = self.fetch_labor_participation()
-
-        # Prices & Inflation
-        logger.info("[Prices & Inflation]")
-        results["hicp"] = self.fetch_hicp()
-        results["core_inflation"] = self.fetch_core_inflation()
-        results["producer_prices"] = self.fetch_producer_prices()
-
-        # External Sector
-        logger.info("[External Sector]")
-        results["trade_balance"] = self.fetch_trade_balance()
-
-        # Public Finances
-        logger.info("[Public Finances]")
-        results["government_debt"] = self.fetch_government_debt()
-        results["budget_deficit"] = self.fetch_budget_deficit()
-
-        # Consumer & Household
-        logger.info("[Consumer & Household]")
-        results["consumer_confidence"] = self.fetch_consumer_confidence()
-        results["retail_trade"] = self.fetch_retail_trade()
-        results["house_prices"] = self.fetch_house_prices()
-
-        # Extension indicators
-        logger.info("[Extension]")
-        results["gdp_per_capita_pps"] = self.fetch_gdp_per_capita_pps()
-        results["labour_productivity_pps"] = self.fetch_labour_productivity_pps()
-        results["rd_expenditure"] = self.fetch_rd_expenditure()
-        results["youth_unemployment"] = self.fetch_youth_unemployment()
-        results["long_term_unemployment"] = self.fetch_long_term_unemployment()
-        results["hicp_energy"] = self.fetch_hicp_energy()
-
-        logger.info("=" * 60)
-        logger.info("All Eurostat indicators fetched successfully!")
-        logger.info("=" * 60)
-
-        # Summary
-        logger.info("Summary:")
-        for name, df in results.items():
-            rows = len(df) if not df.empty else 0
-            logger.info(f"{name}: {rows} rows")
-
-        return results
+        """Fetch all indicators. Returns indicator name -> DataFrame (empty if it failed)."""
+        return self.fetch_indicators()

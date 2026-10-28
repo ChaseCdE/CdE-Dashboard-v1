@@ -6,8 +6,9 @@ Base client for interacting with the Instituto Nacional de Estadística API.
 import requests
 import pandas as pd
 from typing import Optional, Dict, Any, List
-import time
 import logging
+
+from .http_session import make_session
 
 logger = logging.getLogger(__name__)
 
@@ -17,19 +18,9 @@ class INEClient:
 
     BASE_URL = "https://servicios.ine.es/wstempus/js/ES"
 
-    def __init__(self, delay: float = 0.5):
-        """
-        Initialize the INE client.
-
-        Args:
-            delay: Seconds to wait between requests (be respectful to the API)
-        """
-        self.delay = delay
-        self.session = requests.Session()
-        self.session.headers.update({
-            "Accept": "application/json",
-            "User-Agent": "CdE-Dashboard/1.0"
-        })
+    def __init__(self):
+        """Initialize the INE client (pooled session with retry/backoff and timeouts)."""
+        self.session = make_session(headers={"Accept": "application/json"})
 
     def _request(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
@@ -45,9 +36,8 @@ class INEClient:
         url = f"{self.BASE_URL}/{endpoint}"
 
         try:
-            response = self.session.get(url, params=params, timeout=30)
+            response = self.session.get(url, params=params)
             response.raise_for_status()
-            time.sleep(self.delay)
             return response.json()
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching {url}: {e}")

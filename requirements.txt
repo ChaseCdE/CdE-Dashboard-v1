@@ -3,7 +3,6 @@
 
 # Data fetching
 requests==2.34.2
-eurostat==1.1.1
 yfinance==1.7.0
 
 # Data processing

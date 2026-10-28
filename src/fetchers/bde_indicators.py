@@ -8,6 +8,10 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from .bde_client import BdeClient, get_appropriate_range
+from .http_session import map_bounded
+
+BATCH_SIZE = 20   # series per request (the API takes many; one time range per request)
+MAX_WORKERS = 2   # concurrent requests to app.bde.es
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -301,6 +305,7 @@ BDE_INDICATORS: Dict[str, Dict[str, Any]] = {
         "name": "Credit to Households - Total",
         "category": "credit_banking",
         "description": "OIFM. Loans and credits. To households and NPISHs",
+        "growth_key": "credit_households_growth",
         "unit": "Millions EUR",
         "frequency": "M",
         "source": "Banco de Espana",
@@ -312,7 +317,34 @@ BDE_INDICATORS: Dict[str, Dict[str, Any]] = {
         "name": "Credit to Non-Financial Corporations - Total",
         "category": "credit_banking",
         "description": "Total lending to NFCs",
+        "growth_key": "credit_nfc_growth",
         "unit": "Billions EUR",
+        "frequency": "M",
+        "source": "Banco de Espana",
+        "priority": "high"
+    },
+
+    # Transaction-based year-on-year growth rates published by BdE (Boletin Estadistico 3.19-3.21,
+    # "Indicadores de liquidez y financiacion"). They exclude reclassifications, write-offs and
+    # securitisations, which move the stock series above. Used as the "yoy" of the credit stocks
+    # (audit M3); not exported on their own.
+    "credit_households_growth": {
+        "series_code": "DCF_M.N.ES.W0.S1M.S1.N.L.LE.FD.T._Z.XDC._T.M.V.TVA._T",
+        "name": "Household financing, year-on-year growth (transaction-based)",
+        "category": "credit_growth",
+        "description": "Financing of households and NPISHs: balance, year-on-year growth rate (BE 3.21)",
+        "unit": "%",
+        "frequency": "M",
+        "source": "Banco de Espana",
+        "priority": "high"
+    },
+
+    "credit_nfc_growth": {
+        "series_code": "DCF_M.N.ES.W0.S11.S1.N.L.LE.F4.T._Z.XDC._T.M.V.TVA._T",
+        "name": "NFC loans from credit institutions, year-on-year growth (transaction-based)",
+        "category": "credit_growth",
+        "description": "Loans from credit institutions to non-financial corporations: balance, year-on-year growth rate (BE 3.20)",
+        "unit": "%",
         "frequency": "M",
         "source": "Banco de Espana",
         "priority": "high"
@@ -434,6 +466,7 @@ INDICATOR_GROUPS = {
         "household_deposit_rate", "household_overnight_deposit_rate",
         "credit_households_total", "credit_nfc_total"
     ],
+    "credit_growth": ["credit_households_growth", "credit_nfc_growth"],
     "debt_ratios": [
         "household_debt_gdp", "nfc_debt_gdp"
     ],
@@ -594,7 +627,6 @@ class BdeIndicatorFetcher:
         self,
         output_dir: str = "data/raw/bde",
         language: str = "EN",
-        request_delay: float = 0.5
     ):
         """
         Initialize the fetcher.
@@ -602,19 +634,22 @@ class BdeIndicatorFetcher:
         Args:
             output_dir: Directory to save CSV files
             language: Language for API responses ('EN' or 'ES')
-            request_delay: Delay between requests in seconds
         """
-        self.client = BdeClient(language=language, request_delay=request_delay)
+        self.client = BdeClient(language=language)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def _save_csv(self, df: pd.DataFrame, filename: str) -> Path:
-        """Save DataFrame to CSV. Skips writing if df is empty to preserve cached data."""
+        """Write the raw CSV if its content changed. Never overwrite cached data with an empty frame."""
         filepath = self.output_dir / filename
         if df.empty:
             logger.warning(f"Skipping save of empty DataFrame to {filepath} (preserving cached data)")
             return filepath
-        df.to_csv(filepath, index=False, encoding="utf-8")
+        text = df.to_csv(index=False)
+        if filepath.exists() and filepath.read_bytes() == text.encode("utf-8"):
+            logger.info(f"Unchanged: {filepath}")
+            return filepath
+        filepath.write_text(text, encoding="utf-8", newline="")
         logger.info(f"Saved: {filepath}")
         return filepath
 
@@ -622,182 +657,76 @@ class BdeIndicatorFetcher:
         """Get appropriate time range for frequency."""
         return get_appropriate_range(frequency, years=5)
 
-    def fetch_indicator(
-        self,
-        key: str,
-        time_range: Optional[str] = None
-    ) -> pd.DataFrame:
+    def fetch_keys(self, keys: List[str], time_range: Optional[str] = None) -> Dict[str, pd.DataFrame]:
         """
-        Fetch a single indicator by its key.
+        Fetch several indicators with as few requests as possible.
 
-        Args:
-            key: Indicator key (e.g., 'euribor_12m_monthly')
-            time_range: Optional time range override
-
-        Returns:
-            DataFrame with time series data
+        The BdE API accepts many series in one request (one time range per request), so the
+        indicators are grouped by range (daily series 36M, the others 60M, unless `time_range`
+        overrides) and requested in batches. A series missing from the response, or a failed
+        request, keeps the previous raw file and logs an error (audit H1).
         """
-        if key not in BDE_INDICATORS:
-            logger.warning(f"Unknown indicator key: {key}")
-            return pd.DataFrame()
+        results: Dict[str, pd.DataFrame] = {}
+        by_range: Dict[str, List[str]] = {}
+        for key in keys:
+            if key not in BDE_INDICATORS:
+                logger.warning(f"Unknown indicator key: {key}")
+                results[key] = pd.DataFrame()
+                continue
+            freq = BDE_INDICATORS[key].get("frequency", "M")
+            by_range.setdefault(time_range or self._get_time_range(freq), []).append(key)
 
-        config = BDE_INDICATORS[key]
-        series_code = config["series_code"]
-        name = config["name"]
-        frequency = config.get("frequency", "M")
+        batches = [(rng, ks[i:i + BATCH_SIZE]) for rng, ks in by_range.items() for i in range(0, len(ks), BATCH_SIZE)]
+        logger.info(f"Fetching {sum(len(b[1]) for b in batches)} BdE series in {len(batches)} request(s)")
 
-        # Determine time range
-        if time_range is None:
-            time_range = self._get_time_range(frequency)
+        def run(batch):
+            rng, ks = batch
+            return self.client.get_series([BDE_INDICATORS[k]["series_code"] for k in ks], rng)
 
-        logger.info(f"Fetching {name} ({series_code}) with range {time_range}")
+        for (rng, ks), (data, exc) in zip(batches, map_bounded(run, batches, MAX_WORKERS)):
+            by_code = {item.get("serie"): item for item in (data or [])}
+            for key in ks:
+                config = BDE_INDICATORS[key]
+                item = by_code.get(config["series_code"])
+                df = self.client.series_to_dataframe(item) if item else pd.DataFrame()
+                if df.empty:
+                    logger.error(f"BdE {key} ({config['series_code']}): fetch failed or no data; "
+                                 f"keeping the previous {key}_raw.csv" + (f" ({exc})" if exc else ""))
+                    results[key] = df
+                    continue
+                df["indicator"] = key
+                df["name"] = config["name"]
+                df["category"] = config.get("category", "")
+                self._save_csv(df, f"{key}_raw.csv")
+                logger.info(f"Fetched {key}: {len(df)} rows")
+                results[key] = df
+        return results
 
-        df = self.client.get_series_as_dataframe(series_code, time_range)
+    def fetch_indicator(self, key: str, time_range: Optional[str] = None) -> pd.DataFrame:
+        """Fetch a single indicator by its key (e.g. 'euribor_12m_monthly')."""
+        return self.fetch_keys([key], time_range)[key]
 
-        if df.empty:
-            logger.warning(f"No data for {key}")
-            return df
-
-        # Add indicator key
-        df["indicator"] = key
-        df["name"] = name
-        df["category"] = config.get("category", "")
-
-        # Save to CSV
-        filename = f"{key}_raw.csv"
-        self._save_csv(df, filename)
-
-        logger.info(f"Fetched {len(df)} rows")
-        return df
-
-    def fetch_group(
-        self,
-        group_name: str,
-        time_range: Optional[str] = None
-    ) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch all indicators in a group.
-
-        Args:
-            group_name: Name of the indicator group
-            time_range: Optional time range override (applies to all)
-
-        Returns:
-            Dictionary mapping indicator keys to DataFrames
-        """
+    def fetch_group(self, group_name: str, time_range: Optional[str] = None) -> Dict[str, pd.DataFrame]:
+        """Fetch all indicators in a group."""
         if group_name not in INDICATOR_GROUPS:
             logger.warning(f"Unknown group: {group_name}")
             return {}
+        return self.fetch_keys(list(INDICATOR_GROUPS[group_name]), time_range)
 
-        logger.info(f"\n{'='*60}")
-        logger.info(f"Fetching group: {group_name}")
-        logger.info(f"{'='*60}\n")
-
-        results = {}
-        keys = INDICATOR_GROUPS[group_name]
-
-        for key in keys:
-            # Get frequency-appropriate range if not overridden
-            config = BDE_INDICATORS.get(key, {})
-            freq = config.get("frequency", "M")
-            effective_range = time_range or self._get_time_range(freq)
-
-            df = self.fetch_indicator(key, effective_range)
-            results[key] = df
-
-        return results
-
-    def fetch_category(
-        self,
-        category: str,
-        time_range: Optional[str] = None
-    ) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch all indicators in a category.
-
-        Args:
-            category: Category name (e.g., 'interest_rates', 'credit_banking')
-            time_range: Optional time range override
-
-        Returns:
-            Dictionary mapping indicator keys to DataFrames
-        """
-        logger.info(f"\n{'='*60}")
-        logger.info(f"Fetching category: {category}")
-        logger.info(f"{'='*60}\n")
-
-        results = {}
-        indicators = get_indicators_by_category(category)
-
-        for key in indicators:
-            config = BDE_INDICATORS.get(key, {})
-            freq = config.get("frequency", "M")
-            effective_range = time_range or self._get_time_range(freq)
-
-            df = self.fetch_indicator(key, effective_range)
-            results[key] = df
-
-        return results
+    def fetch_category(self, category: str, time_range: Optional[str] = None) -> Dict[str, pd.DataFrame]:
+        """Fetch all indicators in a category (e.g., 'interest_rates', 'credit_banking')."""
+        return self.fetch_keys(list(get_indicators_by_category(category)), time_range)
 
     def fetch_all(self, time_range: Optional[str] = None) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch all configured indicators.
-
-        Args:
-            time_range: Optional time range override
-
-        Returns:
-            Dictionary mapping indicator keys to DataFrames
-        """
-        logger.info("\n" + "="*60)
-        logger.info("BANCO DE ESPANA DATA FETCH")
-        logger.info("="*60 + "\n")
-
-        results = {}
-
-        for key in BDE_INDICATORS:
-            config = BDE_INDICATORS.get(key, {})
-            freq = config.get("frequency", "M")
-            effective_range = time_range or self._get_time_range(freq)
-
-            df = self.fetch_indicator(key, effective_range)
-            results[key] = df
-
-        # Log summary
-        logger.info("\n" + "="*60)
-        logger.info("FETCH SUMMARY")
-        logger.info("="*60)
+        """Fetch all configured indicators."""
+        results = self.fetch_keys(list(BDE_INDICATORS), time_range)
         success = sum(1 for df in results.values() if not df.empty)
-        logger.info(f"Total indicators: {len(results)}")
-        logger.info(f"Successfully fetched: {success}")
-        logger.info(f"Failed: {len(results) - success}")
-
+        logger.info(f"BdE fetch: {success} of {len(results)} indicators fetched")
         return results
 
-    def fetch_selected(
-        self,
-        keys: List[str],
-        time_range: Optional[str] = None
-    ) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch selected indicators by key.
-
-        Args:
-            keys: List of indicator keys to fetch
-            time_range: Optional time range override
-
-        Returns:
-            Dictionary mapping indicator keys to DataFrames
-        """
-        results = {}
-        for key in keys:
-            config = BDE_INDICATORS.get(key, {})
-            freq = config.get("frequency", "M")
-            effective_range = time_range or self._get_time_range(freq)
-
-            df = self.fetch_indicator(key, effective_range)
-            results[key] = df
-        return results
+    def fetch_selected(self, keys: List[str], time_range: Optional[str] = None) -> Dict[str, pd.DataFrame]:
+        """Fetch selected indicators by key."""
+        return self.fetch_keys(list(keys), time_range)
 
     def fetch_latest(self, keys: Optional[List[str]] = None) -> pd.DataFrame:
         """

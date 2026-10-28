@@ -16,45 +16,10 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.fetchers import INEIndicatorFetcher
+from src.fetchers.ine_series import INDICATORS
 
 
-AVAILABLE_INDICATORS = [
-    "gdp",
-    "gdp_demand",
-    "industrial_production",
-    "industry_turnover",
-    "services_turnover",
-    "services_production",
-    "unemployment",
-    "employment_rate",
-    "activity_rate",
-    "employed",
-    "temporary_rate",
-    "parttime_rate",
-    "youth_unemployment",
-    "labor_cost",
-    "labor_cost_hour",
-    "cpi",
-    "cpi_special_groups",
-    "cpi_ecoicop_groups",
-    "cpi_weights",
-    "cpi_special_weights",
-    "retail_sales",
-    "house_prices",
-    "ipri",
-    "cntr_employment",
-    "population_age",
-    "cpi_ccaa",
-    "business_confidence",
-    "tourist_arrivals",
-    "tourist_spending",
-    "hotel_overnight_stays",
-    "housing_transactions",
-    "mortgages",
-    "companies",
-    "household_saving_rate",
-    "population_nationality",
-]
+AVAILABLE_INDICATORS = list(INDICATORS)
 
 
 def main():
@@ -75,8 +40,7 @@ def main():
 
         # Fetch specific indicator
         if arg in AVAILABLE_INDICATORS:
-            method = getattr(fetcher, f"fetch_{arg}")
-            df = method()
+            df = fetcher.fetch_indicators([arg])[arg]
             print(f"\nFetched {len(df)} records for {arg}")
             print(df.head())
         else:

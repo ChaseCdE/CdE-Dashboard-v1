@@ -7,7 +7,7 @@ Daily data on the exchange's local trading date (see yahoo_client.py).
 Fields exported (only what markets/overview display):
   close       closing level/price
   ret_1d      daily change (%)
-  ret_1w/1m/1y  change over 5 / 21 / 252 trading sessions (%)
+  ret_1w/1m/1y  change over 5 / 21 trading sessions and 1 calendar year (%)
   ret_ytd     change vs last close of the previous calendar year (%)
   sma_200     200-session simple moving average (equity indices only; drawn on
               the single-index chart of the Markets page)
@@ -49,7 +49,7 @@ def _make(key, ticker, title, desc, close_field, series_key, series_label, sma=F
             note = {
                 "chg_1w": "5 sesiones",
                 "chg_1m": "21 sesiones",
-                "chg_1y": "252 sesiones",
+                "chg_1y": "1 año natural",
                 "chg_ytd": "Frente al último cierre del año anterior",
             }.get(fkey)
             fields.append(Field(fkey, label, "pp", 2, column=col, note_es=note))
@@ -62,7 +62,7 @@ def _make(key, ticker, title, desc, close_field, series_key, series_label, sma=F
         note = {
             "ret_1w": "5 sesiones",
             "ret_1m": "21 sesiones",
-            "ret_1y": "252 sesiones",
+            "ret_1y": "1 año natural",
             "ret_ytd": "Frente al último cierre del año anterior",
         }.get(fkey)
         fields.append(Field(fkey, label, "pct_change", 1, column=col, note_es=note))
@@ -141,6 +141,6 @@ DATASETS = [
     _etf("euro_govt_bond_etf", "EUNH.DE", "ETF de deuda pública de la zona euro", "EUR", "ez", "iShares Core EUR Govt Bond UCITS ETF (Xetra)."),
     _etf("us_treasury_20y_etf", "TLT", "ETF de bonos del Tesoro EE. UU. a más de 20 años", "USD", "us", "iShares 20+ Year Treasury Bond ETF."),
     _etf("us_treasury_7_10y_etf", "IEF", "ETF de bonos del Tesoro EE. UU. a 7-10 años", "USD", "us", "iShares 7-10 Year Treasury Bond ETF."),
-    _etf("spanish_banks_etf", "EWP", "ETF iShares MSCI España", "USD", "es", "Renta variable española (alto peso financiero), cotizada en dólares."),
+    _etf("msci_spain_etf", "EWP", "ETF iShares MSCI España", "USD", "es", "Renta variable española (alto peso financiero), cotizada en dólares."),
     _etf("european_banks_etf", "EUFN", "ETF iShares MSCI Europa Financiero", "USD", "eu", "Sector financiero europeo, cotizado en dólares."),
 ]

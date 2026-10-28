@@ -9,9 +9,9 @@ import logging
 from pathlib import Path
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # project root: packages are imported as src.*
 
-from fetchers.bde_indicators import (
+from src.fetchers.bde_indicators import (
     BdeIndicatorFetcher,
     BDE_INDICATORS,
     INDICATOR_GROUPS,
@@ -90,12 +90,6 @@ def main():
         choices=["EN", "ES"],
         help="Language for API responses (EN or ES). Default: EN"
     )
-    parser.add_argument(
-        "--delay",
-        type=float,
-        default=0.5,
-        help="Delay between API requests in seconds. Default: 0.5"
-    )
 
     args = parser.parse_args()
 
@@ -151,8 +145,7 @@ def main():
     # Initialize fetcher
     fetcher = BdeIndicatorFetcher(
         output_dir=str(output_dir),
-        language=args.language,
-        request_delay=args.delay
+        language=args.language
     )
 
     try:

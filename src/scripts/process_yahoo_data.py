@@ -7,10 +7,10 @@ import sys
 from pathlib import Path
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # project root: packages are imported as src.*
 
-from fetchers.yahoo_indicators import YAHOO_INDICATORS
-from processors.yahoo_processor import run_processing
+from src.fetchers.yahoo_indicators import YAHOO_INDICATORS
+from src.processors.yahoo_processor import run_processing
 
 
 def main():

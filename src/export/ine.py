@@ -9,7 +9,7 @@ Not exported on purpose (see docs/notes/ws-ine.md):
 - population.csv: input to gdp_productivity.csv, which is exported.
 
 Metadata conventions
-- Table ids come from TABLE_IDS in src/fetchers/ine_indicators.py so a repoint of a
+- Table ids come from TABLE_IDS in src/fetchers/ine_series.py so a repoint of a
   fetcher table is picked up here automatically.
 - Rates of change that INE publishes or that the processor computes are exported as
   fields (yoy / qoq / mom, unit pct_change). Changes of a rate are exported as
@@ -18,7 +18,7 @@ Metadata conventions
   averages 100 in the data (CPI and house prices: 2025 = 100).
 """
 
-from ..fetchers.ine_indicators import TABLE_IDS
+from ..fetchers.ine_series import TABLE_IDS
 from .core import Dataset, Field, Series, long_series
 
 INE_TABLE_URL = "https://www.ine.es/jaxiT3/Tabla.htm?t={}"
@@ -282,12 +282,12 @@ DATASETS = [
     _ine(
         "cpi_ecoicop_groups", "cpi_ecoicop_groups",
         title_es="Inflación por grupos especiales: aportaciones",
-        description_es="Variación anual, peso y aportación a la inflación (en puntos porcentuales) de los grupos especiales del IPC. La aportación es aproximada: aplica los pesos de 2026 a todo el periodo.",
+        description_es="Variación anual, peso y aportación a la inflación (en puntos porcentuales) de los grupos especiales del IPC. La aportación usa el peso que el INE publica para cada año.",
         frequency="M",
         fields=[
             Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change"),
             Field("weight", "Peso en la cesta", "pct", 1, column="weight_pct",
-                  note_es="Peso de 2026 aplicado a todo el periodo"),
+                  note_es="Peso del año de cada observación, según el INE"),
             Field("contribution", "Aportación a la inflación", "pp", 2),
         ],
         series=long_series("group_name", order=[

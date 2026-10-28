@@ -136,6 +136,11 @@ AUX = {
     "IPC332383": ["Bienes industriales sin productos energéticos", "Ponderación"],
     "IPC332363": ["Productos energéticos", "Ponderación"],
     "IPC332372": ["Servicios", "Ponderación"],
+    # previous-base weights of the same four groups (table 50951), used for the years before 2026
+    "IPC233251": ["Alimentos, bebidas y tabaco", "Ponderación"],
+    "IPC233249": ["Bienes industriales sin productos energéticos", "Ponderación"],
+    "IPC233270": ["Productos energéticos", "Ponderación"],
+    "IPC233252": ["Servicios", "Ponderación"],
 }
 WA_CODES = [f"EPA{c}" for c in range(384363, 384382, 2)]  # 16-19 ... 60-64, ambos sexos
 for c in WA_CODES:
@@ -270,16 +275,18 @@ def derived(rep: Report, got: dict):
     rep.add("ine.cpi_weights", "values", "FAIL" if bad else "PASS",
             f"13 group weights {year} equal INE IPC33193x/10" if not bad else f"unmatched: {bad[:3]}")
     rep.add("ine.cpi_weights", "identity", "PASS" if not bad else "FAIL", "ECOICOP v2 group weights, Total Nacional")
-    w = {"alimentos_bebidas_y_tabaco": "IPC332382", "bienes_industriales_sin_productos_energeticos": "IPC332383",
-         "productos_energeticos": "IPC332363", "servicios": "IPC332372"}
+    w = {"alimentos_bebidas_y_tabaco": ("IPC332382", "IPC233251"), "bienes_industriales_sin_productos_energeticos": ("IPC332383", "IPC233249"),
+         "productos_energeticos": ("IPC332363", "IPC233270"), "servicios": ("IPC332372", "IPC233252")}
     bad = []
-    for k, c in w.items():
-        latest = max(got[c][1])
+    for k, (cur, prev) in w.items():
+        by_year = {int(x[:4]): v for x, v in got[prev][1].items()}
+        by_year.update({int(x[:4]): v for x, v in got[cur][1].items()})  # current base wins where both exist
         pub = series("ine.cpi_ecoicop_groups", k, "weight")
-        if any(abs(v - got[c][1][latest] / 10) > 0.01 for v in pub.values()):  # pipeline hard-codes 1-decimal per-mille weights
+        # M2: each month carries INE's weight of its own year (per mille / 10 = %)
+        if any(int(x[:4]) not in by_year or abs(v - by_year[int(x[:4])] / 10) > 0.01 for x, v in pub.items()):
             bad.append(k)
     rep.add("ine.cpi_ecoicop_groups", "values", "FAIL" if bad else "PASS",
-            f"weights equal INE {latest[:4]} special-group weights /10 (applied to every month)" + (f" mismatch {bad}" if bad else ""))
+            "weights equal INE special-group weights /10 of each observation's own year" + (f" mismatch {bad}" if bad else ""))
 
 
 if __name__ == "__main__":

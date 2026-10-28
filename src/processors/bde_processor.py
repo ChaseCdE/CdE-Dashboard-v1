@@ -11,6 +11,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import logging
 
+from .series_ops import asof_values
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -148,10 +150,7 @@ class BdeProcessor:
     @staticmethod
     def _lookup_asof(df: pd.DataFrame, keys: pd.Series, value_col: str = "value") -> pd.Series:
         """Value of the last observation dated on or before each key date (NaN if none)."""
-        left = pd.DataFrame({'key': keys.values}, index=df.index).reset_index().sort_values('key')
-        right = df[['date', value_col]].dropna().sort_values('date')
-        merged = pd.merge_asof(left, right, left_on='key', right_on='date', direction='backward')
-        return merged.set_index('index')[value_col].reindex(df.index)
+        return asof_values(df, keys, value_col)
 
     def calculate_changes(
         self,
@@ -486,6 +485,28 @@ class BdeProcessor:
 
         return df
 
+    def _apply_published_growth(self, df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
+        """
+        Audit M3: use BdE's published transaction-based growth rate as the year-on-year change
+        of a credit stock. The change of the stock itself (which includes reclassifications,
+        write-offs and securitisations) is kept as `yoy_stock_change_pct`.
+        """
+        growth_key = config.get("growth_key")
+        if not growth_key or df.empty:
+            return df
+        raw = self._load_raw(f"{growth_key}_raw.csv")
+        if raw.empty:
+            raise ValueError(f"BdE growth series {growth_key} is missing; cannot publish the year-on-year rate of {config.get('name')}")
+        raw = raw.assign(date=pd.to_datetime(raw["date"])).drop_duplicates("date", keep="last")
+        rate = pd.Series(raw["value"].values, index=raw["date"].values)
+        df = df.copy()
+        df["yoy_stock_change_pct"] = df["yoy_change_pct"]
+        df["yoy_change_pct"] = df["date"].map(rate)
+        last = df["date"].max()
+        if pd.isna(df.loc[df["date"] == last, "yoy_change_pct"]).any():
+            logger.error(f"BdE growth series {growth_key} has no value for {last:%Y-%m}; error in year-on-year rate")
+        return df
+
     def process_indicator(
         self,
         key: str,
@@ -531,6 +552,10 @@ class BdeProcessor:
                 processed = self.process_interest_rate(df, key, name)
             else:
                 processed = self.process_credit_data(df, key, name)
+                processed = self._apply_published_growth(processed, config)
+        elif category == "credit_growth":
+            # Growth rate in %: value and differences in pp
+            processed = self.process_interest_rate(df, key, name)
         elif category == "debt_ratios":
             processed = self.process_ratio_data(df, key, name)
         elif category == "external_sector":
@@ -810,7 +835,7 @@ class BdeProcessor:
         calendar, so a missing month yields NaN instead of a change across the gap.
         """
         if derived_config is None:
-            from fetchers.bde_indicators import BDE_DERIVED
+            from ..fetchers.bde_indicators import BDE_DERIVED
             derived_config = BDE_DERIVED
 
         results = {}
@@ -935,5 +960,5 @@ def run_processing(indicators_config: Dict[str, Dict[str, Any]]) -> None:
 
 
 if __name__ == "__main__":
-    from fetchers.bde_indicators import BDE_INDICATORS
+    from ..fetchers.bde_indicators import BDE_INDICATORS
     run_processing(BDE_INDICATORS)
