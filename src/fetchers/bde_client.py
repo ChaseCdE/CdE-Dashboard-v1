@@ -6,9 +6,10 @@ Client for fetching economic and financial data from the BdE statistics API.
 import requests
 import pandas as pd
 import logging
-import time
 from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
+
+from .http_session import make_session
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -27,36 +28,15 @@ class BdeClient:
         "A": "MAX"     # Annual: Maximum available
     }
 
-    def __init__(
-        self,
-        language: str = "EN",
-        request_delay: float = 0.5,
-        timeout: int = 30
-    ):
+    def __init__(self, language: str = "EN"):
         """
-        Initialize the BdE API client.
+        Initialize the BdE API client (pooled session with retry/backoff and timeouts).
 
         Args:
             language: Language code ('EN' for English, 'ES' for Spanish)
-            request_delay: Delay between requests in seconds to avoid rate limiting
-            timeout: Request timeout in seconds
         """
         self.language = language
-        self.request_delay = request_delay
-        self.timeout = timeout
-        self.session = requests.Session()
-        self.session.headers.update({
-            "Accept": "application/json",
-            "Accept-Encoding": "gzip, deflate"
-        })
-        self._last_request_time = 0
-
-    def _wait_for_rate_limit(self) -> None:
-        """Enforce delay between API requests."""
-        elapsed = time.time() - self._last_request_time
-        if elapsed < self.request_delay:
-            time.sleep(self.request_delay - elapsed)
-        self._last_request_time = time.time()
+        self.session = make_session(headers={"Accept": "application/json", "Accept-Encoding": "gzip, deflate"})
 
     def _make_request(self, endpoint: str, params: Dict[str, str]) -> Optional[List[Dict]]:
         """
@@ -70,11 +50,10 @@ class BdeClient:
             JSON response as a list of dictionaries, or None if request fails
         """
         url = f"{self.BASE_URL}/{endpoint}"
-        self._wait_for_rate_limit()
 
         try:
             logger.debug(f"Requesting: {url} with params: {params}")
-            response = self.session.get(url, params=params, timeout=self.timeout)
+            response = self.session.get(url, params=params)
             response.raise_for_status()
 
             data = response.json()

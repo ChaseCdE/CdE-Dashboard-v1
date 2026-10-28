@@ -90,12 +90,6 @@ def main():
         choices=["EN", "ES"],
         help="Language for API responses (EN or ES). Default: EN"
     )
-    parser.add_argument(
-        "--delay",
-        type=float,
-        default=0.5,
-        help="Delay between API requests in seconds. Default: 0.5"
-    )
 
     args = parser.parse_args()
 
@@ -151,8 +145,7 @@ def main():
     # Initialize fetcher
     fetcher = BdeIndicatorFetcher(
         output_dir=str(output_dir),
-        language=args.language,
-        request_delay=args.delay
+        language=args.language
     )
 
     try:
