@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fixtures · La economía en datos</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/main.css">
+</head>
+<body>
+  <header id="site-header" class="site-header"></header>
+  <main>
+    <div class="page-head">
+      <h1>Fixtures: banco de pruebas del frontend</h1>
+      <p class="lead">Página de desarrollo (no enlazada desde la navegación). Renderiza los cinco datasets de muestra con cada función de <code>charts.js</code>. Requiere servidor estático (<code>fetch</code> no funciona desde <code>file://</code>).</p>
+    </div>
+
+    <h2>1. KPI desde el manifest</h2>
+    <div id="kpis"></div>
+
+    <h2>2. ine.cpi (serie única, mensual)</h2>
+    <div class="grid grid-2">
+      <div id="cpi-line"></div>
+      <div id="cpi-toggle"></div>
+      <div id="cpi-bars" class="span-2"></div>
+      <div id="cpi-overlay"></div>
+      <div id="cpi-period"></div>
+    </div>
+
+    <h2>3. ine.ipi_sectors (formato largo, mensual)</h2>
+    <div class="grid grid-2">
+      <div id="ipi-lines"></div>
+      <div id="ipi-bars"></div>
+      <div id="ipi-stack"></div>
+      <div id="ipi-table"></div>
+    </div>
+
+    <h2>4. eurostat.hicp (España frente a UE-27; desactualizado a propósito)</h2>
+    <div class="grid grid-2">
+      <div id="hicp-line"></div>
+      <div id="hicp-grouped"></div>
+    </div>
+
+    <h2>5. bde.yield_curve (sección transversal, x numérica)</h2>
+    <div class="grid grid-2">
+      <div id="yc"></div>
+      <div id="yc-table"></div>
+    </div>
+
+    <h2>6. yahoo.ibex_35 (diario) y comparación rebasada</h2>
+    <div class="grid grid-2">
+      <div id="ibex"></div>
+      <div id="rebased"></div>
+    </div>
+
+    <h2>7. Casos límite</h2>
+    <p class="dev-note">Se espera: una tarjeta de error por dataset inexistente, otra por campo inexistente, una tarjeta vacía por campo con todos los valores nulos (derivado del IPC cargado, sin tocar los datos) y una tarjeta de error en un KPI.</p>
+    <div class="grid grid-2">
+      <div id="err-missing"></div>
+      <div id="err-field"></div>
+      <div id="err-allnull"></div>
+      <div id="err-kpi"></div>
+      <div id="donut"></div>
+    </div>
+  </main>
+  <footer id="site-footer" class="site-footer"></footer>
+  <script type="module" src="fixtures.js"></script>
+</body>
+</html>
