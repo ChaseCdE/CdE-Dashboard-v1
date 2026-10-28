@@ -565,6 +565,54 @@ class EurostatProcessor:
         self._create_comparison_dataset(df, "hpi_index", "house_prices")
         return self._split_by_geography(df, "hpi_index", "house_prices")
 
+    # === Extension indicators (ext/eurostat) ===
+
+    def _process_simple(self, raw: str, value_col: str, name: str, yoy: Optional[str] = None,
+                        yoy_is_value: bool = False) -> Dict[str, pd.DataFrame]:
+        """Generic: load raw, rename value, optional yoy (pct/diff), save comparison + per-geo files."""
+        df = self._load_raw(raw)
+        if df.empty:
+            return {}
+        df = df.rename(columns={"value": value_col})
+        cols = ["geo", "date", value_col]
+        if yoy_is_value:
+            df["yoy_change"] = df[value_col]
+            cols.append("yoy_change")
+        elif yoy:
+            df = self._calculate_yoy_change(df, value_col, kind=yoy)
+            cols.append("yoy_change")
+        df = df[[c for c in cols if c in df.columns]].copy()
+        _check_time_gaps(df, "A" if name in ("gdp_per_capita_pps", "labour_productivity_pps", "rd_expenditure")
+                         else ("Q" if name == "long_term_unemployment" else "M"), name)
+        self._create_comparison_dataset(df, value_col, name)
+        return self._split_by_geography(df, value_col, name)
+
+    def process_gdp_per_capita_pps(self):
+        print("Processing GDP per capita (PPS)...")
+        return self._process_simple("gdp_per_capita_pps_raw.csv", "gdp_pc_pps", "gdp_per_capita_pps")
+
+    def process_labour_productivity_pps(self):
+        print("Processing labour productivity (PPS)...")
+        return self._process_simple("labour_productivity_pps_raw.csv", "productivity_pps", "labour_productivity_pps")
+
+    def process_rd_expenditure(self):
+        print("Processing R&D expenditure...")
+        return self._process_simple("rd_expenditure_raw.csv", "rd_pct_gdp", "rd_expenditure")
+
+    def process_youth_unemployment(self):
+        print("Processing youth unemployment...")
+        return self._process_simple("youth_unemployment_raw.csv", "youth_unemployment_rate",
+                                    "youth_unemployment", yoy="diff")
+
+    def process_long_term_unemployment(self):
+        print("Processing long-term unemployment...")
+        return self._process_simple("long_term_unemployment_raw.csv", "ltu_rate",
+                                    "long_term_unemployment", yoy="diff")
+
+    def process_hicp_energy(self):
+        print("Processing HICP energy...")
+        return self._process_simple("hicp_energy_raw.csv", "hicp_energy", "hicp_energy", yoy_is_value=True)
+
     def process_all(self) -> dict:
         """
         Process all indicators.
@@ -611,6 +659,15 @@ class EurostatProcessor:
         results["consumer_confidence"] = self.process_consumer_confidence()
         results["retail_trade"] = self.process_retail_trade()
         results["house_prices"] = self.process_house_prices()
+
+        # Extension indicators
+        print("\n[Extension]")
+        results["gdp_per_capita_pps"] = self.process_gdp_per_capita_pps()
+        results["labour_productivity_pps"] = self.process_labour_productivity_pps()
+        results["rd_expenditure"] = self.process_rd_expenditure()
+        results["youth_unemployment"] = self.process_youth_unemployment()
+        results["long_term_unemployment"] = self.process_long_term_unemployment()
+        results["hicp_energy"] = self.process_hicp_energy()
 
         print("\n" + "=" * 60)
         print("All Eurostat indicators processed successfully!")

@@ -640,6 +640,19 @@ house_prices = eurostat.get_data_df('prc_hpi_q', filter_pars=filter_pars)
 
 ---
 
+## Extension indicators (ext/eurostat, October 2026)
+
+| indicator | dataset | filters | frequency |
+|---|---|---|---|
+| gdp_per_capita_pps | `nama_10_pc` | unit `PC_EU27_2020_HAB_MPPS_CP`, na_item `B1GQ`, geo ES/DE/FR/IT/PT (EU27_2020 = 100). `tec00114` is the same series rounded to integers | A |
+| labour_productivity_pps | `tesem160` | unit `PC_EU27_2020_MPPS_CP`, na_item `NLPR_HW` (per hour worked; `NLPR_PER` = per person), geo ES/DE/FR/IT/PT | A |
+| rd_expenditure | `rd_e_gerdtot` | sectperf `TOTAL`, unit `PC_GDP`, geo ES/EU27_2020/DE/FR/IT | A |
+| youth_unemployment | `une_rt_m` | age `Y_LT25`, unit `PC_ACT`, s_adj `SA`, sex `T` | M |
+| long_term_unemployment | `une_ltu_q` | indic_em `LTU`, age `Y15-74`, unit `PC_ACT`, s_adj `SA`, sex `T` | Q |
+| hicp_energy | `prc_hicp_minr` | coicop18 `NRG`, unit `RCH_A` | M |
+
+Annual series are requested from 2005 (the rest of the pipeline from 2015). Details in `docs/notes/ext-eurostat.md`.
+
 ## Complete Python Code Example
 
 Below is a comprehensive example that downloads all indicators:

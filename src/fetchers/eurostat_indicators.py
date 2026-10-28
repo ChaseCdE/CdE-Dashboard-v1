@@ -51,7 +51,21 @@ DATASET_CODES = {
     "consumer_confidence": "ei_bsco_m",
     "retail_trade": "sts_trtu_m",
     "house_prices": "prc_hpi_q",
+
+    # Extension (ext/eurostat): structural and labour-market indicators
+    "gdp_per_capita_pps": "nama_10_pc",        # GDP per head in PPS, EU27_2020 = 100 (tec00114 is the same series rounded to integers)
+    "labour_productivity_pps": "tesem160",     # Productivity per hour worked, PPS, EU27_2020 = 100
+    "rd_expenditure": "rd_e_gerdtot",          # GERD, % of GDP
+    "youth_unemployment": "une_rt_m",          # Same table as `unemployment`, age Y_LT25
+    "long_term_unemployment": "une_ltu_q",     # LTU, % of active population, quarterly
+    "hicp_energy": "prc_hicp_minr",            # Same table as `hicp`, coicop18 = NRG
 }
+
+# Geographies of the extension datasets (Eurostat codes)
+GEO_EXT_PEERS = ['ES', 'DE', 'FR', 'IT', 'PT']
+GEO_EXT_RD = ['ES', 'EU27_2020', 'DE', 'FR', 'IT']
+# Annual extension series start earlier than the pipeline default (2015)
+EXT_ANNUAL_START = 2005
 
 
 class EurostatIndicatorFetcher:
@@ -420,6 +434,97 @@ class EurostatIndicatorFetcher:
         self._save_csv(df, "gdp_index_comparison_raw.csv")
         return df
 
+    # === Extension indicators (ext/eurostat) ===
+
+    def fetch_gdp_per_capita_pps(self) -> pd.DataFrame:
+        """GDP per head in PPS, index EU27_2020 = 100 (annual; ES, DE, FR, IT, PT)."""
+        logger.info("Fetching GDP per capita in PPS...")
+        filter_pars = {
+            'geo': GEO_EXT_PEERS,
+            'unit': ['PC_EU27_2020_HAB_MPPS_CP'],  # EU27_2020 = 100, current prices, PPS
+            'na_item': ['B1GQ'],  # GDP at market prices
+            'startPeriod': EXT_ANNUAL_START,
+        }
+        df = self.client.get_data(DATASET_CODES["gdp_per_capita_pps"], filter_pars)
+        df = melt_eurostat_data(df)
+        df = parse_eurostat_data(df, GEO_EXT_PEERS)
+        self._save_csv(df, "gdp_per_capita_pps_raw.csv")
+        return df
+
+    def fetch_labour_productivity_pps(self) -> pd.DataFrame:
+        """Nominal labour productivity per hour worked, PPS, EU27_2020 = 100 (annual)."""
+        logger.info("Fetching labour productivity per hour (PPS)...")
+        filter_pars = {
+            'geo': GEO_EXT_PEERS,
+            'unit': ['PC_EU27_2020_MPPS_CP'],
+            'na_item': ['NLPR_HW'],  # per hour worked (NLPR_PER = per person employed)
+            'startPeriod': EXT_ANNUAL_START,
+        }
+        df = self.client.get_data(DATASET_CODES["labour_productivity_pps"], filter_pars)
+        df = melt_eurostat_data(df)
+        df = parse_eurostat_data(df, GEO_EXT_PEERS)
+        self._save_csv(df, "labour_productivity_pps_raw.csv")
+        return df
+
+    def fetch_rd_expenditure(self) -> pd.DataFrame:
+        """GERD as % of GDP, all sectors (annual; ES, EU27, DE, FR, IT)."""
+        logger.info("Fetching R&D expenditure...")
+        filter_pars = {
+            'geo': GEO_EXT_RD,
+            'sectperf': ['TOTAL'],
+            'unit': ['PC_GDP'],
+            'startPeriod': EXT_ANNUAL_START,
+        }
+        df = self.client.get_data(DATASET_CODES["rd_expenditure"], filter_pars)
+        df = melt_eurostat_data(df)
+        df = parse_eurostat_data(df, GEO_EXT_RD)
+        self._save_csv(df, "rd_expenditure_raw.csv")
+        return df
+
+    def fetch_youth_unemployment(self) -> pd.DataFrame:
+        """Unemployment rate under 25, SA (monthly; ES, EU27)."""
+        logger.info("Fetching Youth Unemployment...")
+        filter_pars = {
+            'geo': self.geo_codes,
+            'unit': ['PC_ACT'],
+            's_adj': ['SA'],
+            'sex': ['T'],
+            'age': ['Y_LT25'],
+        }
+        df = self.client.get_data(DATASET_CODES["youth_unemployment"], filter_pars)
+        df = self._process_data(df)
+        self._save_csv(df, "youth_unemployment_raw.csv")
+        return df
+
+    def fetch_long_term_unemployment(self) -> pd.DataFrame:
+        """Long-term unemployed (12 months or more) as % of active population, SA (quarterly)."""
+        logger.info("Fetching Long-term Unemployment...")
+        filter_pars = {
+            'geo': self.geo_codes,
+            'indic_em': ['LTU'],
+            'age': ['Y15-74'],
+            'unit': ['PC_ACT'],
+            's_adj': ['SA'],
+            'sex': ['T'],
+        }
+        df = self.client.get_data(DATASET_CODES["long_term_unemployment"], filter_pars)
+        df = self._process_data(df)
+        self._save_csv(df, "long_term_unemployment_raw.csv")
+        return df
+
+    def fetch_hicp_energy(self) -> pd.DataFrame:
+        """HICP energy, annual rate of change (monthly; ES, EU27)."""
+        logger.info("Fetching HICP Energy...")
+        filter_pars = {
+            'geo': self.geo_codes,
+            'coicop18': ['NRG'],  # Energy (ECOICOP ver. 2)
+            'unit': ['RCH_A'],
+        }
+        df = self.client.get_data(DATASET_CODES["hicp_energy"], filter_pars)
+        df = self._process_data(df)
+        self._save_csv(df, "hicp_energy_raw.csv")
+        return df
+
     def fetch_all(self) -> dict:
         """
         Fetch all available indicators.
@@ -466,6 +571,15 @@ class EurostatIndicatorFetcher:
         results["consumer_confidence"] = self.fetch_consumer_confidence()
         results["retail_trade"] = self.fetch_retail_trade()
         results["house_prices"] = self.fetch_house_prices()
+
+        # Extension indicators
+        logger.info("[Extension]")
+        results["gdp_per_capita_pps"] = self.fetch_gdp_per_capita_pps()
+        results["labour_productivity_pps"] = self.fetch_labour_productivity_pps()
+        results["rd_expenditure"] = self.fetch_rd_expenditure()
+        results["youth_unemployment"] = self.fetch_youth_unemployment()
+        results["long_term_unemployment"] = self.fetch_long_term_unemployment()
+        results["hicp_energy"] = self.fetch_hicp_energy()
 
         logger.info("=" * 60)
         logger.info("All Eurostat indicators fetched successfully!")

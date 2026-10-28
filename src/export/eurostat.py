@@ -236,3 +236,90 @@ DATASETS = [
         Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change"),
     ),
 ]
+
+
+# ---- Extension (ext/eurostat) ---------------------------------------------
+def _multi(indicator: str, col: str, title: str, desc: str, freq: str, code: str, fields: list,
+           geos: list, yoy_col: str | None = None) -> Dataset:
+    """Dataset with several geographies read from `<indicator>_comparison.csv`.
+
+    `col` is the value column stem (`<col>_<geo>`); `yoy_col` the yoy stem if any.
+    """
+    series = []
+    for key, label in geos:
+        cols = {fields[0].key: f"{col}_{key}"}
+        if yoy_col:
+            cols[fields[1].key] = f"{yoy_col}_{key}"
+        series.append(Series(key, label, columns=cols))
+    return Dataset(
+        source="eurostat",
+        indicator=indicator,
+        csv=f"eurostat/{indicator}_comparison.csv",
+        title_es=title,
+        description_es=desc,
+        source_dataset=code,
+        source_url=_url(code),
+        frequency=freq,
+        fields=fields,
+        series=series,
+    )
+
+
+_PEERS = [("es", ES), ("de", "Alemania"), ("fr", "Francia"), ("it", "Italia"), ("pt", "Portugal")]
+
+DATASETS += [
+    _multi(
+        "gdp_per_capita_pps", "gdp_pc_pps",
+        "PIB per cápita en paridad de poder adquisitivo",
+        "PIB por habitante en estándares de poder adquisitivo (PPS), índice UE-27 = 100. España, Alemania, Francia, Italia y Portugal.",
+        "A", DATASET_CODES["gdp_per_capita_pps"],
+        [Field("value", "Índice (UE-27 = 100)", "index", 1, note_es="UE-27 = 100")],
+        _PEERS,
+    ),
+    _multi(
+        "labour_productivity_pps", "productivity_pps",
+        "Productividad por hora trabajada en paridad de poder adquisitivo",
+        "Productividad nominal del trabajo por hora trabajada, en PPS, índice UE-27 = 100. España, Alemania, Francia, Italia y Portugal.",
+        "A", DATASET_CODES["labour_productivity_pps"],
+        [Field("value", "Índice (UE-27 = 100)", "index", 1,
+               note_es="UE-27 = 100. PIB por hora trabajada en PPS (concepto de cuentas nacionales)")],
+        _PEERS,
+    ),
+    _multi(
+        "rd_expenditure", "rd_pct_gdp",
+        "Gasto en I+D (% del PIB)",
+        "Gasto interno bruto en investigación y desarrollo, todos los sectores, en porcentaje del PIB. España, UE-27, Alemania, Francia e Italia.",
+        "A", DATASET_CODES["rd_expenditure"],
+        [Field("value", "Gasto en I+D (% del PIB)", "pct", 1,
+               note_es="Gasto interno bruto en I+D, todos los sectores. Los últimos años pueden ser provisionales o estimados")],
+        [("es", ES), ("eu27", EU), ("de", "Alemania"), ("fr", "Francia"), ("it", "Italia")],
+    ),
+    _multi(
+        "youth_unemployment", "youth_unemployment_rate",
+        "Paro juvenil (menores de 25 años)",
+        "Tasa de paro de los menores de 25 años. España frente a UE-27.",
+        "M", DATASET_CODES["youth_unemployment"],
+        [Field("value", "Tasa de paro juvenil", "pct", 1,
+               note_es="Población activa menor de 25 años. Datos corregidos de estacionalidad"),
+         Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change")],
+        [("es", ES), ("eu27", EU)], yoy_col="yoy_change",
+    ),
+    _multi(
+        "long_term_unemployment", "ltu_rate",
+        "Paro de larga duración",
+        "Parados de 12 meses o más como porcentaje de la población activa de 15 a 74 años. España frente a UE-27.",
+        "Q", DATASET_CODES["long_term_unemployment"],
+        [Field("value", "Paro de larga duración (% de la población activa)", "pct", 1,
+               note_es="Parados desde hace 12 meses o más, población de 15 a 74 años. Datos corregidos de estacionalidad"),
+         Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change")],
+        [("es", ES), ("eu27", EU)], yoy_col="yoy_change",
+    ),
+    _multi(
+        "hicp_energy", "hicp_energy",
+        "Inflación de la energía (IPCA)",
+        "Tasa de variación anual del componente de energía del IPCA. España frente a UE-27.",
+        "M", DATASET_CODES["hicp_energy"],
+        [Field("yoy", "Variación anual", "pct_change", 1, note_es="Componente energía (ECOICOP 2) del IPCA")],
+        [("es", ES), ("eu27", EU)],
+    ),
+]
