@@ -111,6 +111,12 @@ This document defines the three specialized agents responsible for integrating B
 
 ---
 
+## Status after the static-site migration (Phase 2, 2026-10-28)
+
+The Shiny dashboard (Agent 3) is being replaced by a static HTML site. The BdE pipeline now ends in `src/export/bde.py`, which declares one contract dataset per processed series (`bde.<key>`) plus `bde.yield_curve`. Per-series metadata (Spanish title, label, public BdE URL, currency and scale) lives in `BDE_EXPORT_META` in `src/fetchers/bde_indicators.py`. To add an indicator: add it to `BDE_INDICATORS`, add its entry to `BDE_EXPORT_META`, run `python run_pipeline.py --sources bde`. Details and open issues: `docs/notes/ws-bde.md`.
+
+---
+
 ## Execution Order
 
 1. **Agent 1** runs first to document all API endpoints

@@ -788,3 +788,114 @@ class BdeIndicatorFetcher:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
+
+
+# =============================================================================
+# SITE EXPORT METADATA (consumed by src/export/bde.py)
+# =============================================================================
+# Spanish titles, descriptions, series labels and public BdE pages for every
+# indicator in BDE_INDICATORS. `kind` selects the field set exported to
+# site/data/bde/<key>.json (see src/export/bde.py):
+#   rate_daily_chg   daily rate: value + changes over 30 days / YTD / 1 year (pp)
+#   rate_daily       daily rate: value
+#   rate_monthly     monthly rate: value
+#   rate_monthly_chg monthly rate: value + monthly change (pp)
+#   credit_stock     stock of credit: value + monthly and annual growth
+#   ratio            quarterly ratio to GDP: value + quarterly change (pp)
+#   balance          balance of payments flow: value + rolling 12m sum
+#   receipts         balance of payments flow: value + annual growth
+# `currency`/`scale` apply to money amounts only (scale 6 = millions, 9 = billions).
+
+BDE_URL_RATES = "https://www.bde.es/webbe/es/estadisticas/temas/tipos-interes.html"
+BDE_URL_MARKETS = "https://www.bde.es/webbe/es/estadisticas/temas/mercados-financieros.html"
+BDE_URL_INSTITUTIONS = "https://www.bde.es/webbe/es/estadisticas/temas/instituciones-financieras.html"
+BDE_URL_ACCOUNTS = "https://www.bde.es/webbe/es/estadisticas/temas/cuentas-financieras.html"
+BDE_URL_EXTERNAL = "https://www.bde.es/webbe/es/estadisticas/temas/estadisticas-exteriores.html"
+
+BDE_EXPORT_META: Dict[str, Dict[str, Any]] = {
+    "euribor_12m_monthly": dict(kind="rate_monthly", url=BDE_URL_RATES, label_es="Euríbor 12 meses",
+        title_es="Euríbor a 12 meses (media mensual)",
+        description_es="Media mensual del Euríbor a un año."),
+    "euribor_12m_daily": dict(kind="rate_daily_chg", url=BDE_URL_RATES, label_es="Euríbor 12 meses",
+        title_es="Euríbor a 12 meses (diario)", description_es="Euríbor a un año, dato diario."),
+    "euribor_6m_daily": dict(kind="rate_daily", url=BDE_URL_RATES, label_es="Euríbor 6 meses",
+        title_es="Euríbor a 6 meses (diario)", description_es="Euríbor a seis meses, dato diario."),
+    "euribor_3m_daily": dict(kind="rate_daily_chg", url=BDE_URL_RATES, label_es="Euríbor 3 meses",
+        title_es="Euríbor a 3 meses (diario)", description_es="Euríbor a tres meses, dato diario."),
+    "euribor_1m_daily": dict(kind="rate_daily", url=BDE_URL_RATES, label_es="Euríbor 1 mes",
+        title_es="Euríbor a 1 mes (diario)", description_es="Euríbor a un mes, dato diario."),
+    "euribor_1w_daily": dict(kind="rate_daily", url=BDE_URL_RATES, label_es="Euríbor 1 semana",
+        title_es="Euríbor a 1 semana (diario)", description_es="Euríbor a una semana, dato diario."),
+    "ester_daily": dict(kind="rate_daily_chg", url=BDE_URL_RATES, label_es="€STR",
+        title_es="Tipo a corto plazo del euro (€STR)",
+        description_es="Euro short-term rate (€STR), tipo de interés a un día publicado por el BCE."),
+    "spain_10y_bond": dict(kind="rate_daily_chg", url=BDE_URL_MARKETS, label_es="España 10 años",
+        title_es="Rentabilidad del bono español a 10 años",
+        description_es="Rentabilidad de la deuda pública española a 10 años en el mercado secundario, dato diario."),
+    "spain_5y_bond": dict(kind="rate_daily_chg", url=BDE_URL_MARKETS, label_es="España 5 años",
+        title_es="Rentabilidad del bono español a 5 años",
+        description_es="Rentabilidad de la deuda pública española a 5 años en el mercado secundario, dato diario."),
+    "spain_3y_bond": dict(kind="rate_daily", url=BDE_URL_MARKETS, label_es="España 3 años",
+        title_es="Rentabilidad del bono español a 3 años",
+        description_es="Rentabilidad de la deuda pública española a 3 años en el mercado secundario, dato diario."),
+    "spain_2y_bond": dict(kind="rate_daily", url=BDE_URL_MARKETS, label_es="España más de 2 años",
+        title_es="Rentabilidad de la deuda española a más de 2 años",
+        description_es="Rentabilidad de bonos y obligaciones del Estado a más de 2 años en el mercado secundario, dato diario."),
+    "spain_15y_bond": dict(kind="rate_daily", url=BDE_URL_MARKETS, label_es="España 15 años",
+        title_es="Rentabilidad del bono español a 15 años",
+        description_es="Rentabilidad de la deuda pública española a 15 años en el mercado secundario, dato diario."),
+    "spain_tbill_3m": dict(kind="rate_daily", url=BDE_URL_MARKETS, label_es="Letras 1 a 3 meses",
+        title_es="Rentabilidad de las Letras del Tesoro a 1-3 meses",
+        description_es="Rentabilidad de las Letras del Tesoro a plazo de 1 a 3 meses en el mercado secundario, dato diario."),
+    "spain_tbill_6m": dict(kind="rate_daily", url=BDE_URL_MARKETS, label_es="Letras 6 meses",
+        title_es="Rentabilidad de las Letras del Tesoro a 6 meses",
+        description_es="Rentabilidad de las Letras del Tesoro a 6 meses en el mercado secundario, dato diario."),
+    "spain_tbill_1y": dict(kind="rate_daily", url=BDE_URL_MARKETS, label_es="Letras 1 año",
+        title_es="Rentabilidad de las Letras del Tesoro a 1 año",
+        description_es="Rentabilidad de las Letras del Tesoro a 1 año en el mercado secundario, dato diario."),
+    "spain_10y_bond_monthly": dict(kind="rate_monthly", url=BDE_URL_MARKETS, label_es="España",
+        title_es="Rentabilidad de la deuda pública a 10 años: España (mensual)",
+        description_es="Rendimiento de la deuda pública a largo plazo (criterio de Maastricht), media mensual."),
+    "germany_10y_bond": dict(kind="rate_monthly", url=BDE_URL_MARKETS, label_es="Alemania",
+        title_es="Rentabilidad de la deuda pública a 10 años: Alemania (mensual)",
+        description_es="Rendimiento de la deuda pública a largo plazo (criterio de Maastricht), media mensual."),
+    "france_10y_bond": dict(kind="rate_monthly", url=BDE_URL_MARKETS, label_es="Francia",
+        title_es="Rentabilidad de la deuda pública a 10 años: Francia (mensual)",
+        description_es="Rendimiento de la deuda pública a largo plazo (criterio de Maastricht), media mensual."),
+    "italy_10y_bond": dict(kind="rate_monthly", url=BDE_URL_MARKETS, label_es="Italia",
+        title_es="Rentabilidad de la deuda pública a 10 años: Italia (mensual)",
+        description_es="Rendimiento de la deuda pública a largo plazo (criterio de Maastricht), media mensual."),
+    "mortgage_rate": dict(kind="rate_monthly_chg", url=BDE_URL_RATES, label_es="Hipotecas",
+        title_es="Tipo de interés de los préstamos para vivienda",
+        description_es="Tipo de interés de las nuevas operaciones de crédito a hogares para adquisición de vivienda."),
+    "consumer_credit_rate": dict(kind="rate_monthly_chg", url=BDE_URL_RATES, label_es="Crédito al consumo",
+        title_es="Tipo de interés del crédito al consumo",
+        description_es="Tipo de interés de las nuevas operaciones de crédito a hogares para consumo."),
+    "corporate_lending_rate": dict(kind="rate_monthly_chg", url=BDE_URL_RATES, label_es="Crédito a sociedades no financieras",
+        title_es="Tipo de interés de los préstamos a sociedades no financieras",
+        description_es="Tipo de interés de las nuevas operaciones de crédito a sociedades no financieras."),
+    "household_deposit_rate": dict(kind="rate_monthly_chg", url=BDE_URL_RATES, label_es="Depósitos a plazo",
+        title_es="Tipo de interés de los depósitos a plazo de los hogares",
+        description_es="Tipo medio ponderado de las nuevas operaciones de depósitos a plazo de hogares."),
+    "household_overnight_deposit_rate": dict(kind="rate_monthly_chg", url=BDE_URL_RATES, label_es="Depósitos a la vista",
+        title_es="Tipo de interés de los depósitos a la vista de los hogares",
+        description_es="Tipo de interés de los depósitos a la vista de hogares."),
+    "credit_households_total": dict(kind="credit_stock", url=BDE_URL_INSTITUTIONS, label_es="Hogares",
+        currency="EUR", scale=6, title_es="Crédito a hogares",
+        description_es="Saldo del crédito a hogares e ISFLSH (préstamos y créditos, criterio de estadísticas monetarias de la UEM)."),
+    "credit_nfc_total": dict(kind="credit_stock", url=BDE_URL_INSTITUTIONS, label_es="Sociedades no financieras",
+        currency="EUR", scale=9, title_es="Crédito a sociedades no financieras",
+        description_es="Saldo del crédito total a sociedades no financieras (SNF)."),
+    "household_debt_gdp": dict(kind="ratio", url=BDE_URL_ACCOUNTS, label_es="Hogares",
+        title_es="Deuda de los hogares sobre el PIB",
+        description_es="Deuda de los hogares e ISFLSH en porcentaje del PIB a precios de mercado."),
+    "nfc_debt_gdp": dict(kind="ratio", url=BDE_URL_ACCOUNTS, label_es="Sociedades no financieras",
+        title_es="Deuda de las sociedades no financieras sobre el PIB",
+        description_es="Deuda de las sociedades no financieras en porcentaje del PIB a precios de mercado."),
+    "current_account_balance": dict(kind="balance", url=BDE_URL_EXTERNAL, label_es="España",
+        currency="EUR", scale=6, title_es="Saldo por cuenta corriente",
+        description_es="Saldo mensual de la cuenta corriente de la balanza de pagos, sin ajustar."),
+    "tourism_receipts": dict(kind="receipts", url=BDE_URL_EXTERNAL, label_es="España",
+        currency="EUR", scale=6, title_es="Ingresos por turismo",
+        description_es="Ingresos mensuales por turismo en la cuenta corriente de la balanza de pagos."),
+}

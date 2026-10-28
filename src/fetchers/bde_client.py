@@ -209,7 +209,7 @@ class BdeClient:
             return pd.DataFrame()
 
         df = pd.DataFrame({
-            "date": pd.to_datetime(fechas),
+            "date": to_local_date(fechas),
             "value": pd.to_numeric(valores, errors="coerce")
         })
 
@@ -301,7 +301,7 @@ class BdeClient:
                 "description": item.get("descripcionCorta", ""),
                 "frequency": item.get("codFrecuencia", ""),
                 "unit": item.get("simbolo", ""),
-                "date": pd.to_datetime(item.get("fechaValor", None)),
+                "date": to_local_date([item.get("fechaValor", None)])[0],
                 "value": pd.to_numeric(item.get("valor"), errors="coerce"),
                 "trend": item.get("tendencia", ""),
                 "decimals": item.get("decimales", 0)
@@ -320,6 +320,19 @@ class BdeClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
+
+
+def to_local_date(values) -> pd.DatetimeIndex:
+    """
+    Convert BdE timestamps (e.g. '2026-10-26T09:15:00Z', which is 10:15 in
+    Madrid) to naive local calendar dates at midnight.
+
+    The API stamps every observation at ~10:15 Madrid time, expressed in UTC,
+    so the UTC date equals the local date today. Converting explicitly keeps
+    it correct if BdE ever stamps near midnight.
+    """
+    idx = pd.to_datetime(values, utc=True)
+    return idx.tz_convert("Europe/Madrid").tz_localize(None).normalize()
 
 
 def parse_bde_date(date_str: str, frequency: str) -> datetime:
