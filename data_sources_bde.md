@@ -488,3 +488,20 @@ The following indicators were searched but specific series codes could not be ve
 
 *Document generated: February 2026*
 *For the CdE Macroeconomic Dashboard project*
+
+---
+
+## Additions (ext/bde, 2026-10-28)
+
+Series codes were located in the Boletín Estadístico chapter CSVs (`https://www.bde.es/webbe/es/estadisticas/compartido/datos/csv/beNNNN.csv`, header rows give code, alias and description) and verified against `/listaSeries?rango=MAX`.
+
+| Key | Series code | Boletín table | Unit in API | Notes |
+|---|---|---|---|---|
+| npl_ratio | D_BEEA2020 | 4.3 | % | Entidades de crédito y EFC, créditos dudosos / crédito total a otros sectores residentes |
+| social_security_affiliates | DEPSEGS1AF_XRTODS.M | 24.19 | persons (CSV header says thousands, values are persons) | Afiliados a fin de mes, total regímenes, sin desestacionalizar. No average-monthly or SA series in BdE API |
+| registered_unemployment | D_1JA0D000 | 24.15 | persons | Paro registrado total, fin de mes, sin desestacionalizar |
+| government_debt_pde | DMNPDE2010_P00000_PS_APU | 3.22 | thousands of EUR | Divided by 1000 in the processor (`value_divisor`) to give millions of EUR |
+| spread_10y_de (derived) | D_1NBBO320 - D_1NBBO308 | 1.x | pp | Spain minus Germany, monthly |
+| spread_10y_it (derived) | D_1NBBO320 - D_1NBBO309 | 1.x | pp | Spain minus Italy, monthly |
+
+Corrections to earlier codes: France 10Y is `D_1NBBO303` (the former `D_1NBBO314` is Finland) and Italy 10Y is `D_1NBBO309` (the former `D_1NBBO316` is Portugal). Other `D_1NBBO3xx` country codes: 305 Irlanda, 307 Bélgica, 308 Alemania, 310 Países Bajos, 311 Suecia, 315 Austria, 320 España.
