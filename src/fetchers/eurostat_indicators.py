@@ -100,8 +100,9 @@ EUROSTAT_INDICATORS = {
     "hicp": _ind("hicp", {'coicop18': ['TOTAL'], 'unit': ['RCH_A']}),
     "core_inflation": _ind("core_inflation", {'coicop18': ['TOT_X_NRG_FOOD'], 'unit': ['RCH_A']}),
     "producer_prices": _ind("producer_prices", {'unit': ['I21'], 'nace_r2': ['B-D']}),
-    # Spain only; exports and imports with the whole world, million EUR, not seasonally adjusted
-    "trade_balance": _ind("trade_balance", {'partner': ['WORLD'], 'bclas_bec': ['TOTAL'], 'indic_et': ['TRD_VAL'], 'stk_flow': ['EXP', 'IMP']},
+    # Spain only; exports and imports with the whole world, million EUR, seasonally and calendar
+    # adjusted (TRD_VAL_SCA; TRD_VAL, used before, is the unadjusted value)
+    "trade_balance": _ind("trade_balance", {'partner': ['WORLD'], 'bclas_bec': ['TOTAL'], 'indic_et': ['TRD_VAL_SCA'], 'stk_flow': ['EXP', 'IMP']},
                           geos=['ES'], geo_filter=['ES', 'EU27_2020']),
     "government_debt": _ind("government_debt", {'unit': ['PC_GDP'], 'na_item': ['GD'], 'sector': ['S13']}),
     "budget_deficit": _ind("budget_deficit", {'unit': ['PC_GDP'], 'na_item': ['B9'], 'sector': ['S13']}),
