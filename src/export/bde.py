@@ -31,6 +31,8 @@ def _value_label(key: str, kind: str) -> str:
         return "Rentabilidad"
     if kind == "credit_stock":
         return "Saldo"
+    if kind == "new_business":
+        return "Importe mensual de nuevas operaciones"
     if kind == "ratio":
         return "Ratio sobre PIB"
     if kind == "npl":
@@ -83,10 +85,10 @@ def _fields(key: str, meta: dict, decimals: int) -> list:
 def _base_fields(key: str, meta: dict, decimals: int) -> list:
     kind = meta["kind"]
     money = {"currency": meta.get("currency"), "scale": meta.get("scale", 0)}
-    value_unit = ("currency" if kind in ("credit_stock", "balance", "receipts", "debt_stock")
+    value_unit = ("currency" if kind in ("credit_stock", "balance", "receipts", "debt_stock", "new_business")
                   else "persons" if kind == "persons" else "pct")
     value_decimals = {"credit_stock": 1 if meta.get("scale") == 9 else 0, "balance": 0, "receipts": 0,
-                      "debt_stock": 0, "persons": 0, "ratio": 1}.get(kind, decimals)
+                      "debt_stock": 0, "persons": 0, "ratio": 1, "new_business": 0}.get(kind, decimals)
     fields = [Field("value", _value_label(key, kind), value_unit, value_decimals,
                     **(money if value_unit == "currency" else {}))]
 
@@ -105,6 +107,17 @@ def _base_fields(key: str, meta: dict, decimals: int) -> list:
         fields.append(Field("yoy_pp", "Variación interanual", "pp", 1, column="yoy_change_abs"))
     elif kind == "balance":
         fields.append(Field("sum_12m", "Acumulado 12 meses", "currency", 0, column="rolling_12m_sum", **money))
+    elif kind == "new_business":
+        # Flows of new lending, original data. yoy = relative change of the monthly value vs the same
+        # month a year earlier (never of the 12-month sum). Explicit about "new business, not stock".
+        nb = ("Importe de las nuevas operaciones de crédito del mes (flujo), no el saldo vivo del crédito")
+        fields[0].note_es = nb
+        fields += [
+            Field("sum_12m", "Acumulado 12 meses", "currency", 0, column="rolling_12m_sum", note_es=
+                  "Suma de las nuevas operaciones de los últimos 12 meses consecutivos (flujo), no el saldo vivo del crédito", **money),
+            Field("yoy", "Variación interanual", "pct_change", 1, column="yoy_change_pct", note_es=
+                  "Variación del importe mensual de nuevas operaciones respecto al mismo mes del año anterior (no del acumulado de 12 meses ni del saldo vivo)"),
+        ]
     elif kind == "npl":
         fields.append(Field("yoy_pp", "Variación interanual", "pp", decimals, column="yoy_change_abs"))
     elif kind in ("receipts", "persons", "debt_stock"):

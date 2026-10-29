@@ -356,6 +356,46 @@ BDE_INDICATORS: Dict[str, Dict[str, Any]] = {
     },
 
     # ==========================================================================
+    # NEW BUSINESS VOLUMES (nuevas operaciones, Boletin Estadistico 19.11 / 19.12)
+    # ==========================================================================
+    # Monthly estimated total amounts of new loans (flows, unadjusted, millions of EUR).
+    # "Nuevas operaciones" includes renegotiated loans, as the ECB defines new business; it is
+    # the volume that goes with the rates DN_1TI2T0135 / 0138 / 0144 (same label).
+
+    "new_housing_loans": {
+        "series_code": "DN_1TI2TIE96",
+        "name": "New Business Volume: Housing Loans to Households",
+        "category": "new_business",
+        "description": "New business, estimated total amounts. Loans to households & NPISHs. House purchase (BE 19.11)",
+        "unit": "Millions EUR",
+        "frequency": "M",
+        "source": "Banco de Espana",
+        "priority": "high"
+    },
+
+    "new_consumer_loans": {
+        "series_code": "DN_1TI2TIE99",
+        "name": "New Business Volume: Consumer Credit to Households",
+        "category": "new_business",
+        "description": "New business, estimated total amounts. Loans to households & NPISHs. Consumer credit (BE 19.11)",
+        "unit": "Millions EUR",
+        "frequency": "M",
+        "source": "Banco de Espana",
+        "priority": "high"
+    },
+
+    "new_corporate_loans": {
+        "series_code": "DN_1TI2TIE105",
+        "name": "New Business Volume: Loans to Non-Financial Corporations",
+        "category": "new_business",
+        "description": "New business, estimated total amounts. Loans to NFCs, total (BE 19.11)",
+        "unit": "Millions EUR",
+        "frequency": "M",
+        "source": "Banco de Espana",
+        "priority": "high"
+    },
+
+    # ==========================================================================
     # DEBT RATIOS
     # ==========================================================================
 
@@ -472,6 +512,7 @@ INDICATOR_GROUPS = {
         "credit_households_total", "credit_nfc_total"
     ],
     "credit_growth": ["credit_households_growth", "credit_nfc_growth"],
+    "new_business": ["new_housing_loans", "new_consumer_loans", "new_corporate_loans"],
     "debt_ratios": [
         "household_debt_gdp", "nfc_debt_gdp"
     ],
@@ -842,6 +883,7 @@ class BdeIndicatorFetcher:
 #   ratio            quarterly ratio to GDP: value + quarterly change (pp)
 #   balance          balance of payments flow: value + rolling 12m sum
 #   receipts         balance of payments flow: value + annual growth
+#   new_business     monthly flow of new loans (unadjusted): value + rolling 12m sum + annual growth
 # `currency`/`scale` apply to money amounts only (scale 6 = millions, 9 = billions).
 
 BDE_URL_RATES = "https://www.bde.es/webbe/es/estadisticas/temas/tipos-interes.html"
@@ -959,6 +1001,15 @@ BDE_EXPORT_META: Dict[str, Dict[str, Any]] = {
     "tourism_receipts": dict(kind="receipts", url=BDE_URL_EXTERNAL, label_es="España",
         currency="EUR", scale=6, title_es="Ingresos por turismo",
         description_es="Ingresos mensuales por turismo en la cuenta corriente de la balanza de pagos."),
+    "new_housing_loans": dict(kind="new_business", url=BDE_URL_RATES, label_es="España",
+        currency="EUR", scale=6, title_es="Nuevo crédito a hogares para vivienda",
+        description_es="Importe mensual de las nuevas operaciones de préstamo a hogares para adquisición de vivienda (incluye renegociaciones, criterio de nuevas operaciones del BCE)."),
+    "new_consumer_loans": dict(kind="new_business", url=BDE_URL_RATES, label_es="España",
+        currency="EUR", scale=6, title_es="Nuevo crédito al consumo de los hogares",
+        description_es="Importe mensual de las nuevas operaciones de crédito al consumo a hogares (incluye renegociaciones; excluye descubiertos y tarjetas de pago aplazado)."),
+    "new_corporate_loans": dict(kind="new_business", url=BDE_URL_RATES, label_es="España",
+        currency="EUR", scale=6, title_es="Nuevo crédito a sociedades no financieras",
+        description_es="Importe mensual de las nuevas operaciones de préstamo a sociedades no financieras, total (incluye renegociaciones)."),
     "npl_ratio": dict(kind="npl", url=BDE_URL_INSTITUTIONS, label_es="España",
         title_es="Ratio de créditos dudosos",
         description_es="Créditos dudosos a otros sectores residentes en porcentaje del crédito total, entidades de crédito y establecimientos financieros de crédito (tasa de morosidad)."),

@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import Report, http_json, load, series  # noqa: E402
+from _common import Report, add_months, http_json, load, series, series_keys  # noqa: E402
 
 API = "https://app.bde.es/bierest/resources/srdatosapp/listaSeries"
 
@@ -51,6 +51,11 @@ SPEC = {
     "bde.nfc_debt_gdp": ("DMZ10S80ZN0_TPRPIB.Q", ["Deuda SNF", "PIB"], "%", 1, "Q"),
     "bde.current_account_balance": ("DEEM.N.ES.W1.S1.S1.T.B.CA._Z._Z._Z.EUR._T._X.N.ALL", ["Cuenta corriente", "Saldo", "Sin ajuste de estacionalidad"], "M  EUR", 1e6, "M"),
     "bde.tourism_receipts": ("DEEM.N.ES.W1.S1.S1.T.C.SD._Z._Z._Z.EUR._T._X.N.ALL", ["Turismo", "Ingresos"], "M  EUR", 1e6, "M"),
+    # New business volumes (flows, original data). "Nuevas operaciones" total, which includes renegotiations;
+    # "Importes totales estimados" separates them from the rates (TEDR) of the same table.
+    "bde.new_housing_loans": ("DN_1TI2TIE96", ["Importes totales estimados", "HOGARES", "VIVIENDA", "NUEVAS OPERACIONES"], "M  EUR", 1e6, "M"),
+    "bde.new_consumer_loans": ("DN_1TI2TIE99", ["Importes totales estimados", "HOGARES", "CONSUMO", "NUEVAS OPERACIONES"], "M  EUR", 1e6, "M"),
+    "bde.new_corporate_loans": ("DN_1TI2TIE105", ["Importes totales estimados", "SOCIEDADES NO FINANCIERAS", "TOTAL", "NUEVAS OPERA"], "M  EUR", 1e6, "M"),
     "bde.npl_ratio": ("D_BEEA2020", ["créditos dudosos"], "%", 1, "M"),
     "bde.social_security_affiliates": ("DEPSEGS1AF_XRTODS.M", ["Afiliados a fin de mes", "Total regímenes"], None, 1, "M"),
     # BdE's symbol says "m pers." (thousands) but the values are persons (2.4 million).
@@ -61,6 +66,7 @@ GROWTH = {
     "bde.credit_households_total": "DCF_M.N.ES.W0.S1M.S1.N.L.LE.FD.T._Z.XDC._T.M.V.TVA._T",
     "bde.credit_nfc_total": "DCF_M.N.ES.W0.S11.S1.N.L.LE.F4.T._Z.XDC._T.M.V.TVA._T",
 }
+NEW_BUSINESS = ["bde.new_housing_loans", "bde.new_consumer_loans", "bde.new_corporate_loans"]
 SPREADS = {"bde.spread_10y_de": ("D_1NBBO320", "D_1NBBO308"), "bde.spread_10y_it": ("D_1NBBO320", "D_1NBBO309")}
 CURVE = {0.25: "D_DTES00B7", 0.5: "D_DTES00S7", 1.0: "D_DTES00U7", 3.0: "D_G0B1F0ZN", 5.0: "D_G0B1F0ZO",
          10.0: "D_G0B1F0ZP", 15.0: "D_G0B1F0ZQ"}
@@ -114,6 +120,42 @@ def run(rep: Report):
         else:
             n = 24
         rep.compare(ds, "values", pub, off, tol=tol + 1e-9 * max(abs(v) for v in off.values()), label=f"{code}", last_n=n)
+
+    # New business flows: each dataset is checked on its own against the official series.
+    for ds in NEW_BUSINESS:
+        code = SPEC[ds][0]
+        d = load(ds)
+        official_eur = {k: v * 1e6 for k, v in got[ds][1].items()}      # euros
+        # keys / fields: part of the promise made to the page agents
+        ok_keys = [x["key"] for x in d["fields"]] == ["value", "sum_12m", "yoy"] and series_keys(ds) == ["es"]
+        ok_units = all(x["unit"] == "currency" and x["currency"] == "EUR" and x.get("scale") == 6
+                       for x in d["fields"][:2]) and d["fields"][2]["unit"] == "pct_change"
+        rep.add(ds, "contract", "PASS" if ok_keys and ok_units else "FAIL",
+                f"series es; fields {[x['key'] for x in d['fields']]}; value/sum_12m EUR scale 6; yoy pct_change; no mom")
+        # notes: original data, new business and not the outstanding stock
+        bad = [x["key"] for x in d["fields"]
+               if "Datos originales (sin corregir de estacionalidad)" not in (x.get("note_es") or "")
+               or "nuevas operaciones" not in (x.get("note_es") or "").lower()
+               or "saldo vivo" not in (x.get("note_es") or "").lower()]
+        rep.add(ds, "notes", "FAIL" if bad else "PASS",
+                f"fields without NSA / nuevas operaciones / saldo vivo statement: {bad}" if bad else "NSA + new business vs stock stated in every field")
+        # 12-month sum: from the official months only where 12 consecutive months exist
+        months = sorted(official_eur)
+        exp_sum = {}
+        for i in range(11, len(months)):
+            win = months[i - 11:i + 1]
+            if add_months(win[0], 11) == win[-1]:
+                exp_sum[win[-1]] = sum(official_eur[m] for m in win)
+        pub_sum = {k: v * 1e6 for k, v in series(ds, "es", "sum_12m").items()}
+        rep.compare(ds, "sum_12m", pub_sum, exp_sum, tol=1e-6 * max(exp_sum.values()), label=f"{code} rolling 12m", last_n=36)
+        # yoy: relative change of the monthly value vs the same month a year earlier
+        exp_yoy = {m: (official_eur[m] / official_eur[add_months(m, -12)] - 1) * 100
+                   for m in months if add_months(m, -12) in official_eur}
+        rep.compare(ds, "yoy", series(ds, "es", "yoy"), exp_yoy, tol=1e-3, label=f"{code} value vs same month t-12", last_n=36)
+        # ten years of history and null sum_12m only when fewer than 12 months precede
+        first = min(series(ds, "es", "value"))
+        span = (datetime.now(timezone.utc).year - int(first[:4])) * 12 + datetime.now(timezone.utc).month - int(first[5:7])
+        rep.add(ds, "history", "PASS" if 118 <= span + 1 <= 124 else "FAIL", f"first month {first} ({span} months back)")
 
     # Audit M3: the credit "yoy" is BdE's published transaction-based growth rate (BE 3.20 / 3.21)
     for ds, code in GROWTH.items():
