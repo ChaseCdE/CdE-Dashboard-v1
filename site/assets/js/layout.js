@@ -1,9 +1,10 @@
-// Site shell: skip link, header (logo, title, nav), footer (sources, Círculo link, data date).
+// Site shell: skip link, header (logo, title, nav), suggestions box, footer (sources, Círculo link, data date).
 // Usage in a page:  <script type="module"> import { mountLayout } from './assets/js/layout.js';
 //                   mountLayout({ active: 'portada' }); </script>
 import { SITE_ROOT, IMG_ROOT } from './config.js';
 import { loadManifest } from './data.js';
 import { fmtDateLong } from './format.js';
+import { buildFeedback } from './feedback.js';
 
 export const NAV = [
   { id: 'portada', label: 'Portada', path: 'index.html' },
@@ -86,6 +87,8 @@ export function mountLayout({ active } = {}) {
   if (header) { header.className = 'site-header'; header.replaceChildren(buildHeader(active)); }
   const footer = document.getElementById('site-footer') || document.querySelector('footer.site-footer');
   if (footer) {
+    const fb = document.querySelector('section.feedback') ? null : buildFeedback();
+    if (fb) footer.before(fb);
     footer.className = 'site-footer';
     footer.replaceChildren(buildFooter());
     loadManifest().then((m) => {
