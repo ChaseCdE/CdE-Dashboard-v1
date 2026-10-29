@@ -586,8 +586,11 @@ class EurostatProcessor:
             df = self._calculate_yoy_change(df, value_col, kind=yoy)
             cols.append("yoy_change")
         df = df[[c for c in cols if c in df.columns]].copy()
-        _check_time_gaps(df, "A" if name in ("gdp_per_capita_pps", "labour_productivity_pps", "rd_expenditure")
-                         else ("Q" if name == "long_term_unemployment" else "M"), name)
+        _check_time_gaps(df, "A" if name in ("gdp_per_capita_pps", "labour_productivity_pps", "rd_expenditure",
+                                             "interest_expenditure")
+                         else ("Q" if name in ("long_term_unemployment", "capacity_utilization", "bankruptcies",
+                                               "business_registrations", "job_vacancy_rate",
+                                               "gov_deficit_quarterly") else "M"), name)
         self._create_comparison_dataset(df, value_col, name)
         return self._split_by_geography(df, value_col, name)
 
@@ -616,6 +619,39 @@ class EurostatProcessor:
     def process_hicp_energy(self):
         print("Processing HICP energy...")
         return self._process_simple("hicp_energy_raw.csv", "hicp_energy", "hicp_energy", yoy_is_value=True)
+
+    # --- fill/eurostat ---
+    def process_construction_production(self):
+        print("Processing construction production...")
+        return self._process_simple("construction_production_raw.csv", "construction_index",
+                                    "construction_production", yoy="pct")
+
+    def process_capacity_utilization(self):
+        print("Processing capacity utilisation...")
+        return self._process_simple("capacity_utilization_raw.csv", "capacity_utilization",
+                                    "capacity_utilization", yoy="diff")
+
+    def process_bankruptcies(self):
+        print("Processing bankruptcies...")
+        return self._process_simple("bankruptcies_raw.csv", "bankruptcies_index", "bankruptcies", yoy="pct")
+
+    def process_business_registrations(self):
+        print("Processing business registrations...")
+        return self._process_simple("business_registrations_raw.csv", "registrations_index",
+                                    "business_registrations", yoy="pct")
+
+    def process_job_vacancy_rate(self):
+        print("Processing job vacancy rate...")
+        return self._process_simple("job_vacancy_rate_raw.csv", "job_vacancy_rate",
+                                    "job_vacancy_rate", yoy="diff")
+
+    def process_gov_deficit_quarterly(self):
+        print("Processing quarterly government balance...")
+        return self._process_simple("gov_deficit_quarterly_raw.csv", "gov_balance_q", "gov_deficit_quarterly")
+
+    def process_interest_expenditure(self):
+        print("Processing government interest expenditure...")
+        return self._process_simple("interest_expenditure_raw.csv", "interest_pct_gdp", "interest_expenditure")
 
     def process_all(self) -> dict:
         """
@@ -672,6 +708,13 @@ class EurostatProcessor:
         results["youth_unemployment"] = self.process_youth_unemployment()
         results["long_term_unemployment"] = self.process_long_term_unemployment()
         results["hicp_energy"] = self.process_hicp_energy()
+        results["construction_production"] = self.process_construction_production()
+        results["capacity_utilization"] = self.process_capacity_utilization()
+        results["bankruptcies"] = self.process_bankruptcies()
+        results["business_registrations"] = self.process_business_registrations()
+        results["job_vacancy_rate"] = self.process_job_vacancy_rate()
+        results["gov_deficit_quarterly"] = self.process_gov_deficit_quarterly()
+        results["interest_expenditure"] = self.process_interest_expenditure()
 
         print("\n" + "=" * 60)
         print("All Eurostat indicators processed successfully!")

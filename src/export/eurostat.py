@@ -325,6 +325,85 @@ DATASETS += [
     ),
 ]
 
+_ESEU = [("es", ES), ("eu27", EU)]
+_YOY_PP = "Variación anual (puntos porcentuales)"
+
+DATASETS += [
+    _multi(
+        "construction_production", "construction_index",
+        "Producción en la construcción",
+        "Índice de producción en la construcción (volumen). España frente a UE-27.",
+        "M", DATASET_CODES["construction_production"],
+        [Field("value", "Índice (2021 = 100)", "index", 1, note_es=note(SCA, "Base 2021 = 100")),
+         Field("yoy", "Variación anual", "pct_change", 1, note_es=SCA)],
+        _ESEU, yoy_col="yoy_change",
+    ),
+    _multi(
+        "capacity_utilization", "capacity_utilization",
+        "Utilización de la capacidad productiva en la industria",
+        "Grado de utilización de la capacidad productiva en la industria manufacturera, según la encuesta de coyuntura de la Comisión Europea. España frente a UE-27.",
+        "Q", DATASET_CODES["capacity_utilization"],
+        [Field("value", "Utilización de la capacidad (%)", "pct", 1,
+               note_es=note(SA, "Encuesta de la Comisión Europea a la industria manufacturera")),
+         Field("yoy_pp", _YOY_PP, "pp", 1, note_es=SA)],
+        _ESEU, yoy_col="yoy_change",
+    ),
+    _multi(
+        "bankruptcies", "bankruptcies_index",
+        "Declaraciones de quiebra",
+        "Índice de declaraciones de quiebra de empresas (industria, construcción y servicios de mercado). España frente a UE-27.",
+        "Q", DATASET_CODES["bankruptcies"],
+        [Field("value", "Índice (2021 = 100)", "index", 1,
+               note_es=note(SCA, "Base 2021 = 100. Industria, construcción y servicios de mercado, excluidas las Administraciones Públicas")),
+         Field("yoy", "Variación anual", "pct_change", 1, note_es=SCA)],
+        _ESEU, yoy_col="yoy_change",
+    ),
+    _multi(
+        "business_registrations", "registrations_index",
+        "Altas de empresas",
+        "Índice de registros de nuevas empresas (industria, construcción y servicios de mercado). España frente a UE-27.",
+        "Q", DATASET_CODES["business_registrations"],
+        [Field("value", "Índice (2021 = 100)", "index", 1,
+               note_es=note(SCA, "Base 2021 = 100. Industria, construcción y servicios de mercado, excluidas las Administraciones Públicas")),
+         Field("yoy", "Variación anual", "pct_change", 1, note_es=SCA)],
+        _ESEU, yoy_col="yoy_change",
+    ),
+    _multi(
+        "job_vacancy_rate", "job_vacancy_rate",
+        "Tasa de vacantes",
+        "Vacantes como porcentaje de los puestos de trabajo (ocupados más vacantes) en industria, construcción y servicios. España frente a UE-27.",
+        "Q", DATASET_CODES["job_vacancy_rate"],
+        [Field("value", "Tasa de vacantes (%)", "pct", 2,
+               note_es=note(SA, "Industria, construcción y servicios (B a S, salvo hogares como empleadores)")),
+         Field("yoy_pp", _YOY_PP, "pp", 2, note_es=SA)],
+        _ESEU, yoy_col="yoy_change",
+    ),
+    _multi(
+        "gov_deficit_quarterly", "gov_balance_q",
+        "Saldo de las Administraciones Públicas (trimestral)",
+        "Capacidad (+) o necesidad (-) de financiación de las Administraciones Públicas, trimestral, en porcentaje del PIB. España frente a UE-27.",
+        "Q", DATASET_CODES["gov_deficit_quarterly"],
+        [Field("value", "Saldo de las AAPP (% del PIB)", "pct", 1,
+               note_es=note(SCA, "Capacidad o necesidad de financiación de las Administraciones Públicas (S13), en porcentaje del PIB"))],
+        _ESEU,
+    ),
+    _multi(
+        "interest_expenditure", "interest_pct_gdp",
+        "Gasto en intereses de las Administraciones Públicas",
+        "Intereses pagados por las Administraciones Públicas en porcentaje del PIB. España, UE-27, Alemania, Francia e Italia.",
+        "A", DATASET_CODES["interest_expenditure"],
+        [Field("value", "Intereses (% del PIB)", "pct", 1,
+               note_es=note(ANNUAL, "Intereses a pagar (D41) de las Administraciones Públicas (S13)"))],
+        [("es", ES), ("eu27", EU), ("de", "Alemania"), ("fr", "Francia"), ("it", "Italia")],
+    ),
+]
+
+# Eurostat's job vacancy statistics for Spain and the EU27 currently end in 2025-Q4 (checked against the API,
+# also unadjusted), about 300 days after the end of that quarter when this was added.
+for _ds in DATASETS:
+    if _ds.indicator == "job_vacancy_rate":
+        _ds.stale_after_days = 400
+
 
 # Eurostat publishes R&D expenditure for year t around November of t+1, so the latest year
 # is legitimately ~22 months past its end just before each release (contract v1.2).

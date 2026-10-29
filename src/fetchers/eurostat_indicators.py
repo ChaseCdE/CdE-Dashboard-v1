@@ -65,11 +65,21 @@ DATASET_CODES = {
     "youth_unemployment": "une_rt_m",          # Same table as `unemployment`, age Y_LT25
     "long_term_unemployment": "une_ltu_q",     # LTU, % of active population, quarterly
     "hicp_energy": "prc_hicp_minr",            # Same table as `hicp`, coicop18 = NRG
+
+    # Fill (fill/eurostat): activity, business demography, labour demand, public finances
+    "construction_production": "sts_copr_m",   # Production in construction, I21, SCA
+    "capacity_utilization": "ei_bsin_q_r2",    # Business survey, capacity utilisation in manufacturing, SA
+    "bankruptcies": "sts_rb_q",                # Bankruptcy declarations (BKRT), I21, SCA
+    "business_registrations": "sts_rb_q",      # Registrations (REG), same dataset, SCA
+    "job_vacancy_rate": "jvs_q_nace2",         # JVR, industry, construction and services, SA
+    "gov_deficit_quarterly": "gov_10q_ggnfa",  # Net lending/borrowing B9, % of GDP, SCA
+    "interest_expenditure": "gov_10a_main",    # Interest payable D41PAY, % of GDP, annual
 }
 
 # Geographies of the extension datasets (Eurostat codes)
 GEO_EXT_PEERS = ['ES', 'DE', 'FR', 'IT', 'PT']
 GEO_EXT_RD = ['ES', 'EU27_2020', 'DE', 'FR', 'IT']
+GEO_INTEREST = GEO_EXT_RD
 # Annual extension series start earlier than the pipeline default (2015)
 EXT_ANNUAL_START = 2005
 
@@ -119,6 +129,15 @@ EUROSTAT_INDICATORS = {
     "youth_unemployment": _ind("youth_unemployment", {'unit': ['PC_ACT'], 's_adj': ['SA'], 'sex': ['T'], 'age': ['Y_LT25']}),
     "long_term_unemployment": _ind("long_term_unemployment", {'indic_em': ['LTU'], 'age': ['Y15-74'], 'unit': ['PC_ACT'], 's_adj': ['SA'], 'sex': ['T']}),
     "hicp_energy": _ind("hicp_energy", {'coicop18': ['NRG'], 'unit': ['RCH_A']}),
+    # Fill datasets. Every non-geo dimension is pinned. Adjustment: best the dataset offers for ES and EU27.
+    "construction_production": _ind("construction_production", {'indic_bt': ['PRD'], 'nace_r2': ['F'], 'unit': ['I21'], 's_adj': ['SCA']}),
+    "capacity_utilization": _ind("capacity_utilization", {'indic': ['BS-ICU-PC'], 's_adj': ['SA']}),
+    "bankruptcies": _ind("bankruptcies", {'indic_bt': ['BKRT'], 'nace_r2': ['B-S_X_O_S94'], 'unit': ['I21'], 's_adj': ['SCA']}),
+    "business_registrations": _ind("business_registrations", {'indic_bt': ['REG'], 'nace_r2': ['B-S_X_O_S94'], 'unit': ['I21'], 's_adj': ['SCA']}),
+    "job_vacancy_rate": _ind("job_vacancy_rate", {'indic_em': ['JVR'], 'nace_r2': ['B-S'], 'sizeclas': ['TOTAL'], 's_adj': ['SA']}),
+    "gov_deficit_quarterly": _ind("gov_deficit_quarterly", {'unit': ['PC_GDP'], 'na_item': ['B9'], 'sector': ['S13'], 's_adj': ['SCA']}),
+    "interest_expenditure": _ind("interest_expenditure", {'unit': ['PC_GDP'], 'na_item': ['D41PAY'], 'sector': ['S13']},
+                                 geos=GEO_INTEREST, start=EXT_ANNUAL_START),
 }
 
 
