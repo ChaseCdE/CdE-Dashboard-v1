@@ -50,7 +50,8 @@ SPEC = {
     "eurostat.youth_unemployment": ("une_rt_m", {"age": "Y_LT25", "unit": "PC_ACT", "s_adj": "SA", "sex": "T"}, {"value": "value", "yoy_pp": "yoy_diff"}),
     "eurostat.long_term_unemployment": ("une_ltu_q", {"indic_em": "LTU", "age": "Y15-74", "unit": "PC_ACT", "s_adj": "SA", "sex": "T"}, {"value": "value", "yoy_pp": "yoy_diff"}),
 }
-TRADE = ("ext_st_27_2020msbec", {"partner": "WORLD", "bclas_bec": "TOTAL", "indic_et": "TRD_VAL"})
+# Seasonal-adjustment pass: TRD_VAL (unadjusted) -> TRD_VAL_SCA (seasonally and calendar adjusted).
+TRADE = ("ext_st_27_2020msbec", {"partner": "WORLD", "bclas_bec": "TOTAL", "indic_et": "TRD_VAL_SCA"})
 
 
 def period_to_date(p: str) -> str:
@@ -146,7 +147,8 @@ def run(rep: Report):
     ex_ = next(v for k, v in r["data"].items() if "EXP" in k)["ES"]
     im_ = next(v for k, v in r["data"].items() if "IMP" in k)["ES"]
     pinned = ", ".join(f"{d}={'/'.join(r['labels'][d].values())}" for d in r["ids"] if d not in ("geo", "time", "freq"))
-    rep.add(ds, "identity", "PASS" if r["labels"]["bclas_bec"].get("TOTAL") == "Total" and r["labels"]["partner"].get("WORLD") else "FAIL", pinned[:200])
+    sca = "seasonally and calendar adjusted" in r["labels"]["indic_et"].get("TRD_VAL_SCA", "").lower()
+    rep.add(ds, "identity", "PASS" if sca and r["labels"]["bclas_bec"].get("TOTAL") == "Total" and r["labels"]["partner"].get("WORLD") else "FAIL", pinned[:200])
     rep.compare(ds, "values", series(ds, "es", "exports"), ex_, 1e-4, "exports", last_n=24)
     rep.compare(ds, "values", series(ds, "es", "imports"), im_, 1e-4, "imports", last_n=24)
     rep.compare(ds, "transform", series(ds, "es", "balance"), {k: ex_[k] - im_[k] for k in ex_ if k in im_}, 1e-3, "balance=exp-imp", last_n=24)

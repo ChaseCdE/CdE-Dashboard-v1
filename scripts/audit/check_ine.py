@@ -28,8 +28,9 @@ NULT = 36
 SA = "Datos ajustados de estacionalidad y calendario"
 SPEC = [
     ("ine.gdp", "es", "value", "CNTR6652", "level", ["Total Nacional", SA, "Producto interior bruto a precios de mercado", "Dato base", "volumen encadenados"]),
-    ("ine.gdp", "es", "yoy", "CNTR6654", "official", ["Total Nacional", SA, "Producto interior bruto", "Variación anual"]),
-    ("ine.gdp", "es", "qoq", "CNTR6653", "official", ["Total Nacional", SA, "Producto interior bruto", "Variación trimestral"]),
+    # Seasonal-adjustment pass: yoy/qoq are INE's published rates of the SA series (were recomputed from CNTR6652).
+    ("ine.gdp", "es", "yoy", "CNTR6654", "level", ["Total Nacional", SA, "Producto interior bruto", "Variación anual"]),
+    ("ine.gdp", "es", "qoq", "CNTR6653", "level", ["Total Nacional", SA, "Producto interior bruto", "Variación trimestral"]),
     # Demand contributions: INE's headline contributions are computed on SA data, like ine.gdp.
     ("ine.gdp_demand", "private_consumption", "contribution", "CNTR7160", "level", [SA, "consumo final de los hogares y las ISFLSH", "Aportación anual"]),
     ("ine.gdp_demand", "public_consumption", "contribution", "CNTR7190", "level", [SA, "consumo final de las AAPP", "Aportación anual"]),
@@ -38,8 +39,9 @@ SPEC = [
     ("ine.industrial_production", "es", "value", "IPI15360", "level", ["Total Nacional", "Índice", SA, "Total industria"]),
     ("ine.industrial_production", "es", "yoy", "IPI15374", "level", ["Total Nacional", "Variación anual", SA, "Total industria"]),
     ("ine.industrial_production", "es", "mom", "IPI15381", "official", ["Total Nacional", "Variación mensual", SA, "Total industria"]),
-    ("ine.industry_turnover", "es", "yoy", "ICN2412", "level", ["Nacional", "Total industria", "Variación anual"]),
-    ("ine.services_turnover", "es", "yoy", "IAS3856", "level", ["Cifra de negocio", "ajustados de calendario", "Índice General", "Nacional", "Variación anual"]),
+    # Seasonal-adjustment pass: ICN2412 (original) -> ICN2920 (SA+calendar); IAS3856 (calendar only) -> IAS4004 (SA+calendar).
+    ("ine.industry_turnover", "es", "yoy", "ICN2920", "level", ["Nacional", "Total industria", "Variación anual", SA]),
+    ("ine.services_turnover", "es", "yoy", "IAS4004", "level", ["Cifra de negocio", SA, "Índice General", "Nacional", "Variación anual"]),
     ("ine.services_production", "es", "value", "IPSS380", "level", ["precios corrientes", SA, "Índice General", "Total Nacional", "Índice"]),
     ("ine.services_production", "es", "yoy", "IPSS490", "level", [SA, "Índice General", "Variación anual"]),
     ("ine.services_production", "es", "mom", "IPSS491", "official", [SA, "Índice General", "Variación mensual"]),
@@ -51,12 +53,17 @@ SPEC = [
     ("ine.employment_rate", "es", "value", "EPA441060", "level", ["Total Nacional", "Tasa de empleo", "Ambos sexos", "Total."]),
     ("ine.activity_rate", "es", "value", "EPA388079", "level", ["Total Nacional", "Tasa de actividad", "Ambos sexos", "Total."]),
     ("ine.temporary_rate", "es", "value", "EPA416256", "level", ["Asalariados", "Total Nacional", "Ambos sexos", "Temporal", "Porcentaje"]),
-    ("ine.employed", "es", "value", "EPA387796", "level", ["Total Nacional", "Ambos sexos", "Ocupados", "Valor absoluto"]),
+    # ine.employed: seasonally adjusted level from INE's EPA workbook (not in Tempus), checked in check_epa_sa() below.
     ("ine.parttime_rate", "es", "value", "EPA404363", "official", ["Ocupados", "Total Nacional", "Ambos sexos", "Total.", "tiempo parcial", "Porcentaje"]),
-    ("ine.labor_cost", "es", "value", "ETCL68", "level", ["Industria, construcción y servicios", "Coste laboral total. Total", "Total Nacional", "Euros"]),
-    ("ine.labor_cost_hour", "es", "value", "ETCL925", "level", ["Industria, construcción y servicios", "Coste laboral total por hora", "Total Nacional", "Euros"]),
-    ("ine.labor_cost_components", "total", "value", "ETCL68", "level", ["Coste laboral total. Total", "Total Nacional"]),
-    ("ine.labor_cost_components", "salarial", "value", "ETCL67", "level", ["Coste salarial total. Total", "Total Nacional"]),
+    # Seasonal-adjustment pass: ETCL68/67/925 (original) -> SA+calendar ETCL13714/13712/13732, with INE's own yoy.
+    ("ine.labor_cost", "es", "value", "ETCL13714", "level", ["Total Nacional", SA, "Coste total por trabajador", "Euros"]),
+    ("ine.labor_cost", "es", "yoy", "ETCL13713", "level", ["Total Nacional", SA, "Coste total por trabajador", "Tasa de variación anual"]),
+    ("ine.labor_cost_hour", "es", "value", "ETCL13732", "level", [SA, "Coste laboral total por hora", "Total Nacional", "Euros"]),
+    ("ine.labor_cost_hour", "es", "yoy", "ETCL13731", "level", [SA, "Coste laboral total por hora", "Total Nacional", "Tasa de variación anual"]),
+    ("ine.labor_cost_components", "total", "value", "ETCL13714", "level", [SA, "Coste total por trabajador", "Euros", "Total Nacional"]),
+    ("ine.labor_cost_components", "salarial", "value", "ETCL13712", "level", [SA, "Coste salarial total por trabajador", "Euros", "Total Nacional"]),
+    ("ine.labor_cost_components", "total", "yoy", "ETCL13713", "level", [SA, "Coste total por trabajador", "Tasa de variación anual"]),
+    ("ine.labor_cost_components", "salarial", "yoy", "ETCL13711", "level", [SA, "Coste salarial total por trabajador", "Tasa de variación anual"]),
     ("ine.cpi", "es", "value", "IPC290751", "level", ["Nacional", "Índice general", "Índice"]),
     ("ine.cpi", "es", "yoy", "IPC290750", "official", ["Nacional", "Índice general", "Variación anual"]),
     ("ine.cpi_special_groups", "headline", "yoy", "IPC290750", "level", ["Nacional", "Índice general", "Variación anual"]),
@@ -217,6 +224,7 @@ def run(rep: Report) -> dict:
             rep.add(ds, "identity", "PASS", "INE series names match the definition")
     derived(rep, got)
     labels(rep)
+    check_epa_sa(rep)
     return got
 
 
@@ -231,6 +239,61 @@ def labels(rep: Report):
     for ds, skey, ok, why in LABEL_RULES:
         lab = next(s["label_es"] for s in load(ds)["series"] if s["key"] == skey)
         rep.add(ds, "meta", "PASS" if ok(lab) else "FAIL", f"label of {skey} = '{lab}': {why}")
+
+
+EPA_SA_URL = "https://www.ine.es/daco/daco42/daco4211/epa_desestacional.xlsx"
+
+
+def _xlsx_rows(content: bytes) -> dict:
+    """{sheet: [[cell texts of a row] ...]} of an .xlsx, standard library only (independent of src/)."""
+    import io
+    import xml.etree.ElementTree as ET
+    import zipfile
+    ns = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+    z = zipfile.ZipFile(io.BytesIO(content))
+    shared = [''.join(t.text or '' for t in si.iter(ns + 't')) for si in ET.fromstring(z.read('xl/sharedStrings.xml')).iter(ns + 'si')]
+    out = {}
+    for name in z.namelist():
+        if not name.startswith('xl/worksheets/sheet'):
+            continue
+        rows = []
+        for r in ET.fromstring(z.read(name)).iter(ns + 'row'):
+            vals = []
+            for c in r.iter(ns + 'c'):
+                v = c.find(ns + 'v')
+                vals.append(None if v is None else (shared[int(v.text)] if c.get('t') == 's' else v.text))
+            rows.append(vals)
+        out[name] = rows
+    return out
+
+
+def check_epa_sa(rep: Report):
+    """ine.employed = 'Ocupación' of INE's 'Series desestacionalizadas EPA. Totales (miles de personas)'."""
+    import requests
+    ds = "ine.employed"
+    r = requests.get(EPA_SA_URL, timeout=60, headers={"User-Agent": "CdE-audit/1.0"})
+    r.raise_for_status()
+    found = None
+    for name, rows in _xlsx_rows(r.content).items():
+        flat = [str(x) for row in rows for x in row if x]
+        if any("Series desestacionalizadas EPA" in x for x in flat) and any(x.strip().startswith("Totales (miles de personas)") for x in flat):
+            found = (name, rows)
+    if not found:
+        rep.add(ds, "identity", "FAIL", "EPA workbook: no sheet 'Series desestacionalizadas EPA / Totales (miles de personas)'")
+        return
+    name, rows = found
+    head = next((row for row in rows if row and row[0] == "Periodo"), None)
+    if not head or "Ocupación" not in head:
+        rep.add(ds, "identity", "FAIL", f"EPA workbook {name}: header lacks 'Ocupación': {head}")
+        return
+    col = head.index("Ocupación")
+    data = {}
+    for row in rows:
+        if row and row[0] and str(row[0]).startswith("T") and len(row) > col and row[col] not in (None, ""):
+            q, y = str(row[0])[1], str(row[0]).split("-")[1]
+            data[quarter_start(int(y), int(q))] = float(row[col])
+    rep.add(ds, "identity", "PASS", f"{EPA_SA_URL}: Series desestacionalizadas EPA, Totales (miles de personas), Ocupación")
+    rep.compare(ds, "values", series(ds, "es", "value"), data, tol=1e-4, label="value<-EPA desestacionalizada Ocupación", last_n=24)
 
 
 def derived(rep: Report, got: dict):

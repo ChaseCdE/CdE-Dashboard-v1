@@ -39,7 +39,33 @@ OFFICIAL = {
     ("ine.tourist_arrivals", "yoy"), ("ine.tourist_spending", "yoy"),
     # Audit M3: BdE's published transaction-based growth rates (check_bde.py compares them with the API)
     ("bde.credit_households_total", "yoy"), ("bde.credit_nfc_total", "yoy"),
+    # Seasonal-adjustment pass: INE's published rates of the seasonally and calendar adjusted series (check_ine.py)
+    ("ine.gdp", "yoy"), ("ine.gdp", "qoq"), ("ine.labor_cost", "yoy"), ("ine.labor_cost_hour", "yoy"),
+    ("ine.labor_cost_components", "yoy"),
 }
+
+# Seasonal-adjustment rule (docs/audit/seasonal-adjustment.md). Every field states its adjustment with
+# one of these phrases; market prices have no adjustment concept and are exempt.
+ADJ_PHRASES = {
+    "SCA": "datos corregidos de efectos estacionales y de calendario",
+    "SA": "datos corregidos de efectos estacionales",
+    "NSA": "datos originales (sin corregir de estacionalidad)",
+    "ANNUAL": "dato anual: la corrección de estacionalidad no procede",
+}
+MARKET = {"bde.euribor_12m_monthly", "bde.euribor_12m_daily", "bde.euribor_6m_daily", "bde.euribor_3m_daily",
+          "bde.euribor_1m_daily", "bde.euribor_1w_daily", "bde.ester_daily", "bde.spain_10y_bond", "bde.spain_5y_bond",
+          "bde.spain_3y_bond", "bde.spain_2y_bond", "bde.spain_15y_bond", "bde.spain_tbill_3m", "bde.spain_tbill_6m",
+          "bde.spain_tbill_1y", "bde.spain_10y_bond_monthly", "bde.germany_10y_bond", "bde.france_10y_bond",
+          "bde.italy_10y_bond", "bde.spread_10y_de", "bde.spread_10y_it", "bde.yield_curve"}
+# Being changed in parallel by the lead (not part of the seasonal-adjustment pass).
+ADJ_NOT_IN_SCOPE = {"bde.social_security_affiliates", "bde.registered_unemployment"}
+# Period-on-period changes of original data are allowed only where the official headline itself is
+# the unadjusted monthly rate of a price index.
+PERIOD_ON_PERIOD_NSA_OK = {("ine.cpi_ccaa", "mom"), ("ine.ipri", "mom")}
+# Datasets switched to the adjusted variant in this pass: every field must say so.
+MUST_BE_ADJUSTED = {"ine.industry_turnover": "SCA", "ine.services_turnover": "SCA", "ine.labor_cost": "SCA",
+                    "ine.labor_cost_hour": "SCA", "ine.labor_cost_components": "SCA", "ine.employed": "SA",
+                    "eurostat.trade_balance": "SCA"}
 LEVEL_FIELD = {"yahoo": "close"}
 
 
@@ -200,6 +226,33 @@ def run(rep: Report):
                     compare_maps(rep, ds_id, f"{s['key']}.contribution=yoy*weight", pub, exp, 0.0002)
     additivity(rep)
     bases(rep)
+    adjustment_notes(rep)
+
+
+def adjustment_notes(rep):
+    """Every field's note_es states its seasonal adjustment; no m/m or q/q change of original data."""
+    for e in manifest()["datasets"]:
+        ds_id = e["id"]
+        if ds_id.split(".")[0] == "yahoo" or ds_id in MARKET or ds_id in ADJ_NOT_IN_SCOPE:
+            continue
+        ds = load(ds_id)
+        bad = []
+        for f in ds["fields"]:
+            n = (f.get("note_es") or "").lower()
+            kinds = [k for k, p in ADJ_PHRASES.items() if p in n]
+            # "SA" is a prefix of "SCA": keep the most specific statement
+            if "SCA" in kinds and "SA" in kinds and n.count(ADJ_PHRASES["SA"]) == n.count(ADJ_PHRASES["SCA"]):
+                kinds.remove("SA")
+            if not kinds:
+                bad.append(f"{f['key']}: no adjustment statement")
+                continue
+            if f["key"] in ("mom", "qoq", "mom_pp", "qoq_pp") and "NSA" in kinds and (ds_id, f["key"]) not in PERIOD_ON_PERIOD_NSA_OK:
+                bad.append(f"{f['key']}: period-on-period change of original data")
+            want = MUST_BE_ADJUSTED.get(ds_id)
+            if want and want not in kinds:
+                bad.append(f"{f['key']}: expected {want}, note says {kinds}")
+        rep.add(ds_id, "meta", "FAIL" if bad else "PASS",
+                "adjustment notes: " + ("; ".join(bad) if bad else "every field states its seasonal adjustment"))
 
 
 def bases(rep):
