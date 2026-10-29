@@ -57,6 +57,11 @@ AVAILABLE_INDICATORS = [
     "companies",
     "household_saving_rate",
     "population_nationality",
+    "gva_sectors",
+    "employed_sectors",
+    "cpi_rent",
+    "hotel_prices",
+    "trade_prices",
 ]
 
 

@@ -26,6 +26,9 @@ SA = "ajustados de estacionalidad"
 # SA token in a series' name tokens makes the fetch fail if INE ever serves another variant.
 
 
+SCA_FULL = "Datos ajustados de estacionalidad y calendario"
+
+
 def _s(code, *tokens):
     return (code, tuple(tokens))
 
@@ -231,6 +234,45 @@ INDICATORS = {
         "espanola": _s("ECP4901", "Total Nacional", "Española", "Todas las edades"),
         "extranjera": _s("ECP701", "Total Nacional", "Extranjera", "Todas las edades"),
     }),
+
+    # ---- fill/ine: datasets added to complete page sections (docs/notes/fill-ine.md) ----
+    # Gross value added at basic prices by branch, volume index, seasonally and calendar adjusted: INE's published
+    # annual and quarterly rates (CNTR table 67822). The "Datos ajustados ..." token is the full phrase on purpose:
+    # the unadjusted variants are called "Datos no ajustados ...".
+    "gva_sectors": dict(table=67822, nult=48, file="gva_sectors_raw.csv", series={
+        **{f"{part}_{k}": _s(code, "Total Nacional", SCA_FULL, name, what, "Índices de volumen encadenados")
+           for k, (yoy, qoq, name) in {
+               "agricultura": ("CNTR6659", "CNTR6658", "VABpb Agricultura, ganadería, silvicultura y pesca (A, CNAE 2009)"),
+               "industria": ("CNTR6664", "CNTR6663", "VABpb Industria (B-E, CNAE 2009)"),
+               "construccion": ("CNTR6674", "CNTR6673", "VABpb Construcción (F, CNAE 2009)"),
+               "servicios": ("CNTR6679", "CNTR6678", "VABpb Servicios (G-T, CNAE 2009)"),
+               "pib": ("CNTR6654", "CNTR6653", "Producto interior bruto a precios de mercado")}.items()
+           for part, code, what in (("yoy", yoy, "Variación anual"), ("qoq", qoq, "Variación trimestral"))},
+    }),
+    # EPA employed by economic sector (table 65126: age group x sex x sector; total age, both sexes). Original data:
+    # INE publishes no adjusted EPA level in the API and no rates for this table, so yoy is computed.
+    "employed_sectors": dict(table=65126, nult=48, file="employed_sectors_raw.csv", series={
+        k: _s(c, "Total Nacional", "Ocupados", "Ambos sexos", "Total", name, "Valor absoluto")
+        for k, c, name in (("agricultura", "EPA399207", "Agricultura"), ("industria", "EPA399208", "Industria"),
+                           ("construccion", "EPA399209", "Construcción"), ("servicios", "EPA399210", "Servicios"))
+    }),
+    # CPI, subclass "Alquiler de vivienda principal" (ECOICOP ver.2, base 2025): index and INE's yoy. Original data.
+    "cpi_rent": dict(table=76128, nult=130, file="cpi_rent_raw.csv", series={
+        "index": _s("IPC291807", "Nacional", "Alquiler de vivienda principal", "Índice"),
+        "yoy": _s("IPC291806", "Nacional", "Alquiler de vivienda principal", "Variación anual"),
+    }),
+    # Hotel price index (IPH, Coyuntura Turística Hotelera), national, all categories, base 2008. Original data.
+    "hotel_prices": dict(table=12157, nult=130, file="hotel_prices_raw.csv", series={
+        "index": _s("EOT14624", "Indice de precios hoteleros", "Base 2008", "Nacional", "Dato base"),
+        "yoy": _s("EOT14625", "Indice de precios hoteleros", "Base 2008", "Nacional", "Tasa de variación interanual"),
+    }),
+    # Industrial export (IPRIX, table 61662) and import (IPRIM, table 61672) price indices, total industry, base 2021. Original data.
+    "trade_prices": dict(table=61662, nult=130, file="trade_prices_raw.csv", series={
+        "index_exportacion": _s("IPR30874", "Nacional", "IPRIX", "Total industria", "Índice"),
+        "yoy_exportacion": _s("IPR30945", "Nacional", "IPRIX", "Total industria", "Variación anual"),
+        "index_importacion": _s("IPR34018", "Nacional", "IPRIM", "Total industria", "Índice"),
+        "yoy_importacion": _s("IPR34016", "Nacional", "IPRIM", "Total industria", "Variación anual"),
+    }),
 }
 
 
@@ -250,6 +292,7 @@ TABLE_IDS = {name: spec["table"] for name, spec in INDICATORS.items()}
 TABLE_IDS.update({
     "cpi_ecoicop_groups": 76125,   # IPC Índices nacionales de grupos ECOICOP ver.2 (published as the source of the contributions chart)
     "cpi_special_weights": 76161,  # IPC Ponderaciones de grupos especiales
+    "trade_prices_import": 61672,  # IPRIM Índices nacionales: general y por destino económico (importaciones)
 })
 
 
