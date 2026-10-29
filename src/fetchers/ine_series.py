@@ -21,6 +21,9 @@ Structure: INDICATORS[indicator] = {
 """
 
 SA = "ajustados de estacionalidad"
+# Seasonal-adjustment rule (docs/audit/seasonal-adjustment.md): every series uses INE's
+# "Datos ajustados de estacionalidad y calendario" variant whenever INE publishes one; the
+# SA token in a series' name tokens makes the fetch fail if INE ever serves another variant.
 
 
 def _s(code, *tokens):
@@ -50,6 +53,9 @@ _CCAA = {
 INDICATORS = {
     "gdp": dict(table=67822, nult=40, file="gdp_raw.csv", series={
         "value": _s("CNTR6652", "Total Nacional", SA, "Producto interior bruto a precios de mercado", "Dato base", "volumen encadenados"),
+        # INE's published rates of the same SA series (audit M4 principle)
+        "yoy": _s("CNTR6654", "Total Nacional", SA, "Producto interior bruto a precios de mercado", "Variación anual"),
+        "qoq": _s("CNTR6653", "Total Nacional", SA, "Producto interior bruto a precios de mercado", "Variación trimestral"),
     }),
     "gdp_demand": dict(table=67824, nult=40, file="gdp_demand_raw.csv", series={
         "private_consumption": _s("CNTR7160", SA, "consumo final de los hogares y las ISFLSH", "Aportación anual"),
@@ -72,11 +78,13 @@ INDICATORS = {
         "ytd_intermedios": _s("IPI15362", "Total Nacional", "media en lo que va de año", SA, "Bienes intermedios"),
         "ytd_energia": _s("IPI15361", "Total Nacional", "media en lo que va de año", SA, "Energía"),
     }),
-    "industry_turnover": dict(table=61701, nult=120, file="industry_turnover_raw.csv", series={
-        "yoy": _s("ICN2412", "Nacional", "Total industria", "Variación anual"),
+    # Table 61709 = seasonally and calendar adjusted ICN (61701, used before, is the original series)
+    "industry_turnover": dict(table=61709, nult=120, file="industry_turnover_raw.csv", series={
+        "yoy": _s("ICN2920", "Nacional", "Total industria", "Variación anual", SA),
     }),
-    "services_turnover": dict(table=60289, nult=120, file="services_turnover_raw.csv", series={
-        "yoy": _s("IAS3856", "Cifra de negocio", "ajustados de calendario", "Índice General", "Nacional", "Variación anual"),
+    # Table 60290 = IASS seasonally and calendar adjusted (60289, used before, is calendar adjusted only)
+    "services_turnover": dict(table=60290, nult=120, file="services_turnover_raw.csv", series={
+        "yoy": _s("IAS4004", "Cifra de negocio", SA, "Índice General", "Nacional", "Variación anual"),
     }),
     # The series endpoint returns history before the table's own 2021-01 start; it is published.
     "services_production": dict(table=60732, nult=132, file="services_production_raw.csv", series={
@@ -96,9 +104,8 @@ INDICATORS = {
     "activity_rate": dict(table=65295, nult=40, file="activity_rate_raw.csv", series={
         "rate": _s("EPA388079", "Total Nacional", "Tasa de actividad", "Ambos sexos", "Total."),
     }),
-    "employed": dict(table=65109, nult=40, file="employed_raw.csv", series={
-        "level": _s("EPA387796", "Total Nacional", "Ambos sexos", "Ocupados", "Valor absoluto"),
-    }),
+    # Employed persons: INE publishes the seasonally adjusted EPA level only as a spreadsheet
+    # (src/fetchers/ine_epa_sa.py), not in Tempus; the original series EPA387796 is no longer used.
     "temporary_rate": dict(table=65194, nult=40, file="temporary_rate_raw.csv", series={
         "rate": _s("EPA416256", "Asalariados", "Total Nacional", "Ambos sexos", "Temporal", "Porcentaje"),
     }),
@@ -109,13 +116,17 @@ INDICATORS = {
     "youth_unemployment": dict(table=65334, nult=40, file="youth_unemployment_raw.csv", series={
         "rate": _s("EPA452436", "Tasa de paro", "Ambos sexos", "Total Nacional", "Menores de 25"),
     }),
-    # Labour costs (ETCL)
-    "labor_cost": dict(table=6030, nult=40, file="labor_cost_raw.csv", series={
-        "total": _s("ETCL68", "Industria, construcción y servicios", "Coste laboral total. Total", "Total Nacional", "Euros"),
-        "salarial": _s("ETCL67", "Industria, construcción y servicios", "Coste salarial total. Total", "Total Nacional"),
+    # Labour costs (ETCL), seasonally and calendar adjusted (tables 11221/11222). Their original
+    # variants (ETCL13726/13724/13744) equal the series used before (ETCL68/67/925, tables 6030/6034).
+    "labor_cost": dict(table=11221, nult=40, file="labor_cost_raw.csv", series={
+        "total": _s("ETCL13714", "Total Nacional", SA, "Coste total por trabajador", "Euros"),
+        "salarial": _s("ETCL13712", "Total Nacional", SA, "Coste salarial total por trabajador", "Euros"),
+        "yoy_total": _s("ETCL13713", "Total Nacional", SA, "Coste total por trabajador", "Tasa de variación anual"),
+        "yoy_salarial": _s("ETCL13711", "Total Nacional", SA, "Coste salarial total por trabajador", "Tasa de variación anual"),
     }),
-    "labor_cost_hour": dict(table=6034, nult=40, file="labor_cost_hour_raw.csv", series={
-        "total": _s("ETCL925", "Industria, construcción y servicios", "Coste laboral total por hora", "Total Nacional", "Euros"),
+    "labor_cost_hour": dict(table=11222, nult=40, file="labor_cost_hour_raw.csv", series={
+        "total": _s("ETCL13732", "Total Nacional", SA, "Coste laboral total por hora", "Euros"),
+        "yoy": _s("ETCL13731", "Total Nacional", SA, "Coste laboral total por hora", "Tasa de variación anual"),
     }),
     # Prices
     "cpi": dict(table=79181, nult=120, file="cpi_raw.csv", series={
@@ -234,6 +245,7 @@ def codes(indicator: str) -> dict:
 # Keys are the old indicator names, kept so published metadata do not change.
 TABLE_IDS = {name: spec["table"] for name, spec in INDICATORS.items()}
 TABLE_IDS.update({
+    "employed": 65109,             # EPA; the published level comes from the seasonally adjusted spreadsheet (ine_epa_sa.py)
     "cpi_ecoicop_groups": 76125,   # IPC Índices nacionales de grupos ECOICOP ver.2 (published as the source of the contributions chart)
     "cpi_special_weights": 76161,  # IPC Ponderaciones de grupos especiales
 })

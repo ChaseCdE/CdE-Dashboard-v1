@@ -23,6 +23,7 @@ import pandas as pd
 from .ine_series import INDICATORS, TABLE_IDS
 from .http_session import CircuitBreaker, map_bounded
 from .ine_client import INEClient, parse_ine_data
+from .ine_epa_sa import EPA_SA_FILE, EPA_SA_URL, fetch_epa_sa
 
 logger = logging.getLogger(__name__)
 
@@ -132,9 +133,26 @@ class INEIndicatorFetcher:
             results[n] = df
         return results
 
+    def fetch_epa_sa(self) -> pd.DataFrame:
+        """
+        Seasonally adjusted EPA employment, which INE publishes only as a spreadsheet
+        (src/fetchers/ine_epa_sa.py). On failure the previous raw file is kept and an
+        ERROR is logged ("... failed ..."), like any Tempus series.
+        """
+        try:
+            self.breaker.check()
+            df = fetch_epa_sa(self.client.session)
+        except Exception as exc:  # noqa: BLE001 - any failure keeps the cache and is reported
+            logger.error(f"INE employed_sa: fetch failed ({EPA_SA_URL}), keeping the previous {EPA_SA_FILE}: {exc}")
+            return pd.DataFrame()
+        self._save_csv(df, EPA_SA_FILE)
+        return df
+
     def fetch_all(self) -> Dict[str, pd.DataFrame]:
-        """Fetch every indicator."""
-        return self.fetch_indicators()
+        """Fetch every indicator, plus the EPA seasonally adjusted spreadsheet."""
+        results = self.fetch_indicators()
+        results["employed_sa"] = self.fetch_epa_sa()
+        return results
 
 
 def fetch_operation_tables(operation_code: str) -> pd.DataFrame:
