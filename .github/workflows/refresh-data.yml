@@ -30,10 +30,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          # Headless browser for the AEAT Observatorio de Márgenes Empresariales (src/fetchers/aeat_ome.py)
-          python -m playwright install --with-deps chromium-headless-shell
+        run: pip install -r requirements.txt
 
       # data/ is gitignored. Keeping it between runs lets a source whose API is down
       # fall back to its last download instead of failing the whole refresh.

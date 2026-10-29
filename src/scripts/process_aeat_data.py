@@ -10,8 +10,8 @@ Outputs (long format):
       gross_result (S.2. Indicador de resultado bruto de explotación). CVEC data.
   ome_divisions.csv  date, sector, sector_label, value, yoy
       Sales (CVEC) by CNAE-2009 division (2 digits). The OME publishes trade (45, 46, 47) only by
-      3-digit groups: their CVEC levels are added up here into the 2-digit division (indirect
-      seasonal adjustment; the sum of the groups' original data equals the division's).
+      3-digit groups: their levels are added up here into the 2-digit division, the same way the
+      AEAT builds its own aggregates (its CVEC totals are the sums of the groups' CVEC data).
 Rates are computed by calendar date (src/processors/series_ops.py), never by position.
 """
 

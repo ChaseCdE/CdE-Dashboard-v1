@@ -56,7 +56,7 @@ const SOURCES = [
   { name: 'Banco de España', url: 'https://www.bde.es' },
   { name: 'Ministerio de Vivienda y Agenda Urbana', url: 'https://www.mivau.gob.es' },
   { name: 'Colegio de Registradores', url: 'https://www.registradores.org' },
-  { name: 'Agencia Tributaria', url: 'https://www.observatoriomargenes.es' },
+  { name: 'Agencia Tributaria', url: 'https://sede.agenciatributaria.gob.es/Sede/estadisticas.html' },
   { name: 'Banco Central Europeo', url: 'https://data.ecb.europa.eu' },
   { name: 'Reserva Federal', url: 'https://www.federalreserve.gov' },
   { name: 'EIA', url: 'https://www.eia.gov' },

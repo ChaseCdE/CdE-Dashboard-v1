@@ -1,6 +1,6 @@
 """
 Fetch the Observatorio de Márgenes Empresariales (AEAT) quarterly series.
-See src/fetchers/aeat_ome.py (needs Playwright and its Chromium build).
+See src/fetchers/aeat_ome.py (static Excel file on the AEAT statistics page).
 """
 
 import sys

@@ -56,7 +56,7 @@ PIPELINE_MODULES = {
         "src.scripts.fetch_markets_official",
         "src.scripts.process_markets_official",
     ),
-    # Observatorio de Márgenes Empresariales (Agencia Tributaria), via a headless browser.
+    # Observatorio de Márgenes Empresariales (Agencia Tributaria), quarterly Excel file.
     "aeat": (
         "src.scripts.fetch_aeat_data",
         "src.scripts.process_aeat_data",

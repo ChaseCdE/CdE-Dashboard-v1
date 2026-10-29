@@ -1,107 +1,90 @@
 """
 Observatorio de Márgenes Empresariales (OME), Agencia Tributaria: quarterly series built from
-the VAT (modelos 303/322) and withholding (modelo 111) returns of non-financial companies.
+the VAT (modelos 303/322) and withholding (modelo 111) returns of private non-financial companies.
 
-The AEAT publishes the series only through a Shiny web application
-(https://www2.agenciatributaria.gob.es/sete-ome/): its "Descargas" tab serves the whole quarterly
-database (about 225 MB of CSV) through a per-session download link, so there is no stable URL to
-request. The fetcher therefore drives the application with a headless browser (Playwright),
-selects "Series trimestrales", downloads the CSV inside that browser session and keeps only the
-rows the dashboard uses:
+Source file: "2.1 Datos trimestrales (Población homogénea corriente)", a static Excel file on the
+AEAT statistics page (link below). Its sheet "BdD" is a long table:
+  AÑO, PERIODO (20262T), CNAE_agrupación (10, 41+42+43, 467 (sin 4671)...), CNAE_sección, Origen,
+  VARIABLE (A. Ventas totales...), Original / CVEC, Importe (millions of euros)
+and the sheet "literales actividades" holds the activity labels.
 
-  population   Homogénea corriente   (each year's declarants)
-  colectivo    Total                 (all company sizes)
-  aggregation  Totales, Divisiones y grupos (CNAE-2009 divisions; 3 digits for trade)
-  variables    A. Ventas totales, B. Compras totales, C. Masa salarial,
-               S.2. Indicador de resultado bruto de explotación
-  measure      Nivel (millones de euros), Original and CVEC
+The file has no national total: it is the sum of the 73 activity groups, for original and CVEC
+data alike (the AEAT adjusts the groups and adds them up; checked against the OME web application,
+e.g. sales CVEC 2026-2T 695,146.23 M EUR in both). The fetcher adds those totals.
 
-Output: data/raw/aeat/ome_quarterly.csv (a few hundred KB). On any failure the previous file is
-kept and a warning is logged, as for the other non-API sources.
-
-Requires:  pip install playwright  &&  python -m playwright install chromium
+Output: data/raw/aeat/ome_quarterly.csv with columns
+  PERIODO (2026-2T), VARIABLE, AGREGACION (Totales | Divisiones y grupos), LITERAL ("code - label"
+  or "Total"), DATO2 (Original | CVEC), VALOR
+On any failure the previous file is kept and a warning is logged, as for the other sources.
 """
 
 from __future__ import annotations
 
+import io
 import logging
-import tempfile
-import time
 from pathlib import Path
 
 import pandas as pd
 
+from .http_session import make_session
+
 logger = logging.getLogger(__name__)
 
-APP_URL = "https://www2.agenciatributaria.gob.es/sete-ome/"
-DOWNLOAD_TAB = "ome_descargas"
-DATASET_INPUT = "ome_descargas-datasetDescarga"
-DOWNLOAD_LINK = "#ome_descargas-downloadData"
-PREVIEW = "#ome_descargas-vista_previa_descarga"
+PAGE_URL = ("https://sede.agenciatributaria.gob.es/Sede/estadisticas/observatorio-margenes-empresariales/"
+            "observatorio-margenes-empresariales.html")
+XLSX_URL = ("https://sede.agenciatributaria.gob.es/static_files/Sede/Tema/Estadisticas/"
+            "Observatorio_margenes_empresariales/Datos_margenes_empresariales/Datos_trimestrales.xlsx")
+BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 
-KEEP = {
-    "POBLACION": {"Homogénea corriente"},
-    "COLECTIVO": {"Total"},
-    "AGREGACION": {"Totales", "Divisiones y grupos"},
-    "VARIABLE": {
-        "A. Ventas totales",
-        "B. Compras totales",
-        "C. Masa salarial",
-        "S.2. Indicador de resultado bruto de explotación",
-    },
-    "DATO1": {"Nivel"},
-    "DATO2": {"Original", "CVEC"},
+VARIABLES = {
+    "A. Ventas totales",
+    "B. Compras totales",
+    "C. Masa salarial",
+    "S.2. Indicador de resultado bruto de explotación",
 }
-COLUMNS = ["POBLACION", "COLECTIVO", "FREC", "PERIODO", "ORIGEN", "VARIABLE",
-           "AGREGACION", "LITERAL", "DATO1", "DATO2", "VALOR"]
+DATA_COLUMNS = ["PERIODO", "CNAE_agrupación", "VARIABLE", "Original / CVEC", "Importe"]
+N_GROUPS = 73  # activity groups in the file (2026); a different count means the layout changed
 
 
-def download_quarterly_csv(dest: Path, timeout_s: int = 300) -> Path:
-    """Drive the Shiny app and save the full quarterly CSV to `dest`."""
-    from playwright.sync_api import sync_playwright  # imported lazily: optional dependency
+def parse_workbook(content: bytes) -> pd.DataFrame:
+    """Turn the Excel file into the long raw table, with national totals added."""
+    book = pd.read_excel(io.BytesIO(content), sheet_name=["BdD", "literales actividades"], dtype=str)
+    data, labels = book["BdD"], book["literales actividades"]
+    missing = set(DATA_COLUMNS) - set(data.columns)
+    if missing:
+        raise ValueError(f"OME Excel: unexpected columns, missing {sorted(missing)}")
+    data = data[data["VARIABLE"].isin(VARIABLES)].copy()
+    data["Importe"] = pd.to_numeric(data["Importe"], errors="coerce")
+    period = data["PERIODO"].str.extract(r"^(\d{4})([1-4])T$")
+    if period.isna().any().any():
+        raise ValueError("OME Excel: unexpected PERIODO labels")
+    data["PERIODO"] = period[0] + "-" + period[1] + "T"
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        try:
-            ctx = browser.new_context(accept_downloads=True, locale="es-ES")
-            page = ctx.new_page()
-            page.goto(APP_URL, wait_until="networkidle", timeout=timeout_s * 1000)
-            page.wait_for_function("window.Shiny && Shiny.shinyapp && Shiny.shinyapp.isConnected()",
-                                   timeout=timeout_s * 1000)
-            page.click(f'a[data-value="{DOWNLOAD_TAB}"]')
-            # Wait for the tab's preview table (a random sample of the selected database) to render:
-            # a click on the radio before that does not reach the server. Then select "Series
-            # trimestrales" and wait for the preview to be redrawn from the new database.
-            preview = f"document.querySelector('{PREVIEW}')"
-            page.wait_for_function(f"{preview} && {preview}.innerText.trim().length > 50", timeout=timeout_s * 1000)
-            before = page.evaluate(f"{preview}.innerText")
-            page.click(f'input[name="{DATASET_INPUT}"][value="trimestral"]')
-            page.wait_for_function(f"{preview}.innerText !== {before!r}", timeout=timeout_s * 1000)
-            page.wait_for_timeout(1000)
-            with page.expect_download(timeout=timeout_s * 1000) as dl:
-                page.click(DOWNLOAD_LINK)
-            dl.value.save_as(str(dest))
-        finally:
-            browser.close()
-    return dest
-
-
-def filter_rows(csv_path: Path) -> pd.DataFrame:
-    """Keep the dashboard rows of the full download (read in chunks to bound memory)."""
-    parts = []
-    for chunk in pd.read_csv(csv_path, sep=";", dtype=str, chunksize=200_000, encoding="utf-8-sig"):
-        missing = set(COLUMNS) - set(chunk.columns)
-        if missing:
-            raise ValueError(f"OME download: unexpected columns, missing {sorted(missing)}")
-        m = pd.Series(True, index=chunk.index)
-        for col, allowed in KEEP.items():
-            m &= chunk[col].isin(allowed)
-        m &= chunk["FREC"].eq("trimestral")
-        parts.append(chunk.loc[m, ["PERIODO", "VARIABLE", "AGREGACION", "LITERAL", "DATO2", "VALOR"]])
-    df = pd.concat(parts, ignore_index=True)
-    df["VALOR"] = pd.to_numeric(df["VALOR"].str.replace(".", "", regex=False).str.replace(",", ".", regex=False),
-                                errors="coerce")
-    return df
+    labels = labels.dropna(axis=1, how="all")  # the sheet starts in column B
+    if "CNAE_agrupación" not in labels.columns or "Literal" not in labels.columns:
+        raise ValueError("OME Excel: unexpected layout of the 'literales actividades' sheet")
+    code_label = dict(zip(labels["CNAE_agrupación"].astype(str).str.strip(), labels["Literal"].astype(str).str.strip()))
+    if any(not v or v == "nan" for v in code_label.values()):
+        raise ValueError("OME Excel: activity groups without a label")
+    data["code"] = data["CNAE_agrupación"].astype(str).str.strip()
+    n = data["code"].nunique()
+    if n != N_GROUPS:
+        raise ValueError(f"OME Excel: {n} activity groups instead of {N_GROUPS}; check the file layout")
+    groups = pd.DataFrame({
+        "PERIODO": data["PERIODO"], "VARIABLE": data["VARIABLE"], "AGREGACION": "Divisiones y grupos",
+        "LITERAL": data["code"] + " - " + data["code"].map(code_label).fillna(""),
+        "DATO2": data["Original / CVEC"], "VALOR": data["Importe"],
+    })
+    # National totals: sum of the groups; only quarters with every group reported.
+    tot = (groups.groupby(["PERIODO", "VARIABLE", "DATO2"])["VALOR"]
+           .agg(["sum", "count"]).reset_index())
+    tot = tot[tot["count"].eq(N_GROUPS)]
+    totals = pd.DataFrame({
+        "PERIODO": tot["PERIODO"], "VARIABLE": tot["VARIABLE"], "AGREGACION": "Totales",
+        "LITERAL": "Total", "DATO2": tot["DATO2"], "VALOR": tot["sum"],
+    })
+    return pd.concat([totals, groups], ignore_index=True)
 
 
 class OmeFetcher:
@@ -109,24 +92,19 @@ class OmeFetcher:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def fetch(self, max_age_days: float = 7) -> bool:
-        """Download unless the previous file is recent: the OME is updated once a quarter and the
-        full download is large, so the daily pipeline asks the AEAT at most once a week."""
+    def fetch(self) -> bool:
         out = self.output_dir / "ome_quarterly.csv"
-        if out.exists() and (time.time() - out.stat().st_mtime) < max_age_days * 86400:
-            logger.info(f"OME (AEAT): download from the last {max_age_days:g} days kept ({out})")
-            return True
         try:
-            with tempfile.TemporaryDirectory() as tmp:
-                full = download_quarterly_csv(Path(tmp) / "ome_trimestral.csv")
-                df = filter_rows(full)
-        except Exception as e:  # network, firewall, app layout change, missing Playwright
+            session = make_session(user_agent=BROWSER_UA, headers={"Referer": PAGE_URL})
+            resp = session.get(XLSX_URL, timeout=120)
+            resp.raise_for_status()
+            df = parse_workbook(resp.content)
+        except Exception as e:  # network, web firewall, layout change
             logger.warning(f"OME (AEAT): download failed, keeping the previous file: {e}")
             return False
-        totals = df[df["AGREGACION"].eq("Totales") & df["VARIABLE"].eq("A. Ventas totales")]
-        if totals["VALOR"].notna().sum() < 100:
-            # e.g. the app served another database (the radio selection did not reach the server)
-            logger.warning("OME (AEAT): the download has no national sales series, keeping the previous file")
+        sales = df[df["AGREGACION"].eq("Totales") & df["VARIABLE"].eq("A. Ventas totales")]
+        if sales["VALOR"].notna().sum() < 100:
+            logger.warning("OME (AEAT): the file has no national sales series, keeping the previous file")
             return False
         df.to_csv(out, index=False)
         logger.info(f"OME (AEAT): {len(df)} rows saved to {out} (latest quarter {df['PERIODO'].max()})")
@@ -137,5 +115,5 @@ if __name__ == "__main__":  # manual run: python -m src.fetchers.aeat_ome [outpu
     import sys
 
     logging.basicConfig(level=logging.INFO)
-    ok = OmeFetcher(sys.argv[1] if len(sys.argv) > 1 else "data/raw/aeat").fetch(max_age_days=0)
+    ok = OmeFetcher(sys.argv[1] if len(sys.argv) > 1 else "data/raw/aeat").fetch()
     sys.exit(0 if ok else 1)

@@ -13,8 +13,9 @@ private non-financial companies, population "homogénea corriente", all company 
 from .adjustment import SCA, note
 from .core import Dataset, Field, Series, long_series
 
-OME_URL = "https://www.observatoriomargenes.es/wme/es/datos/datos-aeat/"
-OME_DATASET = "Observatorio de Márgenes Empresariales, series trimestrales (modelos periódicos de IVA y retenciones)"
+OME_URL = ("https://sede.agenciatributaria.gob.es/Sede/estadisticas/observatorio-margenes-empresariales/"
+           "observatorio-margenes-empresariales.html")
+OME_DATASET = "Observatorio de Márgenes Empresariales, 2.1 Datos trimestrales (población homogénea corriente)"
 EUR_M = "Millones de euros"
 
 DATASETS = [
@@ -55,7 +56,7 @@ DATASETS = [
             "Observatorio de Márgenes Empresariales (Agencia Tributaria): ventas totales declaradas en los modelos "
             "periódicos de IVA por las sociedades no financieras de cada división de la CNAE-2009, datos corregidos "
             "de efectos estacionales y de calendario (CVEC). El comercio (divisiones 45, 46 y 47) se publica por "
-            "grupos de tres dígitos y aquí se agrega sumando los datos corregidos de sus grupos."),
+            "grupos de tres dígitos y aquí se agrega sumando sus grupos, como hace la AEAT con sus totales."),
         source_dataset=OME_DATASET,
         source_url=OME_URL,
         frequency="Q",
