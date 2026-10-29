@@ -712,6 +712,67 @@ class INEProcessor:
         self._save_processed(result, "population_nationality.csv")
         return result
 
+    # ------------------------------------------------------------------ fill/ine datasets
+    def process_gva_sectors(self) -> pd.DataFrame:
+        """Gross value added by branch (volume index, SCA): INE's published yoy and qoq rates, plus GDP for reference."""
+        print("Processing GVA by branch...")
+        frames = []
+        for key in ("agricultura", "industria", "construccion", "servicios", "pib"):
+            yoy = self._pick("gva_sectors", f"yoy_{key}")[["date", "year", "value"]].rename(columns={"value": "yoy_change"})
+            qoq = self._pick("gva_sectors", f"qoq_{key}")[["date", "value"]].rename(columns={"value": "qoq_change"})
+            f = yoy.drop_duplicates("date", keep="last").merge(qoq.drop_duplicates("date", keep="last"), on="date", how="outer")
+            f["year"] = f["date"].dt.year
+            f.insert(2, "sector", key)
+            frames.append(f.sort_values("date"))
+        result = pd.concat(frames, ignore_index=True)
+        _check_time_gaps(result[result["sector"] == "servicios"], "Q", "gva_sectors")
+        self._save_processed(result, "gva_sectors.csv")
+        return result
+
+    def process_employed_sectors(self) -> pd.DataFrame:
+        """EPA employed (thousands, original data) by sector; yoy computed by date (INE publishes no rate for this table)."""
+        print("Processing EPA employed by sector...")
+        frames = []
+        for key in INDICATORS["employed_sectors"]["series"]:
+            sub = self._pick("employed_sectors", key)[["date", "year", "value"]]
+            sub = sub.sort_values("date").drop_duplicates("date", keep="last").rename(columns={"value": "employed"})
+            sub["yoy_change"] = pct_change_by_date(sub, "employed", 12)
+            sub.insert(2, "sector", key)
+            frames.append(sub)
+        result = pd.concat(frames, ignore_index=True)
+        _check_time_gaps(result[result["sector"] == "servicios"], "Q", "employed_sectors")
+        self._save_processed(result, "employed_sectors.csv")
+        return result
+
+    def process_cpi_rent(self) -> pd.DataFrame:
+        """CPI subclass 'Alquiler de vivienda principal' (IPC291807), INE's published yoy (IPC291806). Original data."""
+        print("Processing CPI rent...")
+        result = self._level("cpi_rent", "index", "rent_index", gaps="M", yoy_role="yoy")
+        self._save_processed(result, "cpi_rent.csv")
+        return result
+
+    def process_hotel_prices(self) -> pd.DataFrame:
+        """Hotel price index (IPH, EOT14624), INE's published yoy (EOT14625). Original data."""
+        print("Processing hotel prices...")
+        result = self._level("hotel_prices", "index", "hotel_price_index", gaps="M", yoy_role="yoy")
+        self._save_processed(result, "hotel_prices.csv")
+        return result
+
+    def process_trade_prices(self) -> pd.DataFrame:
+        """Industrial export (IPRIX) and import (IPRIM) price indices, total industry, with INE's published yoy. Original data."""
+        print("Processing export and import prices...")
+        frames = []
+        for key in ("exportacion", "importacion"):
+            idx = self._pick("trade_prices", f"index_{key}")[["date", "year", "value"]].rename(columns={"value": "price_index"})
+            yoy = self._pick("trade_prices", f"yoy_{key}")[["date", "value"]].rename(columns={"value": "yoy_change"})
+            f = idx.drop_duplicates("date", keep="last").merge(yoy.drop_duplicates("date", keep="last"), on="date", how="left")
+            f.insert(2, "flow", key)
+            _check_time_gaps(f, "M", f"trade_prices.{key}")
+            frames.append(f.sort_values("date"))
+        result = pd.concat(frames, ignore_index=True)
+        self._save_processed(result, "trade_prices.csv")
+        return result
+
     def process_all(self) -> dict:
         """
         Process all indicators.
@@ -769,6 +830,11 @@ class INEProcessor:
         results["companies"] = self.process_companies()
         results["household_saving_rate"] = self.process_household_saving_rate()
         results["population_nationality"] = self.process_population_nationality()
+        results["gva_sectors"] = self.process_gva_sectors()
+        results["employed_sectors"] = self.process_employed_sectors()
+        results["cpi_rent"] = self.process_cpi_rent()
+        results["hotel_prices"] = self.process_hotel_prices()
+        results["trade_prices"] = self.process_trade_prices()
 
         print("=" * 50)
         print("All indicators processed successfully!")

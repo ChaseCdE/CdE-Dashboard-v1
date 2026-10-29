@@ -42,6 +42,12 @@ OFFICIAL = {
     # Seasonal-adjustment pass: INE's published rates of the seasonally and calendar adjusted series (check_ine.py)
     ("ine.gdp", "yoy"), ("ine.gdp", "qoq"), ("ine.labor_cost", "yoy"), ("ine.labor_cost_hour", "yoy"),
     ("ine.labor_cost_components", "yoy"),
+    # fill/ine: INE's published rates (check_ine.py compares them with the API)
+    ("ine.gva_sectors", "yoy"), ("ine.gva_sectors", "qoq"), ("ine.cpi_rent", "yoy"), ("ine.hotel_prices", "yoy"),
+    ("ine.trade_prices", "yoy"),
+    # computed from the levels, but its first four quarters need 2015 levels that the file does not carry
+    # (published history starts 2016): check_ine.fill_meta recomputes it from the API's levels
+    ("ine.employed_sectors", "yoy"),
 }
 
 # Seasonal-adjustment rule (docs/audit/seasonal-adjustment.md). Every field states its adjustment with
@@ -65,7 +71,7 @@ PERIOD_ON_PERIOD_NSA_OK = {("ine.cpi_ccaa", "mom"), ("ine.ipri", "mom")}
 # Datasets switched to the adjusted variant in this pass: every field must say so.
 MUST_BE_ADJUSTED = {"ine.industry_turnover": "SCA", "ine.services_turnover": "SCA", "ine.labor_cost": "SCA",
                     "ine.labor_cost_hour": "SCA", "ine.labor_cost_components": "SCA",
-                    "eurostat.trade_balance": "SCA"}
+                    "eurostat.trade_balance": "SCA", "ine.gva_sectors": "SCA"}
 LEVEL_FIELD = {"yahoo": "close"}
 
 

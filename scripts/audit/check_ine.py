@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import Report, http_json, load, quarter_start, first_of_month, series  # noqa: E402
+from _common import Report, add_months, http_json, load, quarter_start, first_of_month, series  # noqa: E402
 
 API = "https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/{}"
 NULT = 36
@@ -96,6 +96,45 @@ SPEC = [
     ("ine.population_nationality", "espanola", "value", "ECP4901", "level", ["Total Nacional", "Española", "Todas las edades"]),
     ("ine.population_nationality", "extranjera", "value", "ECP701", "level", ["Total Nacional", "Extranjera", "Todas las edades"]),
 ]
+
+# fill/ine: datasets added to complete page sections. Codes are written again here, independently of src/.
+_GVA = {"agricultura": ("CNTR6659", "CNTR6658", "VABpb Agricultura, ganadería, silvicultura y pesca (A, CNAE 2009)"),
+        "industria": ("CNTR6664", "CNTR6663", "VABpb Industria (B-E, CNAE 2009)"),
+        "construccion": ("CNTR6674", "CNTR6673", "VABpb Construcción (F, CNAE 2009)"),
+        "servicios": ("CNTR6679", "CNTR6678", "VABpb Servicios (G-T, CNAE 2009)"),
+        "pib": ("CNTR6654", "CNTR6653", "Producto interior bruto a precios de mercado")}
+for k, (yoy, qoq, name) in _GVA.items():
+    SPEC.append(("ine.gva_sectors", k, "yoy", yoy, "level", ["Total Nacional", SA, name, "Variación anual", "Índices de volumen encadenados"]))
+    SPEC.append(("ine.gva_sectors", k, "qoq", qoq, "level", ["Total Nacional", SA, name, "Variación trimestral", "Índices de volumen encadenados"]))
+for k, c, name in (("agricultura", "EPA399207", "Agricultura"), ("industria", "EPA399208", "Industria"),
+                   ("construccion", "EPA399209", "Construcción"), ("servicios", "EPA399210", "Servicios")):
+    SPEC.append(("ine.employed_sectors", k, "value", c, "level", ["Total Nacional", "Ocupados", "Ambos sexos", "Total", name, "Valor absoluto"]))
+SPEC += [
+    ("ine.cpi_rent", "es", "value", "IPC291807", "level", ["Nacional", "Alquiler de vivienda principal", "Índice"]),
+    ("ine.cpi_rent", "es", "yoy", "IPC291806", "level", ["Nacional", "Alquiler de vivienda principal", "Variación anual"]),
+    ("ine.hotel_prices", "es", "value", "EOT14624", "level", ["Indice de precios hoteleros", "Base 2008", "Nacional", "Dato base"]),
+    ("ine.hotel_prices", "es", "yoy", "EOT14625", "level", ["Indice de precios hoteleros", "Base 2008", "Nacional", "Tasa de variación interanual"]),
+    ("ine.trade_prices", "exportacion", "value", "IPR30874", "level", ["Nacional", "IPRIX", "Total industria", "Índice"]),
+    ("ine.trade_prices", "exportacion", "yoy", "IPR30945", "level", ["Nacional", "IPRIX", "Total industria", "Variación anual"]),
+    ("ine.trade_prices", "importacion", "value", "IPR34018", "level", ["Nacional", "IPRIM", "Total industria", "Índice"]),
+    ("ine.trade_prices", "importacion", "yoy", "IPR34016", "level", ["Nacional", "IPRIM", "Total industria", "Variación anual"]),
+]
+
+# fill/ine expectations on the published files (identity of the dataset, not only of the numbers).
+# adj: SCA = seasonally and calendar adjusted, NSA = original data. Phrases are the ones the contract/notes use.
+_PHRASE = {"SCA": "datos corregidos de efectos estacionales y de calendario",
+           "NSA": "datos originales (sin corregir de estacionalidad)"}
+_URL = "https://www.ine.es/jaxiT3/Tabla.htm?t={}"
+FILL = {
+    "ine.gva_sectors": dict(table="67822", freq="Q", adj="SCA", series=["agricultura", "industria", "construccion", "servicios", "pib"],
+                            fields={"yoy": ("pct_change", 0), "qoq": ("pct_change", 0)}),
+    "ine.employed_sectors": dict(table="65126", freq="Q", adj="NSA", series=["agricultura", "industria", "construccion", "servicios"],
+                                 fields={"value": ("persons", 3), "yoy": ("pct_change", 0)}),
+    "ine.cpi_rent": dict(table="76128", freq="M", adj="NSA", series=["es"], fields={"value": ("index", 0), "yoy": ("pct_change", 0)}),
+    "ine.hotel_prices": dict(table="12157", freq="M", adj="NSA", series=["es"], fields={"value": ("index", 0), "yoy": ("pct_change", 0)}),
+    "ine.trade_prices": dict(table="61662, 61672", freq="M", adj="NSA", series=["exportacion", "importacion"],
+                             fields={"value": ("index", 0), "yoy": ("pct_change", 0)}),
+}
 
 _IPI = {"total": ("15374", "15367", "Total industria"), "consumo": ("15373", "15366", "Bienes de consumo"),
         "equipo": ("15370", "15363", "Bienes de equipo"), "intermedios": ("15369", "15362", "Bienes intermedios"),
@@ -225,7 +264,68 @@ def run(rep: Report) -> dict:
             rep.add(ds, "identity", "PASS", "INE series names match the definition")
     derived(rep, got)
     labels(rep)
+    fill_meta(rep, got)
     return got
+
+
+def fill_meta(rep: Report, got: dict):
+    """fill/ine datasets: identity of the file (source table, url, frequency, series, fields, units, scale),
+    adjustment statement of every field, history depth and last observation against the API."""
+    for ds_id, e in FILL.items():
+        d = load(ds_id)
+        bad = []
+        first_table = e["table"].split(",")[0].strip()
+        if d["source"]["name"] != "INE" or d["source"]["dataset"] != e["table"]:
+            bad.append(f"source.dataset {d['source']['dataset']!r} != {e['table']!r}")
+        if d["source"]["url"] != _URL.format(first_table):
+            bad.append(f"source.url {d['source']['url']!r}")
+        if d["frequency"] != e["freq"]:
+            bad.append(f"frequency {d['frequency']} != {e['freq']}")
+        if [s["key"] for s in d["series"]] != e["series"]:
+            bad.append(f"series {[s['key'] for s in d['series']]}")
+        if [f["key"] for f in d["fields"]] != list(e["fields"]):
+            bad.append(f"fields {[f['key'] for f in d['fields']]}")
+        if not d.get("title_es") or not d.get("description_es"):
+            bad.append("missing Spanish title/description")
+        for f in d["fields"]:
+            unit, scale = e["fields"].get(f["key"], (None, None))
+            if f["unit"] != unit or f.get("scale", 0) != scale:
+                bad.append(f"{f['key']}: unit/scale {f['unit']}/{f.get('scale', 0)} != {unit}/{scale}")
+            n = (f.get("note_es") or "").lower()
+            want = _PHRASE[e["adj"]]
+            if want not in n or (e["adj"] == "NSA" and "corregidos" in n):
+                bad.append(f"{f['key']}: note must state '{want}' (got {f.get('note_es')!r})")
+            if e["adj"] == "NSA" and f["key"] in ("mom", "qoq"):
+                bad.append(f"{f['key']}: period-on-period change of original data")
+        # history from ~2016 and last observation equal to the API's latest period of the same series
+        codes = {s[1]: s[3] for s in SPEC if s[0] == ds_id}
+        for s in d["series"]:
+            xs = [r[0] for r in s["data"]]
+            if not xs or not ("2016-01-01" <= xs[0] <= "2016-04-01"):
+                bad.append(f"{s['key']}: history starts {xs[:1]}, expected 2016")
+            api = got[codes[s["key"]]][1]
+            if api and max(api) != xs[-1]:
+                bad.append(f"{s['key']}: last published {xs[-1]} != INE latest {max(api)}")
+        rep.add(ds_id, "identity", "FAIL" if bad else "PASS",
+                "fill/ine file identity: " + ("; ".join(bad) if bad else f"table {e['table']}, {e['freq']}, series {e['series']}, fields {list(e['fields'])}, {e['adj']} notes, history from 2016, last period = INE latest"))
+
+    # EPA employed by sector: the four sectors add up to INE's national total EPA387796
+    tot = got["EPA387796"][1]
+    pub = {}
+    for k in FILL["ine.employed_sectors"]["series"]:
+        for x, v in series("ine.employed_sectors", k, "value").items():
+            pub[x] = pub.get(x, 0) + v
+    rep.compare("ine.employed_sectors", "transform", pub, tot, tol=0.25,
+                label="sum of 4 sectors = EPA387796 total (thousand, rounding)", last_n=24)
+
+    # EPA employed by sector: yoy recomputed from the API levels (INE publishes no rate for this table), 4 years of levels
+    codes_by_key = {s[1]: s[3] for s in SPEC if s[0] == "ine.employed_sectors"}
+    long_levels = fetch_all(list(codes_by_key.values()), nult=48)
+    for k, c in codes_by_key.items():
+        lv = long_levels[c][1]
+        off = {x: (v / lv[add_months(x, -12)] - 1) * 100 for x, v in lv.items() if add_months(x, -12) in lv}
+        rep.compare("ine.employed_sectors", "transform", series("ine.employed_sectors", k, "yoy"), off, tol=0.0002,
+                    label=f"{k}.yoy = % change of {c} vs 12 months earlier (recomputed from the API)", last_n=40)
 
 
 # Published labels that must describe the series actually fetched.
