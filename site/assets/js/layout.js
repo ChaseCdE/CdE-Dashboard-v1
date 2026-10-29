@@ -22,6 +22,9 @@ const SOURCES = [
   { name: 'Banco de España', url: 'https://www.bde.es' },
   { name: 'Ministerio de Vivienda y Agenda Urbana', url: 'https://www.mivau.gob.es' },
   { name: 'Colegio de Registradores', url: 'https://www.registradores.org' },
+  { name: 'Banco Central Europeo', url: 'https://data.ecb.europa.eu' },
+  { name: 'Reserva Federal', url: 'https://www.federalreserve.gov' },
+  { name: 'EIA', url: 'https://www.eia.gov' },
   { name: 'Yahoo Finance', url: 'https://finance.yahoo.com' },
 ];
 
@@ -54,7 +57,7 @@ function buildHeader(active) {
   });
   return h('div', { class: 'header-inner' },
     h('a', { class: 'brand', href: SITE_ROOT + 'index.html', 'aria-label': 'La economía en datos, portada' },
-      h('img', { class: 'brand-logo', src: IMG_ROOT + 'logo-circulo.png', alt: 'Círculo de Empresarios', width: '489', height: '127' }),
+      h('img', { class: 'brand-logo', src: IMG_ROOT + 'logo-circulo-50.svg', alt: 'Círculo de Empresarios, 50 aniversario', width: '755', height: '206' }),
       h('span', { class: 'brand-title', text: 'La economía en datos' })),
     toggle, nav);
 }

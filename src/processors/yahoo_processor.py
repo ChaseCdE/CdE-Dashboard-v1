@@ -418,17 +418,8 @@ def run_processing(indicators_config: Dict[str, Dict[str, Any]]) -> None:
         output_name="stock_indices_comparison"
     )
 
-    # Commodities comparison
-    commodities = ['gold', 'brent_crude', 'wti_crude']
-    processor.create_comparison_dataset(
-        indicators=commodities,
-        output_name="commodities_comparison"
-    )
-
-    # Create correlation matrix for main indices
-    print("\nCalculating correlation matrix...")
-    main_indicators = ['ibex_35', 'euro_stoxx_50', 'sp_500', 'eur_usd', 'brent_crude', 'gold']
-    processor.create_correlation_matrix(main_indicators)
+    # Commodity comparison and the correlation matrix were dropped on 2026-10-29: oil and
+    # EUR/USD now come from official sources and neither output was published.
 
     print("\n" + "="*60)
     print("PROCESSING COMPLETE")

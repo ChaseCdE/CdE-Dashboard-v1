@@ -14,12 +14,15 @@ site/data/
 ├── bde/<indicator>.json
 ├── yahoo/<indicator>.json
 ├── mivau/<indicator>.json
-└── registradores/<indicator>.json
+├── registradores/<indicator>.json
+├── ecb/<indicator>.json
+├── fed/<indicator>.json
+└── eia/<indicator>.json
 ```
 
 - `site/data/` is generated. Nothing in it is edited by hand. `src/export/export_site_data.py` deletes and rebuilds it on every run.
 - Dataset id = `<source>.<indicator>`; file = `site/data/<source>/<indicator>.json`. Both lowercase `snake_case`, English (code language). No `_processed`, `_raw`, `_comparison`, `_spain` suffixes: geography and comparisons are expressed as series inside the file.
-- Sources: `ine`, `eurostat`, `bde`, `yahoo`, `mivau`, `registradores`. A new source adds a new prefix; nothing else changes.
+- Sources: `ine`, `eurostat`, `bde`, `yahoo`, `mivau`, `registradores`, `ecb`, `fed`, `eia`. A new source adds a new prefix; nothing else changes.
 
 ## Dataset file
 
@@ -56,7 +59,7 @@ site/data/
 | `id` | yes | `<source>.<indicator>`, matches file path |
 | `title_es` | yes | Display title, Spanish, no trailing period |
 | `description_es` | no | One or two sentences, Spanish |
-| `source.name` | yes | `INE`, `Eurostat`, `Banco de España`, `Yahoo Finance`, `Ministerio de Vivienda y Agenda Urbana`, `Colegio de Registradores` |
+| `source.name` | yes | `INE`, `Eurostat`, `Banco de España`, `Yahoo Finance`, `Ministerio de Vivienda y Agenda Urbana`, `Colegio de Registradores`, `Banco Central Europeo`, `Reserva Federal`, `Administración de Información Energética de EE. UU.` |
 | `source.dataset` | yes | Table id / dataset code / ticker as used by the fetcher |
 | `source.url` | yes | Public page a reader can open to verify the data |
 | `frequency` | yes | `D` daily, `W` weekly, `M` monthly, `Q` quarterly, `A` annual, `X` not a time series |
@@ -187,6 +190,8 @@ Data rules:
 3. Check the JSON by eye: labels in Spanish, units right, periods on the first day.
 
 ## Changelog
+
+- 2026-10-29 (no version change). Sources `ecb`, `fed`, `eia` replace Yahoo Finance for exchange rates, US Treasury yields, the dollar index, oil and gas.
 
 - 2026-10-29 (no version change: a new source only adds a prefix). Sources `mivau` and `registradores` (housing prices).
 

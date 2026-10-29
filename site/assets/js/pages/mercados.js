@@ -26,9 +26,9 @@ kpiGrid($('kpis'), [
   { dataset: 'yahoo.ibex_35', series: 'es', field: 'close', change: { field: 'ret_1d', label: 'en el día' }, positiveIsGood: true },
   { dataset: 'yahoo.euro_stoxx_50', series: 'ez', field: 'close', change: { field: 'ret_1d', label: 'en el día' }, positiveIsGood: true },
   { dataset: 'yahoo.sp_500', series: 'us', field: 'close', change: { field: 'ret_1d', label: 'en el día' }, positiveIsGood: true },
-  { dataset: 'yahoo.eur_usd', series: 'global', field: 'close', change: { field: 'ret_1d', label: 'en el día' } },
-  { dataset: 'yahoo.brent_crude', series: 'global', field: 'close', change: { field: 'ret_1d', label: 'en el día' } },
-  { dataset: 'yahoo.us_treasury_10y', series: 'us', field: 'close', change: { field: 'chg_1d', label: 'en el día' } },
+  { dataset: 'ecb.eur_usd', series: 'global', field: 'close', change: { field: 'ret_1d', label: 'en el día' } },
+  { dataset: 'eia.brent_crude', series: 'global', field: 'close', change: { field: 'ret_1d', label: 'en el día' } },
+  { dataset: 'fed.us_treasury_10y', series: 'us', field: 'close', change: { field: 'chg_1d', label: 'en el día' } },
 ]);
 
 // Bolsas
@@ -110,20 +110,20 @@ latestTable($('t-tipos-us'), {
   title: 'Deuda del Tesoro de EE. UU.',
   rowHeader: 'Instrumento',
   rows: [
-    { label: 'Letra a 3 meses', dataset: 'yahoo.us_tbill_3m', series: 'us' },
-    { label: 'Bono a 5 años', dataset: 'yahoo.us_treasury_5y', series: 'us' },
-    { label: 'Bono a 10 años', dataset: 'yahoo.us_treasury_10y', series: 'us' },
-    { label: 'Bono a 30 años', dataset: 'yahoo.us_treasury_30y', series: 'us' },
+    { label: 'Tesoro a 3 meses', dataset: 'fed.us_tbill_3m', series: 'us' },
+    { label: 'Bono a 5 años', dataset: 'fed.us_treasury_5y', series: 'us' },
+    { label: 'Bono a 10 años', dataset: 'fed.us_treasury_10y', series: 'us' },
+    { label: 'Bono a 30 años', dataset: 'fed.us_treasury_30y', series: 'us' },
   ],
   columns: [{ field: 'close', label: 'Último' }, ...chgCols],
 });
 lineChart($('tesoro-us'), {
   title: 'Rentabilidad de la deuda del Tesoro de EE. UU.',
   series: [
-    { dataset: 'yahoo.us_tbill_3m', series: 'us', field: 'close', label: 'Letra a 3 meses' },
-    { dataset: 'yahoo.us_treasury_5y', series: 'us', field: 'close', label: 'Bono a 5 años' },
-    { dataset: 'yahoo.us_treasury_10y', series: 'us', field: 'close', label: 'Bono a 10 años' },
-    { dataset: 'yahoo.us_treasury_30y', series: 'us', field: 'close', label: 'Bono a 30 años' },
+    { dataset: 'fed.us_tbill_3m', series: 'us', field: 'close', label: 'Tesoro a 3 meses' },
+    { dataset: 'fed.us_treasury_5y', series: 'us', field: 'close', label: 'Bono a 5 años' },
+    { dataset: 'fed.us_treasury_10y', series: 'us', field: 'close', label: 'Bono a 10 años' },
+    { dataset: 'fed.us_treasury_30y', series: 'us', field: 'close', label: 'Bono a 30 años' },
   ],
   selectable: true,
   range: { default: '5A' },
@@ -132,21 +132,21 @@ lineChart($('tesoro-us'), {
 // Divisas
 lineChart($('eurusd'), {
   title: 'Tipo de cambio euro / dólar',
-  series: [{ dataset: 'yahoo.eur_usd', series: 'global', field: 'close' }],
+  series: [{ dataset: 'ecb.eur_usd', series: 'global', field: 'close' }],
   range: { default: '5A' },
 });
 lineChart($('dxy'), {
   title: 'Índice del dólar frente a una cesta de divisas',
-  series: [{ dataset: 'yahoo.dxy', series: 'global', field: 'close' }],
+  series: [{ dataset: 'fed.usd_broad_index', series: 'global', field: 'close' }],
   range: { default: '5A' },
 });
 latestTable($('t-divisas'), {
   title: 'Tipos de cambio',
   rowHeader: 'Par',
   rows: [
-    ['yahoo.eur_usd', 'Euro / dólar'], ['yahoo.eur_gbp', 'Euro / libra'], ['yahoo.eur_jpy', 'Euro / yen'],
-    ['yahoo.eur_chf', 'Euro / franco suizo'], ['yahoo.gbp_usd', 'Libra / dólar'], ['yahoo.usd_jpy', 'Dólar / yen'],
-    ['yahoo.dxy', 'Índice del dólar (DXY)'],
+    ['ecb.eur_usd', 'Euro / dólar'], ['ecb.eur_gbp', 'Euro / libra'], ['ecb.eur_jpy', 'Euro / yen'],
+    ['ecb.eur_chf', 'Euro / franco suizo'], ['ecb.gbp_usd', 'Libra / dólar'], ['ecb.usd_jpy', 'Dólar / yen'],
+    ['fed.usd_broad_index', 'Índice amplio del dólar (Fed)'],
   ].map(([dataset, label]) => ({ label, dataset, series: 'global' })),
   columns: retCols,
 });
@@ -155,8 +155,8 @@ latestTable($('t-divisas'), {
 lineChart($('petroleo'), {
   title: 'Precio del petróleo, Brent y WTI',
   series: [
-    { dataset: 'yahoo.brent_crude', series: 'global', field: 'close', label: 'Brent' },
-    { dataset: 'yahoo.wti_crude', series: 'global', field: 'close', label: 'WTI' },
+    { dataset: 'eia.brent_crude', series: 'global', field: 'close', label: 'Brent' },
+    { dataset: 'eia.wti_crude', series: 'global', field: 'close', label: 'WTI' },
   ],
   range: { default: '5A' },
 });
@@ -167,14 +167,14 @@ lineChart($('oro'), {
 });
 lineChart($('gas'), {
   title: 'Precio del gas natural (Henry Hub)',
-  series: [{ dataset: 'yahoo.natural_gas', series: 'global', field: 'close' }],
+  series: [{ dataset: 'eia.natural_gas', series: 'global', field: 'close' }],
   range: { default: '5A' },
 });
 latestTable($('t-materias'), {
   title: 'Cotizaciones de materias primas',
   rowHeader: 'Materia prima',
   rows: [
-    ['yahoo.brent_crude', 'Petróleo Brent'], ['yahoo.wti_crude', 'Petróleo WTI'], ['yahoo.natural_gas', 'Gas natural (Henry Hub)'],
+    ['eia.brent_crude', 'Petróleo Brent'], ['eia.wti_crude', 'Petróleo WTI'], ['eia.natural_gas', 'Gas natural (Henry Hub)'],
     ['yahoo.gold', 'Oro'], ['yahoo.silver', 'Plata'],
   ].map(([dataset, label]) => ({ label, dataset, series: 'global' })),
   columns: retCols,

@@ -30,6 +30,9 @@ SOURCES = {
     "yahoo": "Yahoo Finance",
     "mivau": "Ministerio de Vivienda y Agenda Urbana",
     "registradores": "Colegio de Registradores",
+    "ecb": "Banco Central Europeo",
+    "fed": "Reserva Federal",
+    "eia": "Administración de Información Energética de EE. UU.",
 }
 MAX_DECIMALS = 4
 

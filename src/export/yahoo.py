@@ -118,29 +118,10 @@ DATASETS = [
     _index("cac_40", "^FCHI", "CAC 40", "fr", "Cuarenta mayores empresas de Euronext París."),
     _index("ftse_100", "^FTSE", "FTSE 100", "uk", "Cien mayores empresas de la Bolsa de Londres."),
     _index("vix", "^VIX", "VIX (volatilidad implícita del S&P 500)", "us", "Volatilidad esperada a 30 días del S&P 500."),
-    # FX
-    _rate("eur_usd", "EURUSD=X", "Euro / dólar", "USD por EUR"),
-    _rate("eur_gbp", "EURGBP=X", "Euro / libra esterlina", "GBP por EUR"),
-    _rate("eur_jpy", "EURJPY=X", "Euro / yen", "JPY por EUR", decimals=2),
-    _rate("eur_chf", "EURCHF=X", "Euro / franco suizo", "CHF por EUR"),
-    _rate("gbp_usd", "GBPUSD=X", "Libra esterlina / dólar", "USD por GBP"),
-    _rate("usd_jpy", "JPY=X", "Dólar / yen", "JPY por USD", decimals=2),
-    _rate("dxy", "DX-Y.NYB", "Índice del dólar (DXY)", "Puntos", desc="Valor del dólar frente a una cesta de divisas principales. Cierre diario.", decimals=2),
     # Commodities
-    _commodity("brent_crude", "BZ=F", "Petróleo Brent", "USD por barril", "Precio del crudo Brent."),
-    _commodity("wti_crude", "CL=F", "Petróleo WTI", "USD por barril", "Precio del crudo West Texas Intermediate."),
-    _commodity("natural_gas", "NG=F", "Gas natural (Henry Hub)", "USD por MMBtu", "Precio del gas natural en EE. UU."),
     _commodity("gold", "GC=F", "Oro", "USD por onza troy", "Precio del oro (COMEX)."),
     _commodity("silver", "SI=F", "Plata", "USD por onza troy", "Precio de la plata (COMEX)."),
-    # US rates
-    _yield("us_tbill_3m", "^IRX", "Letra del Tesoro EE. UU. 3 meses", "Tipo de descuento de las letras a 13 semanas."),
-    _yield("us_treasury_5y", "^FVX", "Bono del Tesoro EE. UU. a 5 años", "Rendimiento del bono a 5 años."),
-    _yield("us_treasury_10y", "^TNX", "Bono del Tesoro EE. UU. a 10 años", "Rendimiento del bono a 10 años."),
-    _yield("us_treasury_30y", "^TYX", "Bono del Tesoro EE. UU. a 30 años", "Rendimiento del bono a 30 años."),
     # ETFs
-    _etf("euro_govt_bond_etf", "EUNH.DE", "ETF de deuda pública de la zona euro", "EUR", "ez", "iShares Core EUR Govt Bond UCITS ETF (Xetra)."),
-    _etf("us_treasury_20y_etf", "TLT", "ETF de bonos del Tesoro EE. UU. a más de 20 años", "USD", "us", "iShares 20+ Year Treasury Bond ETF."),
-    _etf("us_treasury_7_10y_etf", "IEF", "ETF de bonos del Tesoro EE. UU. a 7-10 años", "USD", "us", "iShares 7-10 Year Treasury Bond ETF."),
     _etf("msci_spain_etf", "EWP", "ETF iShares MSCI España", "USD", "es", "Renta variable española (alto peso financiero), cotizada en dólares."),
     _etf("european_banks_etf", "EUFN", "ETF iShares MSCI Europa Financiero", "USD", "eu", "Sector financiero europeo, cotizado en dólares."),
 ]

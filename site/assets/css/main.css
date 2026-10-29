@@ -59,7 +59,7 @@ h3 { font-size: 1.05rem; font-weight: 600; }
 .site-header { background: var(--navy); color: #fff; position: relative; z-index: 20; }
 .header-inner { max-width: var(--maxw); margin: 0 auto; padding: var(--space-3) var(--gutter); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-5); }
 .brand { display: flex; align-items: center; gap: var(--space-4); text-decoration: none; color: #fff; min-width: 0; margin-right: auto; }
-.brand-logo { height: 36px; width: auto; display: block; }
+.brand-logo { height: 50px; width: auto; display: block; }
 .brand-title { font-family: var(--font-serif); font-weight: 600; font-size: 1.2rem; line-height: 1.15; padding-left: var(--space-4); border-left: 1px solid rgba(194,174,147,.6); }
 .site-header :focus-visible { outline-color: var(--beige); }
 .nav-toggle { display: none; background: transparent; border: 1px solid rgba(255,255,255,.5); border-radius: var(--radius); width: 44px; height: 44px; cursor: pointer; align-items: center; justify-content: center; }
@@ -80,7 +80,7 @@ h3 { font-size: 1.05rem; font-weight: 600; }
   .nav-link { padding: var(--space-3) var(--space-2); border-bottom: 1px solid rgba(255,255,255,.12); }
   .nav-link[aria-current="page"] { border-bottom-color: var(--beige); }
   .brand-title { font-size: 1.05rem; padding-left: var(--space-3); }
-  .brand-logo { height: 30px; }
+  .brand-logo { height: 40px; }
 }
 @media (max-width: 420px) {
   .brand { gap: var(--space-3); }

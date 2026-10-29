@@ -106,123 +106,24 @@ YAHOO_INDICATORS: Dict[str, Dict[str, Any]] = {
     # US INTEREST RATES
     # ==========================================================================
 
-    "us_tbill_3m": {
-        "ticker": "^IRX",
-        "name": "US 3-Month T-Bill Yield",
-        "category": "interest_rates",
-        "description": "13-week US Treasury bill discount rate (CBOE ^IRX). Money-market rate close to, but not equal to, the Fed Funds rate",
-        "geography": "US",
-        "currency": "%",
-        "frequency": "daily"
-    },
 
     # ==========================================================================
     # US TREASURY YIELDS
     # ==========================================================================
 
-    "us_treasury_10y": {
-        "ticker": "^TNX",
-        "name": "US Treasury 10Y Yield",
-        "category": "interest_rates",
-        "description": "10-year US Treasury yield",
-        "geography": "US",
-        "currency": "%",
-        "frequency": "daily"
-    },
 
-    "us_treasury_5y": {
-        "ticker": "^FVX",
-        "name": "US Treasury 5Y Yield",
-        "category": "interest_rates",
-        "description": "5-year US Treasury yield",
-        "geography": "US",
-        "currency": "%",
-        "frequency": "daily"
-    },
 
-    "us_treasury_30y": {
-        "ticker": "^TYX",
-        "name": "US Treasury 30Y Yield",
-        "category": "interest_rates",
-        "description": "30-year US Treasury yield",
-        "geography": "US",
-        "currency": "%",
-        "frequency": "daily"
-    },
 
     # ==========================================================================
     # CURRENCY EXCHANGE RATES
     # ==========================================================================
 
-    "eur_usd": {
-        "ticker": "EURUSD=X",
-        "name": "EUR/USD",
-        "category": "currencies",
-        "description": "Euro to US Dollar exchange rate",
-        "geography": "International",
-        "currency": "USD",
-        "frequency": "daily"
-    },
 
-    "eur_gbp": {
-        "ticker": "EURGBP=X",
-        "name": "EUR/GBP",
-        "category": "currencies",
-        "description": "Euro to British Pound exchange rate",
-        "geography": "International",
-        "currency": "GBP",
-        "frequency": "daily"
-    },
 
-    "eur_jpy": {
-        "ticker": "EURJPY=X",
-        "name": "EUR/JPY",
-        "category": "currencies",
-        "description": "Euro to Japanese Yen exchange rate",
-        "geography": "International",
-        "currency": "JPY",
-        "frequency": "daily"
-    },
 
-    "eur_chf": {
-        "ticker": "EURCHF=X",
-        "name": "EUR/CHF",
-        "category": "currencies",
-        "description": "Euro to Swiss Franc exchange rate",
-        "geography": "International",
-        "currency": "CHF",
-        "frequency": "daily"
-    },
 
-    "dxy": {
-        "ticker": "DX-Y.NYB",
-        "name": "US Dollar Index",
-        "category": "currencies",
-        "description": "Index measuring value of USD against basket of major currencies",
-        "geography": "International",
-        "currency": "Index",
-        "frequency": "daily"
-    },
 
-    "gbp_usd": {
-        "ticker": "GBPUSD=X",
-        "name": "GBP/USD",
-        "category": "currencies",
-        "description": "British Pound to US Dollar exchange rate",
-        "geography": "International",
-        "currency": "USD",
-        "frequency": "daily"
-    },
 
-    "usd_jpy": {
-        "ticker": "JPY=X",
-        "name": "USD/JPY",
-        "category": "currencies",
-        "description": "US Dollar to Japanese Yen exchange rate",
-        "geography": "International",
-        "currency": "JPY",
-        "frequency": "daily"
-    },
 
     # ==========================================================================
     # COMMODITIES
@@ -238,35 +139,8 @@ YAHOO_INDICATORS: Dict[str, Dict[str, Any]] = {
         "frequency": "daily"
     },
 
-    "brent_crude": {
-        "ticker": "BZ=F",
-        "name": "Brent Crude Oil",
-        "category": "commodities",
-        "description": "Brent crude oil futures price",
-        "geography": "International",
-        "currency": "USD",
-        "frequency": "daily"
-    },
 
-    "wti_crude": {
-        "ticker": "CL=F",
-        "name": "WTI Crude Oil",
-        "category": "commodities",
-        "description": "West Texas Intermediate crude oil futures price",
-        "geography": "International",
-        "currency": "USD",
-        "frequency": "daily"
-    },
 
-    "natural_gas": {
-        "ticker": "NG=F",
-        "name": "Natural Gas",
-        "category": "commodities",
-        "description": "Natural gas futures price (Henry Hub)",
-        "geography": "International",
-        "currency": "USD",
-        "frequency": "daily"
-    },
 
     "silver": {
         "ticker": "SI=F",
@@ -282,35 +156,8 @@ YAHOO_INDICATORS: Dict[str, Dict[str, Any]] = {
     # BOND MARKET PROXIES (ETFs)
     # ==========================================================================
 
-    "euro_govt_bond_etf": {
-        "ticker": "EUNH.DE",
-        "name": "Euro Government Bond ETF",
-        "category": "bonds",
-        "description": "iShares Core EUR Govt Bond UCITS ETF (Xetra, EUR). Replaces IBGE.AS, delisted on Yahoo",
-        "geography": "Eurozone",
-        "currency": "EUR",
-        "frequency": "daily"
-    },
 
-    "us_treasury_20y_etf": {
-        "ticker": "TLT",
-        "name": "US Treasury 20+ Year ETF",
-        "category": "bonds",
-        "description": "iShares 20+ Year Treasury Bond ETF",
-        "geography": "US",
-        "currency": "USD",
-        "frequency": "daily"
-    },
 
-    "us_treasury_7_10y_etf": {
-        "ticker": "IEF",
-        "name": "US Treasury 7-10 Year ETF",
-        "category": "bonds",
-        "description": "iShares 7-10 Year Treasury Bond ETF",
-        "geography": "US",
-        "currency": "USD",
-        "frequency": "daily"
-    },
 
     # ==========================================================================
     # VOLATILITY INDICES
@@ -358,34 +205,13 @@ INDICATOR_GROUPS = {
         "ibex_35", "euro_stoxx_50", "stoxx_600", "sp_500",
         "nasdaq_composite", "dax", "cac_40", "ftse_100"
     ],
-    "interest_rates": [
-        "us_tbill_3m", "us_treasury_5y", "us_treasury_10y", "us_treasury_30y"
-    ],
-    "currencies": [
-        "eur_usd", "eur_gbp", "eur_jpy", "eur_chf", "dxy"
-    ],
-    "commodities": [
-        "gold", "brent_crude", "wti_crude", "natural_gas", "silver"
-    ],
-    "bonds": [
-        "euro_govt_bond_etf",
-        "us_treasury_20y_etf", "us_treasury_7_10y_etf"
-    ],
-    "volatility": [
-        "vix"
-    ],
-    "sector": [
-        "msci_spain_etf", "european_banks_etf"
-    ],
-    # Key indicators for dashboard overview
-    "dashboard_summary": [
-        "ibex_35", "euro_stoxx_50", "sp_500",
-        "eur_usd", "brent_crude", "gold", "vix"
-    ],
-    # Spain-focused view
-    "spain_focus": [
-        "ibex_35", "msci_spain_etf", "eur_usd"
-    ]
+    # Exchange rates, US yields, oil and gas come from official sources since 2026-10-29
+    # (src/fetchers/official_markets.py). Yahoo keeps only what has no free official source.
+    "commodities": ["gold", "silver"],
+    "volatility": ["vix"],
+    "sector": ["msci_spain_etf", "european_banks_etf"],
+    "dashboard_summary": ["ibex_35", "euro_stoxx_50", "sp_500", "gold", "vix"],
+    "spain_focus": ["ibex_35", "msci_spain_etf"],
 }
 
 

@@ -73,6 +73,8 @@ MUST_BE_ADJUSTED = {"ine.industry_turnover": "SCA", "ine.services_turnover": "SC
                     "ine.labor_cost_hour": "SCA", "ine.labor_cost_components": "SCA",
                     "eurostat.trade_balance": "SCA", "ine.gva_sectors": "SCA"}
 LEVEL_FIELD = {"yahoo": "close"}
+# Daily market series with session-based windows (same fields and logic as Yahoo).
+MARKET_SOURCES = {"yahoo", "ecb", "fed", "eia"}
 
 
 def rows(ds, fkey):
@@ -146,7 +148,7 @@ def check_dating(rep, ds_id, ds):
                 probs.append(f"{s['key']} {x} not quarter start"); break
             if freq == "A" and (d.day != 1 or d.month != 1):
                 probs.append(f"{s['key']} {x} not 1 Jan"); break
-            if freq == "D" and d.weekday() >= 5 and ds_id.split(".")[0] in ("yahoo", "bde"):
+            if freq == "D" and d.weekday() >= 5 and ds_id.split(".")[0] in ("yahoo", "bde", "ecb", "fed", "eia"):
                 probs.append(f"{s['key']} {x} weekend"); break
         for r in s["data"]:
             if len(r) != 1 + len(ds["fields"]):
@@ -190,7 +192,7 @@ def run(rep: Report):
                 last = next(([r[0], r[i]] for r in reversed(s["data"]) if r[i] is not None), None)
                 if ms["latest"].get(k) != last:
                     rep.add(ds_id, "meta", "FAIL", f"manifest latest {ms['key']}.{k} {ms['latest'].get(k)} != file {last}")
-        if src == "yahoo":
+        if src in MARKET_SOURCES:
             check_yahoo(rep, ds_id, ds)
             continue
         if ds["frequency"] == "D":
@@ -239,7 +241,7 @@ def adjustment_notes(rep):
     """Every field's note_es states its seasonal adjustment; no m/m or q/q change of original data."""
     for e in manifest()["datasets"]:
         ds_id = e["id"]
-        if ds_id.split(".")[0] == "yahoo" or ds_id in MARKET or ds_id in ADJ_NOT_IN_SCOPE:
+        if ds_id.split(".")[0] in MARKET_SOURCES or ds_id in MARKET or ds_id in ADJ_NOT_IN_SCOPE:
             continue
         ds = load(ds_id)
         bad = []

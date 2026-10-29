@@ -1,6 +1,6 @@
 # La economía en datos
 
-Public dashboard of Spanish and European macroeconomic indicators by [Círculo de Empresarios](https://circulodeempresarios.org). Sources: INE, Eurostat, Banco de España, Ministerio de Vivienda y Agenda Urbana (via the Banco de España API), Colegio de Registradores (open data), Yahoo Finance.
+Public dashboard of Spanish and European macroeconomic indicators by [Círculo de Empresarios](https://circulodeempresarios.org). Sources: INE, Eurostat, Banco de España, Ministerio de Vivienda y Agenda Urbana (via the Banco de España API), Colegio de Registradores (open data), European Central Bank (reference exchange rates), Federal Reserve and US EIA (via FRED), and Yahoo Finance for equity indices, VIX, ETFs and precious metals.
 
 Pages: Portada, Actividad (including consumption and households), Precios, Mercado laboral, Crédito y tipos, Mercados, Comparativa UE.
 
