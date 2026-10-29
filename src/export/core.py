@@ -33,6 +33,7 @@ SOURCES = {
     "ecb": "Banco Central Europeo",
     "fed": "Reserva Federal",
     "eia": "Administración de Información Energética de EE. UU.",
+    "aeat": "Agencia Tributaria",
 }
 MAX_DECIMALS = 4
 

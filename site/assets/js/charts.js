@@ -844,7 +844,7 @@ export function stackedBarChart(el, spec) {
 /**
  * Latest value per category.
  * Mode A (categories are the series of one dataset, e.g. sectors, CCAA):
- *   {dataset, field, series?: [keys], orientation?: 'h'|'v', sort?: 'asc'|'desc', colorBySign?, toggle?: [{id,label,field}]}
+ *   {dataset, field, series?: [keys], orientation?: 'h'|'v', sort?: 'asc'|'desc', top?: n, bottom?: n, colorBySign?, toggle?: [{id,label,field}]}
  * Mode B (grouped, e.g. Spain vs EU27 per indicator):
  *   {categories: [{label, bars: [{dataset, series, field, name, color?}]}], orientation?}
  */
@@ -908,6 +908,10 @@ export function groupedBarChart(el, spec) {
       if (spec.sort && !spec.categories) {
         const key = (c) => { const v = val.get(c.bars[0].spec); return v && v.p ? v.p[1] : -Infinity; };
         rows.sort((a, b) => (spec.sort === 'asc' ? key(a) - key(b) : key(b) - key(a)));
+        // top / bottom: keep only the first and last N categories of the sorted list.
+        if ((spec.top || spec.bottom) && rows.length > (spec.top || 0) + (spec.bottom || 0)) {
+          rows = [...rows.slice(0, spec.top || 0), ...(spec.bottom ? rows.slice(-spec.bottom) : [])];
+        }
       }
       const colorTrace = (name, i) => {
         const b = cats.flatMap((c) => c.bars).find((x) => x.name === name);

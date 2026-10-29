@@ -6,22 +6,48 @@ import { loadManifest } from './data.js';
 import { fmtDateLong } from './format.js';
 import { buildFeedback } from './feedback.js';
 
+// `sections` are the h2 anchors of each page (tests/test_nav_anchors.py checks they exist).
+const S = (...pairs) => pairs.map(([id, label]) => ({ id, label }));
 export const NAV = [
-  { id: 'portada', label: 'Portada', path: 'index.html' },
-  { id: 'actividad', label: 'Actividad', path: 'pages/actividad.html' },
+  { id: 'portada', label: 'Portada', path: 'index.html', sections: S(
+    ['actividad-y-precios', 'Actividad y precios'], ['espana-frente-a-la-ue-27', 'España frente a la UE-27'],
+    ['tipos-de-interes-y-mercados', 'Tipos de interés y mercados']) },
+  { id: 'actividad', label: 'Actividad', path: 'pages/actividad.html', sections: S(
+    ['pib-y-demanda', 'PIB y demanda'], ['coyuntura', 'Coyuntura'], ['clima-economico', 'Clima económico'],
+    ['consumo-y-hogares', 'Consumo y hogares'], ['productividad-y-convergencia', 'Productividad y convergencia']) },
   { id: 'sectores', label: 'Sectores', children: [
-    { id: 'industria', label: 'Industria', path: 'pages/industria.html' },
-    { id: 'servicios', label: 'Servicios', path: 'pages/servicios.html' },
-    { id: 'construccion', label: 'Construcción y vivienda', path: 'pages/construccion-vivienda.html' },
-    { id: 'turismo', label: 'Turismo', path: 'pages/turismo.html' },
+    { id: 'industria', label: 'Industria', path: 'pages/industria.html', sections: S(
+      ['produccion-industrial', 'Producción industrial'], ['destino-economico-y-divisiones', 'Destino económico y divisiones'],
+      ['cifra-de-negocios-valor-anadido-y-capacidad', 'Cifra de negocios, valor añadido y capacidad']) },
+    { id: 'servicios', label: 'Servicios', path: 'pages/servicios.html', sections: S(
+      ['produccion', 'Producción'], ['cifra-de-negocios-y-valor-anadido', 'Cifra de negocios y valor añadido']) },
+    { id: 'construccion', label: 'Construcción y vivienda', path: 'pages/construccion-vivienda.html', sections: S(
+      ['actividad-constructora', 'Actividad constructora'], ['precios-de-la-vivienda', 'Precios de la vivienda'],
+      ['compraventas-e-hipotecas', 'Compraventas e hipotecas']) },
+    { id: 'turismo', label: 'Turismo', path: 'pages/turismo.html', sections: S(
+      ['turistas-internacionales', 'Turistas internacionales'], ['alojamiento', 'Alojamiento'], ['balanza-de-pagos', 'Balanza de pagos']) },
   ] },
-  { id: 'laboral', label: 'Mercado laboral', path: 'pages/laboral.html' },
-  { id: 'precios', label: 'Precios', path: 'pages/precios.html' },
-  { id: 'exterior', label: 'Sector exterior', path: 'pages/sector-exterior.html' },
-  { id: 'publico', label: 'Sector público', path: 'pages/sector-publico.html' },
-  { id: 'credito', label: 'Crédito y tipos', path: 'pages/credito.html' },
-  { id: 'mercados', label: 'Mercados', path: 'pages/mercados.html' },
-  { id: 'ue', label: 'Comparativa UE', path: 'pages/ue.html' },
+  { id: 'empresas', label: 'Empresas', path: 'pages/empresas.html', sections: S(
+    ['demografia-empresarial', 'Demografía empresarial'], ['ventas-y-costes', 'Ventas y costes'], ['clima-empresarial', 'Clima empresarial'],
+    ['financiacion', 'Financiación de las empresas']) },
+  { id: 'laboral', label: 'Mercado laboral', path: 'pages/laboral.html', sections: S(
+    ['empleo', 'Empleo'], ['paro', 'Paro'], ['participacion-y-poblacion', 'Participación y población'], ['costes-laborales', 'Costes laborales']) },
+  { id: 'precios', label: 'Precios', path: 'pages/precios.html', sections: S(
+    ['inflacion-general-y-subyacente', 'Inflación general y subyacente'], ['composicion-del-ipc', 'Composición del IPC'],
+    ['comunidades-autonomas', 'Comunidades autónomas'], ['precios-industriales', 'Precios industriales']) },
+  { id: 'exterior', label: 'Sector exterior', path: 'pages/sector-exterior.html', sections: S(
+    ['balanza-de-pagos', 'Balanza de pagos'], ['comercio-de-bienes', 'Comercio de bienes'],
+    ['precios-del-comercio-exterior', 'Precios del comercio exterior']) },
+  { id: 'publico', label: 'Sector público', path: 'pages/sector-publico.html', sections: S(
+    ['deuda', 'Deuda'], ['deficit', 'Déficit'], ['coste-de-la-financiacion', 'Coste de la financiación']) },
+  { id: 'credito', label: 'Crédito y tipos', path: 'pages/credito.html', sections: S(
+    ['tipos-de-interes', 'Tipos de interés'], ['credito', 'Crédito'], ['endeudamiento-y-morosidad', 'Endeudamiento y morosidad']) },
+  { id: 'mercados', label: 'Mercados', path: 'pages/mercados.html', sections: S(
+    ['bolsas', 'Bolsas'], ['tipos-de-interes', 'Tipos de interés'], ['divisas', 'Divisas'], ['materias-primas', 'Materias primas']) },
+  { id: 'ue', label: 'Comparativa UE', path: 'pages/ue.html', sections: S(
+    ['situacion-actual', 'Situación actual'], ['convergencia-con-europa', 'Convergencia con Europa'], ['crecimiento', 'Crecimiento'],
+    ['mercado-de-trabajo', 'Mercado de trabajo'], ['precios', 'Precios'], ['finanzas-publicas', 'Finanzas públicas'],
+    ['actividad-y-demanda', 'Actividad y demanda'], ['sentimiento', 'Sentimiento'], ['comercio-exterior-de-espana', 'Comercio exterior de España']) },
 ];
 
 const SOURCES = [
@@ -30,6 +56,7 @@ const SOURCES = [
   { name: 'Banco de España', url: 'https://www.bde.es' },
   { name: 'Ministerio de Vivienda y Agenda Urbana', url: 'https://www.mivau.gob.es' },
   { name: 'Colegio de Registradores', url: 'https://www.registradores.org' },
+  { name: 'Agencia Tributaria', url: 'https://www.observatoriomargenes.es' },
   { name: 'Banco Central Europeo', url: 'https://data.ecb.europa.eu' },
   { name: 'Reserva Federal', url: 'https://www.federalreserve.gov' },
   { name: 'EIA', url: 'https://www.eia.gov' },
@@ -53,16 +80,24 @@ function buildHeader(active) {
   const toggle = h('button', { class: 'nav-toggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': navId },
     h('span', { class: 'nav-toggle-bars', 'aria-hidden': 'true' }), h('span', { class: 'sr-only', text: 'Menú' }));
   const link = (n) => h('a', { href: SITE_ROOT + n.path, class: 'nav-link', 'aria-current': n.id === active ? 'page' : null, text: n.label });
+  const secLinks = (n) => h('ul', { class: 'nav-secs' }, (n.sections || []).map((s) =>
+    h('li', {}, h('a', { href: SITE_ROOT + n.path + '#' + s.id, class: 'nav-sec', text: s.label }))));
   const groups = [];
-  const list = h('ul', { class: 'nav-list' }, NAV.map((n) => {
-    if (!n.children) return h('li', {}, link(n));
+  const last = NAV.length - 1;
+  const list = h('ul', { class: 'nav-list' }, NAV.map((n, i) => {
+    const edge = i >= last - 2 ? ' nav-right' : '';
+    if (!n.children) {
+      // Page link; on desktop, hovering (or focusing inside) shows its sections as anchor links.
+      return h('li', { class: 'nav-item' + edge }, link(n),
+        n.sections && n.sections.length ? h('div', { class: 'nav-drop' }, secLinks(n)) : null);
+    }
     // Disclosure menu (button + list): click or keyboard opens it; hover also opens it on desktop (CSS).
     const subId = `nav-sub-${n.id}`;
     const isActive = n.children.some((c) => c.id === active);
     const btn = h('button', { type: 'button', class: 'nav-link nav-group-btn' + (isActive ? ' is-active' : ''),
       'aria-expanded': 'false', 'aria-controls': subId }, n.label, h('span', { class: 'nav-caret', 'aria-hidden': 'true' }));
-    const sub = h('ul', { class: 'nav-sub', id: subId }, n.children.map((c) => h('li', {}, link(c))));
-    const li = h('li', { class: 'nav-group' }, btn, sub);
+    const sub = h('ul', { class: 'nav-sub', id: subId }, n.children.map((c) => h('li', { class: 'nav-subpage' }, link(c), secLinks(c))));
+    const li = h('li', { class: 'nav-group' + edge }, btn, sub);
     const setOpen = (open) => { btn.setAttribute('aria-expanded', String(open)); li.classList.toggle('is-open', open); };
     btn.addEventListener('click', () => setOpen(btn.getAttribute('aria-expanded') !== 'true'));
     li.addEventListener('keydown', (e) => { if (e.key === 'Escape' && li.classList.contains('is-open')) { e.stopPropagation(); setOpen(false); btn.focus(); } });

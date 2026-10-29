@@ -1,5 +1,5 @@
-// Página Actividad: PIB y demanda, coyuntura agregada, clima económico, consumo y hogares,
-// empresas y productividad. El detalle por ramas está en las páginas de Sectores.
+// Página Actividad: PIB y demanda, coyuntura agregada, clima económico, consumo y hogares
+// y productividad. El detalle por ramas está en las páginas de Sectores.
 import { mountLayout } from '../layout.js';
 import { kpiGrid, lineChart, stackedBarChart } from '../charts.js';
 
@@ -112,36 +112,6 @@ lineChart($('saving'), {
   title: 'Tasa de ahorro de los hogares',
   series: [{ dataset: 'ine.household_saving_rate', series: 'es', field: 'value' }],
   markers: true,
-  range: { default: '5A' },
-});
-
-/* Empresas */
-const soc = (f) => [
-  { dataset: 'ine.companies', series: 'created', field: f },
-  { dataset: 'ine.companies', series: 'dissolved', field: f },
-];
-lineChart($('companies'), {
-  title: 'Sociedades mercantiles creadas y disueltas',
-  toggle: [
-    { id: 'sum', label: 'Suma 12 meses', series: soc('sum_12m') },
-    { id: 'yoy', label: 'Var. interanual', series: soc('yoy') },
-  ],
-  range: { default: '5A' },
-});
-lineChart($('bankruptcies'), {
-  title: 'Declaraciones de quiebra: España frente a la UE-27',
-  toggle: [
-    { id: 'value', label: 'Índice (2021 = 100)', series: pair('eurostat.bankruptcies', 'value') },
-    { id: 'yoy', label: 'Var. interanual', series: pair('eurostat.bankruptcies', 'yoy') },
-  ],
-  range: { default: '5A' },
-});
-lineChart($('registrations'), {
-  title: 'Altas de empresas: España frente a la UE-27',
-  toggle: [
-    { id: 'value', label: 'Índice (2021 = 100)', series: pair('eurostat.business_registrations', 'value') },
-    { id: 'yoy', label: 'Var. interanual', series: pair('eurostat.business_registrations', 'yoy') },
-  ],
   range: { default: '5A' },
 });
 

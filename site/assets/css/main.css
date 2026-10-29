@@ -77,12 +77,29 @@ h3 { font-size: 1.05rem; font-weight: 600; }
 .nav-caret { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; transition: transform .12s; }
 .nav-group.is-open .nav-caret { transform: rotate(180deg); }
 .nav-sub { list-style: none; margin: 0; padding: var(--space-2) 0; display: none; }
+.nav-item { position: relative; }
+.nav-drop, .nav-secs { display: none; }
+.nav-secs { list-style: none; margin: 0; padding: 0; }
+.nav-sec { display: block; color: #E6E9F2; text-decoration: none; font-size: .875rem; padding: 5px var(--space-4); white-space: nowrap; }
+.nav-sec:hover, .nav-sec:focus-visible { color: var(--beige); text-decoration: underline; }
+h2[id] { scroll-margin-top: var(--space-4); }
 .nav-group.is-open .nav-sub { display: block; }
 @media (min-width: 860px) {
   .nav-sub { position: absolute; top: 100%; left: 0; min-width: 230px; background: var(--navy); border: 1px solid rgba(194,174,147,.45); border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 8px 20px rgba(0,0,0,.25); z-index: 30; }
-  .nav-group:hover .nav-sub { display: block; }
   .nav-sub .nav-link { border-bottom: 0; border-left: 3px solid transparent; padding: var(--space-2) var(--space-4); white-space: nowrap; }
   .nav-sub .nav-link[aria-current="page"] { border-left-color: var(--beige); }
+  .nav-drop { position: absolute; top: 100%; left: 0; min-width: 240px; padding: var(--space-2) 0; background: var(--navy); border: 1px solid rgba(194,174,147,.45); border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 8px 20px rgba(0,0,0,.25); z-index: 30; }
+  .nav-item:hover .nav-drop, .nav-item:focus-within .nav-drop { display: block; }
+  .nav-drop .nav-secs, .nav-sub .nav-secs { display: block; }
+  .nav-sub { display: none; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: var(--space-2) var(--space-3); padding: var(--space-3) var(--space-2); }
+  .nav-group:hover .nav-sub, .nav-group.is-open .nav-sub { display: grid; }
+  .nav-subpage .nav-link { font-size: .95rem; padding: var(--space-1) var(--space-4); }
+  .nav-subpage .nav-sec { padding-left: calc(var(--space-4) + 3px); }
+  .nav-right .nav-drop, .nav-right .nav-sub { left: auto; right: 0; }
+  .nav-sub .nav-secs { padding-right: var(--space-3); }
+  /* Twelve top-level items: tighter spacing keeps them on one line from about 1200 px. */
+  .nav-list { gap: 0; }
+  .nav-list > li > .nav-link { padding-left: 10px; padding-right: 10px; font-size: .92rem; }
 }
 
 @media (max-width: 859px) {
