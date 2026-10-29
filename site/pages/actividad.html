@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Actividad · La economía en datos</title>
-  <meta name="description" content="Crecimiento, demanda, productividad, producción, confianza empresarial, consumo, ahorro de los hogares y vivienda en España.">
+  <meta name="description" content="PIB y demanda, coyuntura, clima económico, consumo y hogares, empresas, productividad y convergencia con Europa.">
   <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../assets/css/main.css">
 </head>
@@ -13,42 +13,56 @@
   <main>
     <div class="page-head">
       <h1>Actividad</h1>
-      <p class="lead">Crecimiento del PIB y sus componentes de demanda, productividad, producción industrial y de servicios, confianza empresarial, consumo, ahorro de los hogares y vivienda.</p>
+      <p class="lead">Crecimiento del PIB y su composición, indicadores mensuales de coyuntura, clima económico, consumo de los hogares, creación y cierre de empresas, y productividad y convergencia con Europa. El detalle por ramas está en Sectores.</p>
     </div>
 
     <h2>Indicadores clave</h2>
     <div id="kpis"></div>
 
-    <h2>Producto interior bruto</h2>
+    <h2>PIB y demanda</h2>
     <div class="grid grid-2">
       <div id="gdp"></div>
       <div id="demand"></div>
+    </div>
+    <div class="grid grid-2">
       <div id="gdp-compare"></div>
-      <div id="productivity"></div>
       <div id="gva-sectors"></div>
     </div>
 
-    <h2>Producción y confianza empresarial</h2>
+    <h2>Coyuntura</h2>
     <div class="grid grid-2">
       <div id="production"></div>
       <div id="turnover"></div>
-      <div id="ipi-sectors"></div>
-      <div id="ipss-sectors"></div>
-      <div id="confidence"></div>
-      <div id="construction"></div>
-      <div id="capacity"></div>
     </div>
 
-    <h2>Consumo, hogares y vivienda</h2>
+    <h2>Clima económico</h2>
+    <div class="grid grid-2">
+      <div id="confidence"></div>
+      <div id="esi"></div>
+    </div>
+
+    <h2>Consumo y hogares</h2>
     <div class="grid grid-2">
       <div id="retail"></div>
       <div id="consumer-conf"></div>
-      <div id="house-prices"></div>
-      <div id="credit"></div>
-      <div id="mortgage"></div>
-      <div id="saving"></div>
-      <div id="housing"></div>
-      <div id="mortgages"></div>
+    </div>
+    <div id="saving"></div>
+
+    <h2>Empresas</h2>
+    <div id="companies"></div>
+    <div class="grid grid-2">
+      <div id="bankruptcies"></div>
+      <div id="registrations"></div>
+    </div>
+
+    <h2>Productividad y convergencia</h2>
+    <div class="grid grid-2">
+      <div id="productivity"></div>
+      <div id="conv-gdppc"></div>
+    </div>
+    <div class="grid grid-2">
+      <div id="conv-prod"></div>
+      <div id="conv-rd"></div>
     </div>
   </main>
   <footer id="site-footer" class="site-footer"></footer>

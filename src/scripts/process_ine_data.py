@@ -27,6 +27,8 @@ AVAILABLE_INDICATORS = [
     "services_turnover",
     "services_production",
     "ipss_sectors",
+    "ipi_divisions",
+    "construction_ipco",
     "unemployment",
     "employment_rate",
     "activity_rate",

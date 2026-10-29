@@ -9,9 +9,16 @@ import { buildFeedback } from './feedback.js';
 export const NAV = [
   { id: 'portada', label: 'Portada', path: 'index.html' },
   { id: 'actividad', label: 'Actividad', path: 'pages/actividad.html' },
-  { id: 'empresas', label: 'Empresas y turismo', path: 'pages/empresas.html' },
-  { id: 'precios', label: 'Precios', path: 'pages/precios.html' },
+  { id: 'sectores', label: 'Sectores', children: [
+    { id: 'industria', label: 'Industria', path: 'pages/industria.html' },
+    { id: 'servicios', label: 'Servicios', path: 'pages/servicios.html' },
+    { id: 'construccion', label: 'Construcción y vivienda', path: 'pages/construccion-vivienda.html' },
+    { id: 'turismo', label: 'Turismo', path: 'pages/turismo.html' },
+  ] },
   { id: 'laboral', label: 'Mercado laboral', path: 'pages/laboral.html' },
+  { id: 'precios', label: 'Precios', path: 'pages/precios.html' },
+  { id: 'exterior', label: 'Sector exterior', path: 'pages/sector-exterior.html' },
+  { id: 'publico', label: 'Sector público', path: 'pages/sector-publico.html' },
   { id: 'credito', label: 'Crédito y tipos', path: 'pages/credito.html' },
   { id: 'mercados', label: 'Mercados', path: 'pages/mercados.html' },
   { id: 'ue', label: 'Comparativa UE', path: 'pages/ue.html' },
@@ -45,8 +52,25 @@ function buildHeader(active) {
   const navId = 'site-nav';
   const toggle = h('button', { class: 'nav-toggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': navId },
     h('span', { class: 'nav-toggle-bars', 'aria-hidden': 'true' }), h('span', { class: 'sr-only', text: 'Menú' }));
-  const list = h('ul', { class: 'nav-list' }, NAV.map((n) => h('li', {},
-    h('a', { href: SITE_ROOT + n.path, class: 'nav-link', 'aria-current': n.id === active ? 'page' : null, text: n.label }))));
+  const link = (n) => h('a', { href: SITE_ROOT + n.path, class: 'nav-link', 'aria-current': n.id === active ? 'page' : null, text: n.label });
+  const groups = [];
+  const list = h('ul', { class: 'nav-list' }, NAV.map((n) => {
+    if (!n.children) return h('li', {}, link(n));
+    // Disclosure menu (button + list): click or keyboard opens it; hover also opens it on desktop (CSS).
+    const subId = `nav-sub-${n.id}`;
+    const isActive = n.children.some((c) => c.id === active);
+    const btn = h('button', { type: 'button', class: 'nav-link nav-group-btn' + (isActive ? ' is-active' : ''),
+      'aria-expanded': 'false', 'aria-controls': subId }, n.label, h('span', { class: 'nav-caret', 'aria-hidden': 'true' }));
+    const sub = h('ul', { class: 'nav-sub', id: subId }, n.children.map((c) => h('li', {}, link(c))));
+    const li = h('li', { class: 'nav-group' }, btn, sub);
+    const setOpen = (open) => { btn.setAttribute('aria-expanded', String(open)); li.classList.toggle('is-open', open); };
+    btn.addEventListener('click', () => setOpen(btn.getAttribute('aria-expanded') !== 'true'));
+    li.addEventListener('keydown', (e) => { if (e.key === 'Escape' && li.classList.contains('is-open')) { e.stopPropagation(); setOpen(false); btn.focus(); } });
+    li.addEventListener('focusout', (e) => { if (!li.contains(e.relatedTarget) && window.matchMedia('(min-width: 860px)').matches) setOpen(false); });
+    groups.push({ li, setOpen });
+    return li;
+  }));
+  document.addEventListener('click', (e) => { for (const g of groups) if (!g.li.contains(e.target)) g.setOpen(false); });
   const nav = h('nav', { id: navId, class: 'site-nav', 'aria-label': 'Secciones' }, list);
   toggle.addEventListener('click', () => {
     const open = toggle.getAttribute('aria-expanded') === 'true';

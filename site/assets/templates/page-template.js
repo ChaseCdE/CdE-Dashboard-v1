@@ -5,7 +5,7 @@
 import { mountLayout } from '../layout.js';
 import { kpiGrid, lineChart, barChart, groupedBarChart } from '../charts.js';
 
-mountLayout({ active: 'SLUG' });          // one of: portada, actividad, empresas, precios, laboral, credito, mercados, ue
+mountLayout({ active: 'SLUG' });          // one of: portada, actividad, industria, servicios, construccion, turismo, laboral, precios, exterior, publico, credito, mercados, ue
 const $ = (id) => document.getElementById(id);
 
 kpiGrid($('kpis'), [

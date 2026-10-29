@@ -30,9 +30,9 @@ lineChart($('conv-prod'), { title: 'Productividad por hora trabajada en paridad 
 lineChart($('conv-rd'), { title: 'Gasto en I+D sobre PIB, España y principales economías', series: peers('rd_expenditure', ['es', 'eu27', 'de', 'fr', 'it']), range: { default: 'max' } });
 
 // Crecimiento
-barChart($('gdp-growth'), { title: 'Crecimiento trimestral del PIB, España y UE-27', series: pair('gdp_growth', 'qoq'), range: { default: '5A' } });
+barChart($('gdp-growth'), { title: 'Crecimiento trimestral del PIB: España frente a la UE-27', series: pair('gdp_growth', 'qoq'), range: { default: '5A' } });
 lineChart($('gdp-index'), {
-  title: 'PIB real: España, UE-27 y grandes economías',
+  title: 'PIB real: España frente a la UE-27 y las grandes economías',
   series: [ES('gdp_index', 'value'), EU('gdp_index', 'value'),
     { dataset: 'eurostat.gdp_index', series: 'de', field: 'value' },
     { dataset: 'eurostat.gdp_index', series: 'fr', field: 'value' },
@@ -41,29 +41,29 @@ lineChart($('gdp-index'), {
 });
 
 // Mercado de trabajo
-lineChart($('unemp'), { title: 'Tasa de paro, España y UE-27', series: pair('unemployment', 'value'), range: { default: '5A' } });
-lineChart($('participation'), { title: 'Tasa de actividad, España y UE-27', series: pair('labor_participation', 'value'), range: { default: '5A' } });
-lineChart($('emp-growth'), { title: 'Crecimiento trimestral del empleo, España y UE-27', series: pair('employment_growth', 'qoq'), range: { default: '5A' }, ref: { y: 0 } });
-lineChart($('youth'), { title: 'Paro juvenil (menores de 25 años), España y UE-27', series: pair('youth_unemployment', 'value'), range: { default: '5A' } });
-lineChart($('longterm'), { title: 'Paro de larga duración, España y UE-27', series: pair('long_term_unemployment', 'value'), range: { default: '5A' } });
+lineChart($('unemp'), { title: 'Tasa de paro: España frente a la UE-27', series: pair('unemployment', 'value'), range: { default: '5A' } });
+lineChart($('participation'), { title: 'Tasa de actividad: España frente a la UE-27', series: pair('labor_participation', 'value'), range: { default: '5A' } });
+lineChart($('emp-growth'), { title: 'Crecimiento trimestral del empleo: España frente a la UE-27', series: pair('employment_growth', 'qoq'), range: { default: '5A' }, ref: { y: 0 } });
+lineChart($('youth'), { title: 'Paro juvenil (menores de 25 años): España frente a la UE-27', series: pair('youth_unemployment', 'value'), range: { default: '5A' } });
+lineChart($('longterm'), { title: 'Paro de larga duración: España frente a la UE-27', series: pair('long_term_unemployment', 'value'), range: { default: '5A' } });
 
 // Precios
-lineChart($('hicp'), { title: 'Inflación armonizada, España y UE-27', series: pair('hicp', 'yoy'), range: { default: '5A' }, ref: { y: 2, label: 'Objetivo BCE 2 %' } });
-lineChart($('core'), { title: 'Inflación subyacente, España y UE-27', series: pair('core_inflation', 'yoy'), range: { default: '5A' }, ref: { y: 2, label: 'Objetivo BCE 2 %' } });
-lineChart($('ppi'), { title: 'Precios industriales, variación interanual', series: pair('producer_prices', 'yoy'), range: { default: '5A' }, ref: { y: 0 } });
+lineChart($('hicp'), { title: 'Inflación armonizada: España frente a la UE-27', series: pair('hicp', 'yoy'), range: { default: '5A' }, ref: { y: 2, label: 'Objetivo BCE 2 %' } });
+lineChart($('core'), { title: 'Inflación subyacente: España frente a la UE-27', series: pair('core_inflation', 'yoy'), range: { default: '5A' }, ref: { y: 2, label: 'Objetivo BCE 2 %' } });
+lineChart($('ppi'), { title: 'Precios industriales: España frente a la UE-27', series: pair('producer_prices', 'yoy'), range: { default: '5A' }, ref: { y: 0 } });
 
 // Finanzas públicas
-lineChart($('debt'), { title: 'Deuda pública sobre PIB, España y UE-27', series: pair('government_debt', 'value'), range: { default: 'max' } });
-lineChart($('deficit'), { title: 'Déficit público sobre PIB, España y UE-27', series: pair('budget_deficit', 'value'), range: { default: 'max' }, markers: true, ref: { y: 0 } });
+lineChart($('debt'), { title: 'Deuda pública sobre PIB: España frente a la UE-27', series: pair('government_debt', 'value'), range: { default: 'max' } });
+lineChart($('deficit'), { title: 'Déficit público sobre PIB: España frente a la UE-27', series: pair('budget_deficit', 'value'), range: { default: 'max' }, markers: true, ref: { y: 0 } });
 
 // Actividad y demanda
-lineChart($('ipi'), { title: 'Producción industrial, variación interanual', series: pair('industrial_production', 'yoy'), range: { default: '5A' }, ref: { y: 0 } });
-lineChart($('retail'), { title: 'Comercio minorista, variación interanual', series: pair('retail_trade', 'yoy'), range: { default: '5A' }, ref: { y: 0 } });
-lineChart($('house'), { title: 'Precios de la vivienda, variación interanual', series: pair('house_prices', 'yoy'), range: { default: 'max' }, ref: { y: 0 } });
+lineChart($('ipi'), { title: 'Producción industrial: España frente a la UE-27', series: pair('industrial_production', 'yoy'), range: { default: '5A' }, ref: { y: 0 } });
+lineChart($('retail'), { title: 'Comercio minorista: España frente a la UE-27', series: pair('retail_trade', 'yoy'), range: { default: '5A' }, ref: { y: 0 } });
+lineChart($('house'), { title: 'Precio de la vivienda: España frente a la UE-27', series: pair('house_prices', 'yoy'), range: { default: 'max' }, ref: { y: 0 } });
 
 // Sentimiento
-lineChart($('esi'), { title: 'Indicador de sentimiento económico, España y UE-27', series: pair('economic_sentiment', 'value'), range: { default: '5A' }, ref: { y: 100, label: 'Media de largo plazo' } });
-lineChart($('conf'), { title: 'Confianza del consumidor, España y UE-27', series: pair('consumer_confidence', 'value'), range: { default: '5A' } });
+lineChart($('esi'), { title: 'Indicador de sentimiento económico: España frente a la UE-27', series: pair('economic_sentiment', 'value'), range: { default: '5A' }, ref: { y: 100, label: 'Media de largo plazo' } });
+lineChart($('conf'), { title: 'Confianza del consumidor: España frente a la UE-27', series: pair('consumer_confidence', 'value'), range: { default: '5A' } });
 
 // Comercio exterior (solo España)
 barChart($('trade-bal'), { title: 'Saldo comercial de bienes, España', series: [ES('trade_balance', 'balance')], colorBySign: true, range: { default: '5A' } });

@@ -1,6 +1,7 @@
 // Página Mercados: bolsas, tipos de interés de mercado, divisas y materias primas.
 import { mountLayout } from '../layout.js';
 import {
+  crossSectionChart,
   kpiGrid, lineChart, groupedBarChart, rebasedComparison, latestTable,
 } from '../charts.js';
 
@@ -178,4 +179,11 @@ latestTable($('t-materias'), {
     ['yahoo.gold', 'Oro'], ['yahoo.silver', 'Plata'],
   ].map(([dataset, label]) => ({ label, dataset, series: 'global' })),
   columns: retCols,
+});
+
+// Curva de rentabilidades de la deuda pública española (último día con dato en todos los plazos).
+crossSectionChart($('curve'), {
+  title: 'Curva de rentabilidad de la deuda pública española',
+  series: [{ dataset: 'bde.yield_curve', series: 'es', field: 'yield' }],
+  xTitle: 'Plazo (años)',
 });

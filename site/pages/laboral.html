@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mercado laboral · La economía en datos</title>
-  <meta name="description" content="Paro, empleo, actividad, calidad del empleo y costes laborales en España, a partir de la afiliación y el paro registrado, la EPA y la ETCL del INE.">
+  <meta name="description" content="Empleo, paro, participación y población, y costes laborales en España.">
   <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../assets/css/main.css">
 </head>
@@ -13,54 +13,57 @@
   <main>
     <div class="page-head">
       <h1>Mercado laboral</h1>
-      <p class="lead">Paro, empleo, actividad, calidad del empleo y costes laborales en España, a partir de la Encuesta de Población Activa (EPA) y la Encuesta Trimestral de Coste Laboral (ETCL) del INE.</p>
+      <p class="lead">Empleo (afiliación y EPA), paro (EPA y registrado), participación y población, y costes laborales, con la comparación con la UE-27.</p>
     </div>
 
     <h2>Indicadores clave</h2>
     <div id="kpis"></div>
 
-    <h2>Afiliación y paro registrado</h2>
+    <h2>Empleo</h2>
     <div class="grid grid-2">
       <div id="c-afil"></div>
       <div id="c-afil-var"></div>
+    </div>
+    <div class="grid grid-2">
+      <div id="c-ocup"></div>
+      <div id="c-sectores"></div>
+    </div>
+    <div class="grid grid-2">
+      <div id="c-emp-eu"></div>
+      <div id="c-vacantes"></div>
+    </div>
+    <div id="c-temp"></div>
+
+    <h2>Paro</h2>
+    <div class="grid grid-2">
+      <div id="c-paro"></div>
+      <div id="c-paro-eu"></div>
+    </div>
+    <div class="grid grid-2">
       <div id="c-pr"></div>
       <div id="c-pr-var"></div>
     </div>
-
-    <h2>Empleo y desempleo</h2>
     <div class="grid grid-2">
-      <div id="c-paro"></div>
-      <div id="c-paro-var"></div>
-      <div id="c-tasas"></div>
-      <div id="c-tabla"></div>
-      <div id="c-sectores"></div>
-    </div>
-
-    <h2>Demanda de trabajo</h2>
-    <div class="grid grid-2">
-      <div id="c-vacantes"></div>
-    </div>
-
-    <h2>Calidad del empleo</h2>
-    <div id="kpis-calidad"></div>
-    <div class="grid grid-2">
-      <div id="c-temp"></div>
       <div id="c-juvenil"></div>
+      <div id="c-larga"></div>
     </div>
 
-    <h2>Población</h2>
+    <h2>Participación y población</h2>
     <div class="grid grid-2">
+      <div id="c-tasas"></div>
+      <div id="c-actividad-eu"></div>
+    </div>
+    <div class="grid grid-2">
+      <div id="c-tabla"></div>
       <div id="c-pob"></div>
-      <div id="c-pob-var"></div>
     </div>
 
     <h2>Costes laborales</h2>
-    <div id="kpis-costes"></div>
     <div class="grid grid-2">
       <div id="c-coste"></div>
       <div id="c-hora"></div>
-      <div id="c-indice"></div>
     </div>
+    <div id="c-indice"></div>
   </main>
   <footer id="site-footer" class="site-footer"></footer>
   <script type="module" src="../assets/js/pages/laboral.js"></script>

@@ -53,7 +53,56 @@ _CCAA = {
 }
 
 
+# IPI by CNAE-2009 division (table 60282, SCA). key -> (yoy code number, INE name, short label, CNAE division)
+# The ytd ("variación de la media en lo que va de año") code is always yoy - 1. Divisions 07 (metal ores)
+# and 12 (tobacco) are left out: INE publishes them as confidential (no values).
+IPI_DIVISIONS = {
+    "d08": (15505, "Otras industrias extractivas", "Otras extractivas", "08"),
+    "d10": (15502, "Industria de la alimentación", "Alimentación", "10"),
+    "d11": (15499, "Fabricación de bebidas", "Bebidas", "11"),
+    "d13": (15493, "Industria textil", "Textil", "13"),
+    "d14": (15490, "Confección de prendas de vestir", "Confección", "14"),
+    "d15": (15487, "Industria del cuero y del calzado", "Cuero y calzado", "15"),
+    "d16": (15484, "Industria de la madera y del corcho", "Madera y corcho", "16"),
+    "d17": (15481, "Industria del papel", "Papel", "17"),
+    "d18": (15478, "Artes gráficas y reproducción de soportes grabados", "Artes gráficas", "18"),
+    "d19": (15475, "Coquerías y refino de petróleo", "Refino de petróleo", "19"),
+    "d20": (15472, "Industria química", "Química", "20"),
+    "d21": (15469, "Fabricación de productos farmacéuticos", "Farmacéutica", "21"),
+    "d22": (15466, "Fabricación de productos de caucho y plásticos", "Caucho y plásticos", "22"),
+    "d23": (15463, "Fabricación de otros productos minerales no metálicos", "Minerales no metálicos", "23"),
+    "d24": (15460, "Metalurgia; fabricación de productos de hierro, acero y ferroaleaciones", "Metalurgia", "24"),
+    "d25": (15457, "Fabricación de productos metálicos, excepto maquinaria y equipo", "Productos metálicos", "25"),
+    "d26": (15454, "Fabricación de productos informáticos, electrónicos y ópticos", "Informática y electrónica", "26"),
+    "d27": (15451, "Fabricación de material y equipo eléctrico", "Material eléctrico", "27"),
+    "d28": (15448, "Fabricación de maquinaria y equipo n.c.o.p.", "Maquinaria y equipo", "28"),
+    "d29": (15445, "Fabricación de vehículos de motor, remolques y semirremolques", "Vehículos de motor", "29"),
+    "d30": (15442, "Fabricación de otro material de transporte", "Otro material de transporte", "30"),
+    "d31": (15439, "Fabricación de muebles", "Muebles", "31"),
+    "d32": (15436, "Otras industrias manufactureras", "Otras manufactureras", "32"),
+    "d33": (15433, "Reparación e instalación de maquinaria y equipo", "Reparación de maquinaria", "33"),
+    "d35": (15430, "Suministro de energía eléctrica, gas, vapor y aire acondicionado", "Energía eléctrica y gas", "35"),
+    "d36": (15427, "Captación, depuración y distribución de agua", "Agua", "36"),
+}
+
+
 INDICATORS = {
+    # IPI by CNAE division (table 60282), INE's published yoy and ytd rates of the SCA index.
+    "ipi_divisions": dict(table=60282, nult=36, file="ipi_divisions_raw.csv", series={
+        **{f"yoy_{k}": _s(f"IPI{c}", "Total Nacional", SA, n, "Variación anual") for k, (c, n, _, _) in IPI_DIVISIONS.items()},
+        **{f"ytd_{k}": _s(f"IPI{c - 1}", "Total Nacional", SA, n, "media en lo que va de año") for k, (c, n, _, _) in IPI_DIVISIONS.items()},
+        "yoy_total": _s("IPI15374", "Total Nacional", "Variación anual", SA, "Total industria"),
+        "ytd_total": _s("IPI15367", "Total Nacional", "media en lo que va de año", SA, "Total industria"),
+    }),
+    # Índice de Producción de la Construcción (IPCO, base 2021, table 79683, SCA): index and INE's yoy.
+    "construction_ipco": dict(table=79683, nult=132, file="construction_ipco_raw.csv", series={
+        **{f"value_{k}": _s(f"IPCO{v}", SA, name, "Índice") for k, (v, y, name) in {
+            "total": (35, 55, "Construcción"), "edificios": (34, 53, "Construcción de edificios"),
+            "ingenieria": (33, 51, "Ingeniería civil"), "especializada": (32, 49, "Actividades de construcción especializada")}.items()},
+        **{f"yoy_{k}": _s(f"IPCO{y}", SA, name, "Variación anual") for k, (v, y, name) in {
+            "total": (35, 55, "Construcción"), "edificios": (34, 53, "Construcción de edificios"),
+            "ingenieria": (33, 51, "Ingeniería civil"), "especializada": (32, 49, "Actividades de construcción especializada")}.items()},
+    }),
     "gdp": dict(table=67822, nult=40, file="gdp_raw.csv", series={
         "value": _s("CNTR6652", "Total Nacional", SA, "Producto interior bruto a precios de mercado", "Dato base", "volumen encadenados"),
         # INE's published rates of the same SA series (audit M4 principle)

@@ -71,6 +71,19 @@ h3 { font-size: 1.05rem; font-weight: 600; }
 .nav-link { display: block; padding: var(--space-2) var(--space-3); color: #fff; text-decoration: none; font-weight: 600; font-size: .95rem; border-bottom: 3px solid transparent; }
 .nav-link:hover { color: var(--beige); }
 .nav-link[aria-current="page"] { border-bottom-color: var(--beige); color: var(--beige); }
+.nav-group { position: relative; }
+.nav-group-btn { background: transparent; border: 0; border-bottom: 3px solid transparent; font: inherit; font-weight: 600; font-size: .95rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.nav-group-btn.is-active { border-bottom-color: var(--beige); color: var(--beige); }
+.nav-caret { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; transition: transform .12s; }
+.nav-group.is-open .nav-caret { transform: rotate(180deg); }
+.nav-sub { list-style: none; margin: 0; padding: var(--space-2) 0; display: none; }
+.nav-group.is-open .nav-sub { display: block; }
+@media (min-width: 860px) {
+  .nav-sub { position: absolute; top: 100%; left: 0; min-width: 230px; background: var(--navy); border: 1px solid rgba(194,174,147,.45); border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 8px 20px rgba(0,0,0,.25); z-index: 30; }
+  .nav-group:hover .nav-sub { display: block; }
+  .nav-sub .nav-link { border-bottom: 0; border-left: 3px solid transparent; padding: var(--space-2) var(--space-4); white-space: nowrap; }
+  .nav-sub .nav-link[aria-current="page"] { border-left-color: var(--beige); }
+}
 
 @media (max-width: 859px) {
   .nav-toggle { display: inline-flex; }
@@ -79,6 +92,8 @@ h3 { font-size: 1.05rem; font-weight: 600; }
   .nav-list { flex-direction: column; }
   .nav-link { padding: var(--space-3) var(--space-2); border-bottom: 1px solid rgba(255,255,255,.12); }
   .nav-link[aria-current="page"] { border-bottom-color: var(--beige); }
+  .nav-group-btn { width: 100%; justify-content: space-between; padding: var(--space-3) var(--space-2); border-bottom: 1px solid rgba(255,255,255,.12); }
+  .nav-sub { padding: 0 0 0 var(--space-4); }
   .brand-title { font-size: 1.05rem; padding-left: var(--space-3); }
   .brand-logo { height: 40px; }
 }

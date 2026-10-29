@@ -131,6 +131,34 @@ DATASETS = [
         series=long_series("sector", label_column="sector_label",
                            order=["total", "consumo", "equipo", "intermedios", "energia"]),
     ),
+    Dataset(
+        source="ine",
+        indicator="ipi_divisions",
+        csv="ipi_divisions.csv",
+        title_es="Producción industrial por divisiones de actividad",
+        description_es="Índice de Producción Industrial por divisiones de la CNAE-2009, corregido de efectos estacionales y de calendario: tasas publicadas por el INE.",
+        source_dataset=str(TABLE_IDS["ipi_divisions"]),
+        source_url=INE_TABLE_URL.format(TABLE_IDS["ipi_divisions"]),
+        frequency="M",
+        fields=[
+            Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change", note_es=SCA),
+            Field("ytd", "Variación media en lo que va de año", "pct_change", 1, column="ytd_change", note_es=SCA),
+        ],
+        series=long_series("sector", label_column="sector_label"),
+    ),
+    _ine(
+        "construction_ipco", "construction_ipco",
+        title_es="Índice de Producción de la Construcción",
+        description_es="Índice de Producción de la Construcción (IPCO, base 2021) corregido de efectos estacionales y de calendario: total, edificación, ingeniería civil y construcción especializada.",
+        frequency="M",
+        fields=[
+            Field("value", "Índice", "index", 1, column="index", note_es=note(SCA, "Base 2021 = 100")),
+            Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change", note_es=SCA),
+        ],
+        series=long_series("sector", order=["total", "edificios", "ingenieria", "especializada"], labels={
+            "total": "Total construcción", "edificios": "Edificación", "ingenieria": "Ingeniería civil",
+            "especializada": "Construcción especializada"}),
+    ),
     _ine(
         "industry_turnover", "industry_turnover",
         title_es="Cifra de negocios de la industria",

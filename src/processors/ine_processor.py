@@ -384,6 +384,38 @@ class INEProcessor:
         self._save_processed(result, "ipss_sectors.csv")
         return result
 
+    def process_ipi_divisions(self) -> pd.DataFrame:
+        """IPI by CNAE division (SCA): INE's published yoy and ytd rates, plus the total for reference."""
+        print("Processing IPI by division...")
+        from ..fetchers.ine_series import IPI_DIVISIONS
+        labels = {"total": "Total industria"}
+        labels.update({k: f"{v[2]} ({v[3]})" for k, v in IPI_DIVISIONS.items()})
+        frames = []
+        for key, label in labels.items():
+            ytd = self._pick("ipi_divisions", f"ytd_{key}")[["date", "year", "value"]].rename(columns={"value": "ytd_change"})
+            yoy = self._pick("ipi_divisions", f"yoy_{key}")[["date", "value"]].rename(columns={"value": "yoy_change"})
+            f = ytd.drop_duplicates("date", keep="last").merge(yoy.drop_duplicates("date", keep="last"), on="date", how="outer")
+            f["sector"], f["sector_label"] = key, label
+            frames.append(f.sort_values("date"))
+        result = pd.concat(frames, ignore_index=True).sort_values(["date", "sector"])
+        self._save_processed(result, "ipi_divisions.csv")
+        return result
+
+    def process_construction_ipco(self) -> pd.DataFrame:
+        """Índice de Producción de la Construcción (SCA, base 2021): index and INE's published yoy, by subsector."""
+        print("Processing construction production (IPCO)...")
+        frames = []
+        for key in ("total", "edificios", "ingenieria", "especializada"):
+            v = self._pick("construction_ipco", f"value_{key}")[["date", "year", "value"]].rename(columns={"value": "index"})
+            y = self._pick("construction_ipco", f"yoy_{key}")[["date", "value"]].rename(columns={"value": "yoy_change"})
+            f = v.drop_duplicates("date", keep="last").merge(y.drop_duplicates("date", keep="last"), on="date", how="outer")
+            f.insert(2, "sector", key)
+            frames.append(f.sort_values("date"))
+        result = pd.concat(frames, ignore_index=True)
+        _check_time_gaps(result[result["sector"] == "total"], "M", "construction_ipco")
+        self._save_processed(result, "construction_ipco.csv")
+        return result
+
     def process_cpi_special_groups(self) -> pd.DataFrame:
         """Headline and core CPI, INE's published yoy (IPC290750, IPC292510)."""
         print("Processing CPI Special Groups...")
@@ -794,6 +826,8 @@ class INEProcessor:
         results["services_turnover"] = self.process_services_turnover()
         results["services_production"] = self.process_services_production()
         results["ipss_sectors"] = self.process_ipss_sectors()
+        results["ipi_divisions"] = self.process_ipi_divisions()
+        results["construction_ipco"] = self.process_construction_ipco()
         # Labor Market - EPA
         results["unemployment"] = self.process_unemployment()
         results["employment_rate"] = self.process_employment_rate()

@@ -10,7 +10,6 @@ kpiGrid($('kpis'), [
   { dataset: 'ine.cpi_special_groups', series: 'core', field: 'yoy', title: 'Inflación subyacente', positiveIsGood: false },
   { dataset: 'ine.ipri', series: 'total', field: 'yoy', title: 'Precios industriales', change: { field: 'mom', label: 'mensual' }, positiveIsGood: false },
   { dataset: 'ine.ipri', series: 'total_sin_energia', field: 'yoy', title: 'Precios industriales sin energía', change: { field: 'mom', label: 'mensual' }, positiveIsGood: false },
-  { dataset: 'ine.house_prices', series: 'es', field: 'yoy', title: 'Precio de la vivienda', positiveIsGood: false },
   { dataset: 'eurostat.hicp_energy', series: 'es', field: 'yoy', title: 'Inflación de la energía (IPCA España)', positiveIsGood: false },
   { dataset: 'eurostat.hicp', series: 'es', field: 'yoy', title: 'IPCA España', positiveIsGood: false },
   { dataset: 'eurostat.hicp', series: 'eu27', field: 'yoy', title: 'IPCA UE-27', positiveIsGood: false },
@@ -82,7 +81,7 @@ latestTable($('ccaa-table'), {
 lineChart($('ipri-general'), {
   title: 'Precios industriales: total y sin energía',
   toggle: ['value', 'yoy', 'mom'].map((f) => ({
-    id: f, label: { value: 'Índice', yoy: 'Anual', mom: 'Mensual' }[f],
+    id: f, label: { value: 'Índice (2022 = 100)', yoy: 'Var. interanual', mom: 'Var. mensual' }[f],
     ...(f === 'value' ? { rebase: { year: 2022 } } : {}),
     series: ['total', 'total_sin_energia'].map((s) => ({ dataset: 'ine.ipri', series: s, field: f })),
   })),
@@ -91,7 +90,7 @@ lineChart($('ipri-general'), {
 lineChart($('ipri-destino'), {
   title: 'Precios industriales por destino económico',
   toggle: ['value', 'yoy', 'mom'].map((f) => ({
-    id: f, label: { value: 'Índice', yoy: 'Anual', mom: 'Mensual' }[f],
+    id: f, label: { value: 'Índice (2022 = 100)', yoy: 'Var. interanual', mom: 'Var. mensual' }[f],
     ...(f === 'value' ? { rebase: { year: 2022 } } : {}),
     series: ['consumo', 'equipo', 'intermedios', 'energia'].map((s) => ({ dataset: 'ine.ipri', series: s, field: f })),
   })),
@@ -99,64 +98,27 @@ lineChart($('ipri-destino'), {
   endLabels: false,
 });
 
-// Vivienda
-lineChart($('house'), {
-  title: 'Precio de la vivienda, España',
-  toggle: [
-    { id: 'value', label: 'Índice', series: [{ dataset: 'ine.house_prices', series: 'es', field: 'value' }] },
-    { id: 'yoy', label: 'Variación anual', series: [{ dataset: 'ine.house_prices', series: 'es', field: 'yoy' }] },
-  ],
-  range: { default: 'max' },
-});
-
-lineChart($('house-rent'), {
-  title: 'Compra y alquiler de vivienda: variación anual',
-  series: [
-    { dataset: 'ine.house_prices', series: 'es', field: 'yoy', label: 'Precio de la vivienda' },
-    { dataset: 'ine.cpi_rent', series: 'es', field: 'yoy', label: 'Alquiler' },
-  ],
-  range: { default: 'max' },
-});
-
-// Precio de la vivienda: INE, MIVAU (valor tasado) y Registradores
-lineChart($('house-sources'), {
-  title: 'Precio de la vivienda según tres fuentes: variación anual',
-  series: [
-    { dataset: 'ine.house_prices', series: 'es', field: 'yoy', label: 'INE (índice de precios de vivienda)' },
-    { dataset: 'mivau.appraised_house_prices', series: 'total', field: 'yoy', label: 'MIVAU (valor tasado)' },
-    { dataset: 'registradores.house_prices', series: 'es', field: 'yoy', label: 'Registradores (€/m²)' },
-  ],
-  endLabels: false,
-  range: { default: 'max' },
-});
-lineChart($('house-m2'), {
-  title: 'Precio de la vivienda por metro cuadrado: tasaciones y compraventas registradas',
-  toggle: [
-    { id: 'src', label: 'MIVAU y Registradores', series: [
-      { dataset: 'mivau.appraised_house_prices', series: 'total', field: 'value', label: 'MIVAU, valor tasado' },
-      { dataset: 'registradores.house_prices', series: 'es', field: 'value', label: 'Registradores, compraventas' },
-    ] },
-    { id: 'age', label: 'MIVAU por antigüedad', series: [
-      { dataset: 'mivau.appraised_house_prices', series: 'new', field: 'value' },
-      { dataset: 'mivau.appraised_house_prices', series: 'used', field: 'value' },
-    ] },
-  ],
-  range: { default: 'max' },
-});
-
 // Precios de exportación e importación
 lineChart($('trade-prices'), {
   title: 'Precios industriales de exportación e importación',
   toggle: ['yoy', 'value'].map((f) => ({
-    id: f, label: { yoy: 'Anual', value: 'Índice' }[f],
+    id: f, label: { yoy: 'Var. interanual', value: 'Índice' }[f],
     series: ['exportacion', 'importacion'].map((s) => ({ dataset: 'ine.trade_prices', series: s, field: f })),
   })),
   range: { default: '5A' },
 });
 
-// UE
+lineChart($('ppi-eu'), {
+  title: 'Precios industriales: España frente a la UE-27',
+  series: ['es', 'eu27'].map((s) => ({ dataset: 'eurostat.producer_prices', series: s, field: 'yoy' })),
+  ref: { y: 0 },
+  range: { default: '5A' },
+});
+
+// Comparación armonizada con la UE-27
 lineChart($('hicp'), {
   title: 'Inflación armonizada: España frente a la UE-27',
+  ref: { y: 2, label: 'Objetivo BCE' },
   series: [
     { dataset: 'eurostat.hicp', series: 'es', field: 'yoy' },
     { dataset: 'eurostat.hicp', series: 'eu27', field: 'yoy' },
@@ -165,6 +127,7 @@ lineChart($('hicp'), {
 });
 lineChart($('core-eu'), {
   title: 'Inflación subyacente armonizada: España frente a la UE-27',
+  ref: { y: 2, label: 'Objetivo BCE' },
   series: [
     { dataset: 'eurostat.core_inflation', series: 'es', field: 'yoy' },
     { dataset: 'eurostat.core_inflation', series: 'eu27', field: 'yoy' },

@@ -30,6 +30,7 @@ from _common import Report, add_months, load, manifest  # noqa: E402
 LAG = {"yoy": 12, "qoq": 3, "mom": 1, "yoy_pp": 12, "yoy_diff": 12, "qoq_pp": 3, "mom_pp": 1}
 # Fields that are the source's own published rate (checked against the source in check_<src>.py)
 OFFICIAL = {
+    ("ine.construction_ipco", "yoy"),  # INE's published IPCO rates (computed from unrounded indices)
     ("ine.industrial_production", "yoy"), ("ine.services_production", "yoy"),
     ("ine.business_confidence", "yoy"),  # computed, but only for the ICE index: handled below
     ("ine.ipri", "yoy"), ("ine.ipri", "mom"),  # INE's published rates (1 decimal), checked in check_ine.py
