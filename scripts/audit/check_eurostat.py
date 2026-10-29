@@ -49,6 +49,14 @@ SPEC = {
     "eurostat.rd_expenditure": ("rd_e_gerdtot", {"sectperf": "TOTAL", "unit": "PC_GDP"}, {"value": "value"}),
     "eurostat.youth_unemployment": ("une_rt_m", {"age": "Y_LT25", "unit": "PC_ACT", "s_adj": "SA", "sex": "T"}, {"value": "value", "yoy_pp": "yoy_diff"}),
     "eurostat.long_term_unemployment": ("une_ltu_q", {"indic_em": "LTU", "age": "Y15-74", "unit": "PC_ACT", "s_adj": "SA", "sex": "T"}, {"value": "value", "yoy_pp": "yoy_diff"}),
+    # fill/eurostat datasets: each pinned independently (best adjustment the dataset offers)
+    "eurostat.construction_production": ("sts_copr_m", {"indic_bt": "PRD", "nace_r2": "F", "s_adj": "SCA", "unit": "I21"}, {"value": "value", "yoy": "yoy_rel"}),
+    "eurostat.capacity_utilization": ("ei_bsin_q_r2", {"indic": "BS-ICU-PC", "s_adj": "SA"}, {"value": "value", "yoy_pp": "yoy_diff"}),
+    "eurostat.bankruptcies": ("sts_rb_q", {"indic_bt": "BKRT", "nace_r2": "B-S_X_O_S94", "s_adj": "SCA", "unit": "I21"}, {"value": "value", "yoy": "yoy_rel"}),
+    "eurostat.business_registrations": ("sts_rb_q", {"indic_bt": "REG", "nace_r2": "B-S_X_O_S94", "s_adj": "SCA", "unit": "I21"}, {"value": "value", "yoy": "yoy_rel"}),
+    "eurostat.job_vacancy_rate": ("jvs_q_nace2", {"indic_em": "JVR", "nace_r2": "B-S", "sizeclas": "TOTAL", "s_adj": "SA"}, {"value": "value", "yoy_pp": "yoy_diff"}),
+    "eurostat.gov_deficit_quarterly": ("gov_10q_ggnfa", {"unit": "PC_GDP", "na_item": "B9", "sector": "S13", "s_adj": "SCA"}, {"value": "value"}),
+    "eurostat.interest_expenditure": ("gov_10a_main", {"unit": "PC_GDP", "na_item": "D41PAY", "sector": "S13"}, {"value": "value"}),
 }
 # Seasonal-adjustment pass: TRD_VAL (unadjusted) -> TRD_VAL_SCA (seasonally and calendar adjusted).
 TRADE = ("ext_st_27_2020msbec", {"partner": "WORLD", "bclas_bec": "TOTAL", "indic_et": "TRD_VAL_SCA"})
