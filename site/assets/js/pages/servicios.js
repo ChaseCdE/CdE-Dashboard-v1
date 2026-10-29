@@ -1,9 +1,7 @@
 // Sectores · Servicios: producción del sector servicios (total y por ramas), cifra de negocios y valor añadido.
-import { mountLayout } from '../layout.js';
 import { kpiGrid, lineChart, groupedBarChart } from '../charts.js';
 
-mountLayout({ active: 'servicios' });
-const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById('ser-' + id);  // ids prefixed in sectores.html
 
 kpiGrid($('kpis'), [
   { dataset: 'ine.services_production', series: 'es', field: 'yoy', title: 'Producción de servicios, variación interanual', change: { field: 'mom', label: 'mensual' } },

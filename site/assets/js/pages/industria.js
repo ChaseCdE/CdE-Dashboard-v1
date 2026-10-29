@@ -1,10 +1,8 @@
 // Sectores · Industria: producción industrial (total, destino económico, divisiones),
 // cifra de negocios, valor añadido y utilización de la capacidad.
-import { mountLayout } from '../layout.js';
 import { kpiGrid, lineChart, groupedBarChart } from '../charts.js';
 
-mountLayout({ active: 'industria' });
-const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById('ind-' + id);  // ids prefixed in sectores.html
 const pair = (ds, f) => ['es', 'eu27'].map((s) => ({ dataset: ds, series: s, field: f }));
 const rates = [{ id: 'yoy', label: 'Var. interanual', field: 'yoy' }, { id: 'ytd', label: 'Acumulado del año', field: 'ytd' }];
 

@@ -1,10 +1,8 @@
 // Sectores · Turismo: llegadas y gasto de turistas internacionales, pernoctaciones, precios hoteleros
 // e ingresos por turismo en la balanza de pagos.
-import { mountLayout } from '../layout.js';
 import { kpiGrid, lineChart, barChart } from '../charts.js';
 
-mountLayout({ active: 'turismo' });
-const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById('tur-' + id);  // ids prefixed in sectores.html
 
 kpiGrid($('kpis'), [
   { dataset: 'ine.tourist_arrivals', series: 'es', field: 'sum_12m', change: { field: 'yoy', label: 'interanual (mes)' }, positiveIsGood: true },

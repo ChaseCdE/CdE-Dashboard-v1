@@ -71,33 +71,24 @@ h3 { font-size: 1.05rem; font-weight: 600; }
 .nav-link { display: block; padding: var(--space-2) var(--space-3); color: #fff; text-decoration: none; font-weight: 600; font-size: .95rem; border-bottom: 3px solid transparent; }
 .nav-link:hover { color: var(--beige); }
 .nav-link[aria-current="page"] { border-bottom-color: var(--beige); color: var(--beige); }
-.nav-group { position: relative; }
-.nav-group-btn { background: transparent; border: 0; border-bottom: 3px solid transparent; font: inherit; font-weight: 600; font-size: .95rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-.nav-group-btn.is-active { border-bottom-color: var(--beige); color: var(--beige); }
-.nav-caret { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; transition: transform .12s; }
-.nav-group.is-open .nav-caret { transform: rotate(180deg); }
-.nav-sub { list-style: none; margin: 0; padding: var(--space-2) 0; display: none; }
 .nav-item { position: relative; }
 .nav-drop, .nav-secs { display: none; }
 .nav-secs { list-style: none; margin: 0; padding: 0; }
 .nav-sec { display: block; color: #E6E9F2; text-decoration: none; font-size: .875rem; padding: 5px var(--space-4); white-space: nowrap; }
 .nav-sec:hover, .nav-sec:focus-visible { color: var(--beige); text-decoration: underline; }
-h2[id] { scroll-margin-top: var(--space-4); }
-.nav-group.is-open .nav-sub { display: block; }
+h2[id], h3[id] { scroll-margin-top: var(--space-4); }
+main > h3 { font-size: 1.1rem; margin: var(--space-5) 0 var(--space-3); }
+main > h2 + h3, main > h2 + div + h3 { margin-top: var(--space-4); }
 @media (min-width: 860px) {
-  .nav-sub { position: absolute; top: 100%; left: 0; min-width: 230px; background: var(--navy); border: 1px solid rgba(194,174,147,.45); border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 8px 20px rgba(0,0,0,.25); z-index: 30; }
-  .nav-sub .nav-link { border-bottom: 0; border-left: 3px solid transparent; padding: var(--space-2) var(--space-4); white-space: nowrap; }
-  .nav-sub .nav-link[aria-current="page"] { border-left-color: var(--beige); }
   .nav-drop { position: absolute; top: 100%; left: 0; min-width: 240px; padding: var(--space-2) 0; background: var(--navy); border: 1px solid rgba(194,174,147,.45); border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 8px 20px rgba(0,0,0,.25); z-index: 30; }
   .nav-item:hover .nav-drop, .nav-item:focus-within .nav-drop { display: block; }
-  .nav-drop .nav-secs, .nav-sub .nav-secs { display: block; }
-  .nav-sub { display: none; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: var(--space-2) var(--space-3); padding: var(--space-3) var(--space-2); }
-  .nav-group:hover .nav-sub, .nav-group.is-open .nav-sub { display: grid; }
-  .nav-subpage .nav-link { font-size: .95rem; padding: var(--space-1) var(--space-4); }
-  .nav-subpage .nav-sec { padding-left: calc(var(--space-4) + 3px); }
-  .nav-right .nav-drop, .nav-right .nav-sub { left: auto; right: 0; }
-  .nav-sub .nav-secs { padding-right: var(--space-3); }
-  /* Twelve top-level items: tighter spacing keeps them on one line from about 1200 px. */
+  .nav-drop .nav-secs { display: block; }
+  .nav-right .nav-drop { left: auto; right: 0; }
+  .nav-drop-mega { padding: var(--space-3) var(--space-2); }
+  .nav-mega { display: grid; grid-template-columns: repeat(2, minmax(230px, auto)); gap: var(--space-3) var(--space-2); }
+  .nav-sec-head { font-weight: 700; font-size: .95rem; color: #fff; padding-bottom: 4px; }
+  .nav-mega .nav-secs { padding-right: var(--space-3); }
+  /* Eleven top-level items: tighter spacing keeps them on one line from about 1200 px. */
   .nav-list { gap: 0; }
   .nav-list > li > .nav-link { padding-left: 10px; padding-right: 10px; font-size: .92rem; }
 }
@@ -109,8 +100,6 @@ h2[id] { scroll-margin-top: var(--space-4); }
   .nav-list { flex-direction: column; }
   .nav-link { padding: var(--space-3) var(--space-2); border-bottom: 1px solid rgba(255,255,255,.12); }
   .nav-link[aria-current="page"] { border-bottom-color: var(--beige); }
-  .nav-group-btn { width: 100%; justify-content: space-between; padding: var(--space-3) var(--space-2); border-bottom: 1px solid rgba(255,255,255,.12); }
-  .nav-sub { padding: 0 0 0 var(--space-4); }
   .brand-title { font-size: 1.05rem; padding-left: var(--space-3); }
   .brand-logo { height: 40px; }
 }

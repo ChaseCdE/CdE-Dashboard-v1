@@ -2,7 +2,7 @@
 
 Public dashboard of Spanish and European macroeconomic indicators by [Círculo de Empresarios](https://circulodeempresarios.org). Sources: INE, Eurostat, Banco de España, Ministerio de Vivienda y Agenda Urbana (via the Banco de España API), Colegio de Registradores (open data), European Central Bank (reference exchange rates), Federal Reserve and US EIA (via FRED), and Yahoo Finance for equity indices, VIX, ETFs and precious metals.
 
-Pages: Portada, Actividad, Sectores (Industria, Servicios, Construcción y vivienda, Turismo), Mercado laboral, Precios, Sector exterior, Sector público, Crédito y tipos, Mercados, Comparativa UE.
+Pages: Portada, Actividad, Sectores (one page with sections Industria, Servicios, Construcción y vivienda, Turismo), Empresas, Mercado laboral, Precios, Sector exterior, Sector público, Crédito y tipos, Mercados, Comparativa UE. Every menu item shows its sections on hover (anchor links). The old sector pages redirect to their section.
 
 ## How it works
 

@@ -1,10 +1,8 @@
 // Sectores · Construcción y vivienda: actividad constructora, precios de la vivienda (INE, MIVAU,
 // Registradores, Eurostat), alquiler, compraventas e hipotecas.
-import { mountLayout } from '../layout.js';
 import { kpiGrid, lineChart } from '../charts.js';
 
-mountLayout({ active: 'construccion' });
-const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById('con-' + id);  // ids prefixed in sectores.html
 const pair = (ds, f) => ['es', 'eu27'].map((s) => ({ dataset: ds, series: s, field: f }));
 
 kpiGrid($('kpis'), [

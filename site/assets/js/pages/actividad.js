@@ -1,5 +1,5 @@
 // Página Actividad: PIB y demanda, coyuntura agregada, clima económico, consumo y hogares
-// y productividad. El detalle por ramas está en las páginas de Sectores.
+// y productividad. El detalle por ramas está en la página Sectores.
 import { mountLayout } from '../layout.js';
 import { kpiGrid, lineChart, stackedBarChart } from '../charts.js';
 
