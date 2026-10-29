@@ -57,7 +57,7 @@ export const CATEGORICAL = [
 export const CYCLE = [COLORS.navy, COLORS.beige, ...CATEGORICAL];
 
 export const FONT = {
-  family: "'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif",
+  family: "Arial, 'Helvetica Neue', Helvetica, 'Liberation Sans', sans-serif",
   size: 13,
   titleSize: 15,
 };

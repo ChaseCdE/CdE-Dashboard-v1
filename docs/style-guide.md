@@ -29,9 +29,9 @@ Sign colouring: `colorBySign: true` uses positive/negative green/red (when posit
 
 ## Typography
 
-- Headings and card titles: **Source Serif 4** (600/700), Google Fonts, `font-display: swap`.
-- Body, UI, charts: **Source Sans 3** (400/600/700), with tabular numerals for figures.
-- System fallbacks: `system-ui, -apple-system, 'Segoe UI', Roboto, Arial` (sans), `Georgia` (serif).
+- One sans-serif family everywhere (headings, body, UI, charts, exported PNGs): **Arial**, with `'Helvetica Neue', Helvetica, 'Liberation Sans', sans-serif` as fallbacks. System fonts only: no web-font download.
+- Headings in bold (700); figures with tabular numerals.
+- `--font-serif` is kept as an alias of `--font-sans` so older rules keep working.
 - Scale: h1 1.75 rem, h2 1.3 rem, card title 1.05 rem, body 1 rem, captions 0.8125 to 0.875 rem. Minimum text size 13 px (chart ticks 12 px).
 
 ## Spacing and layout
