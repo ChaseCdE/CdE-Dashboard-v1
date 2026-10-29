@@ -29,7 +29,8 @@ CONTRACT_VERSION = "1.2"
 UNITS = {"pct", "pct_change", "pp", "index", "points", "currency", "rate", "persons", "hours", "years", "count"}
 FREQUENCIES = {"D", "W", "M", "Q", "A", "X"}
 X_TYPES = {"date", "number", "category"}
-SOURCES = {"ine": "INE", "eurostat": "Eurostat", "bde": "Banco de España", "yahoo": "Yahoo Finance"}
+SOURCES = {"ine": "INE", "eurostat": "Eurostat", "bde": "Banco de España", "yahoo": "Yahoo Finance",
+           "mivau": "Ministerio de Vivienda y Agenda Urbana", "registradores": "Colegio de Registradores"}
 # Staleness: days between the END of the last observed period and generated_at.
 STALE_DAYS = {"D": 7, "W": 21, "M": 100, "Q": 200, "A": 550}
 PERIOD_MONTHS = {"M": 1, "Q": 3, "A": 12}

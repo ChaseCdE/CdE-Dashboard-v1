@@ -26,7 +26,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-ALL_SOURCES = ["ine", "eurostat", "bde", "yahoo"]
+ALL_SOURCES = ["ine", "eurostat", "bde", "yahoo", "housing"]
 
 # Map source -> (fetch module path, process module path)
 PIPELINE_MODULES = {
@@ -45,6 +45,11 @@ PIPELINE_MODULES = {
     "yahoo": (
         "src.scripts.fetch_yahoo_data",
         "src.scripts.process_yahoo_data",
+    ),
+    # MIVAU appraised values (via the BdE API) and Registradores prices.
+    "housing": (
+        "src.scripts.fetch_housing_data",
+        "src.scripts.process_housing_data",
     ),
 }
 

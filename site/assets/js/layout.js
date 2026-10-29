@@ -20,6 +20,8 @@ const SOURCES = [
   { name: 'INE', url: 'https://www.ine.es' },
   { name: 'Eurostat', url: 'https://ec.europa.eu/eurostat' },
   { name: 'Banco de España', url: 'https://www.bde.es' },
+  { name: 'Ministerio de Vivienda y Agenda Urbana', url: 'https://www.mivau.gob.es' },
+  { name: 'Colegio de Registradores', url: 'https://www.registradores.org' },
   { name: 'Yahoo Finance', url: 'https://finance.yahoo.com' },
 ];
 

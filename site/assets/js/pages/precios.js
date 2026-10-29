@@ -118,6 +118,32 @@ lineChart($('house-rent'), {
   range: { default: 'max' },
 });
 
+// Precio de la vivienda: INE, MIVAU (valor tasado) y Registradores
+lineChart($('house-sources'), {
+  title: 'Precio de la vivienda según tres fuentes: variación anual',
+  series: [
+    { dataset: 'ine.house_prices', series: 'es', field: 'yoy', label: 'INE (índice de precios de vivienda)' },
+    { dataset: 'mivau.appraised_house_prices', series: 'total', field: 'yoy', label: 'MIVAU (valor tasado)' },
+    { dataset: 'registradores.house_prices', series: 'es', field: 'yoy', label: 'Registradores (€/m²)' },
+  ],
+  endLabels: false,
+  range: { default: 'max' },
+});
+lineChart($('house-m2'), {
+  title: 'Precio de la vivienda por metro cuadrado: tasaciones y compraventas registradas',
+  toggle: [
+    { id: 'src', label: 'MIVAU y Registradores', series: [
+      { dataset: 'mivau.appraised_house_prices', series: 'total', field: 'value', label: 'MIVAU, valor tasado' },
+      { dataset: 'registradores.house_prices', series: 'es', field: 'value', label: 'Registradores, compraventas' },
+    ] },
+    { id: 'age', label: 'MIVAU por antigüedad', series: [
+      { dataset: 'mivau.appraised_house_prices', series: 'new', field: 'value' },
+      { dataset: 'mivau.appraised_house_prices', series: 'used', field: 'value' },
+    ] },
+  ],
+  range: { default: 'max' },
+});
+
 // Precios de exportación e importación
 lineChart($('trade-prices'), {
   title: 'Precios industriales de exportación e importación',

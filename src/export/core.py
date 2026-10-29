@@ -28,6 +28,8 @@ SOURCES = {
     "eurostat": "Eurostat",
     "bde": "Banco de España",
     "yahoo": "Yahoo Finance",
+    "mivau": "Ministerio de Vivienda y Agenda Urbana",
+    "registradores": "Colegio de Registradores",
 }
 MAX_DECIMALS = 4
 
@@ -117,6 +119,10 @@ class Dataset:
     # Contract v1.2: staleness allowance in days for sources with a known long publication
     # lag (e.g. annual R&D). None = the frequency default in the contract.
     stale_after_days: Optional[int] = None
+    # Sources outside the official statistics APIs (e.g. a portal behind a web firewall). If
+    # the processed CSV is missing (first run without a cached download), the exporter keeps
+    # the previously published file instead of failing the whole export.
+    optional: bool = False
 
     @property
     def id(self) -> str:

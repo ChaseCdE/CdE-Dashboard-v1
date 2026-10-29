@@ -19,7 +19,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from .core import SITE_DATA_DIR, CONTRACT_VERSION, build_dataset, manifest_entry, now_utc
+from .core import PROCESSED_DIR, SITE_DATA_DIR, CONTRACT_VERSION, build_dataset, manifest_entry, now_utc
 from .registry import DATASETS
 
 
@@ -50,6 +50,17 @@ def main(argv=None) -> int:
     errors, entries = [], []
     for ds in selected:
         try:
+            if ds.optional and not (PROCESSED_DIR / ds.csv).exists():
+                previous = SITE_DATA_DIR / ds.path
+                if not previous.exists():
+                    print(f"  [SKIP] {ds.id}: no processed data and no previous file")
+                    continue
+                obj = json.loads(previous.read_text(encoding="utf-8"))
+                obj["generated_at"] = generated_at  # staleness is then measured against today
+                write_json(target / ds.path, obj)
+                entries.append(manifest_entry(ds, obj))
+                print(f"  [KEEP] {ds.id:<32} previous file kept (no processed data)  last={obj['last_observation']}")
+                continue
             obj = build_dataset(ds, generated_at)
             write_json(target / ds.path, obj)
             entries.append(manifest_entry(ds, obj))
