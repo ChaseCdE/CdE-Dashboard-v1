@@ -18,9 +18,8 @@ Metadata conventions
   averages 100 in the data (CPI and house prices: 2025 = 100).
 """
 
-from ..fetchers.ine_epa_sa import EPA_SA_URL
 from ..fetchers.ine_series import TABLE_IDS
-from .adjustment import ANNUAL, NSA, SA, SCA, note
+from .adjustment import ANNUAL, NSA, SCA, note
 from .core import Dataset, Field, Series, long_series
 
 INE_TABLE_URL = "https://www.ine.es/jaxiT3/Tabla.htm?t={}"
@@ -212,14 +211,11 @@ DATASETS = [
     _ine(
         "employed", "employed",
         title_es="Ocupados (EPA)",
-        description_es="Número de ocupados, total nacional, ambos sexos, corregido de efectos estacionales (series desestacionalizadas de la EPA que publica el INE). Miles de personas.",
-        # INE publishes the adjusted EPA levels only in this workbook, not in its tables (src/fetchers/ine_epa_sa.py)
-        source_dataset="Series desestacionalizadas EPA (epa_desestacional.xlsx)",
-        source_url=EPA_SA_URL,
+        description_es="Número de ocupados, total nacional, ambos sexos. Miles de personas.",
         frequency="Q",
         fields=[
-            Field("value", "Ocupados", "persons", 1, column="employed", scale=3, note_es=note(SA, "Miles de personas")),
-            Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change", note_es=SA),
+            Field("value", "Ocupados", "persons", 1, column="employed", scale=3, note_es=note(NSA, "Miles de personas")),
+            Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change", note_es=NSA),
         ],
         series=SPAIN,
     ),

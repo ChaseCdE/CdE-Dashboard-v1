@@ -64,7 +64,7 @@ ADJ_NOT_IN_SCOPE = {"bde.social_security_affiliates", "bde.registered_unemployme
 PERIOD_ON_PERIOD_NSA_OK = {("ine.cpi_ccaa", "mom"), ("ine.ipri", "mom")}
 # Datasets switched to the adjusted variant in this pass: every field must say so.
 MUST_BE_ADJUSTED = {"ine.industry_turnover": "SCA", "ine.services_turnover": "SCA", "ine.labor_cost": "SCA",
-                    "ine.labor_cost_hour": "SCA", "ine.labor_cost_components": "SCA", "ine.employed": "SA",
+                    "ine.labor_cost_hour": "SCA", "ine.labor_cost_components": "SCA",
                     "eurostat.trade_balance": "SCA"}
 LEVEL_FIELD = {"yahoo": "close"}
 

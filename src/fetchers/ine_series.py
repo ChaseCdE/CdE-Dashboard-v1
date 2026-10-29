@@ -104,8 +104,11 @@ INDICATORS = {
     "activity_rate": dict(table=65295, nult=40, file="activity_rate_raw.csv", series={
         "rate": _s("EPA388079", "Total Nacional", "Tasa de actividad", "Ambos sexos", "Total."),
     }),
-    # Employed persons: INE publishes the seasonally adjusted EPA level only as a spreadsheet
-    # (src/fetchers/ine_epa_sa.py), not in Tempus; the original series EPA387796 is no longer used.
+    # Original data: INE publishes the seasonally adjusted EPA level only in a workbook outside its API,
+    # which the project treats as unavailable (docs/audit/seasonal-adjustment.md).
+    "employed": dict(table=65109, nult=40, file="employed_raw.csv", series={
+        "level": _s("EPA387796", "Total Nacional", "Ambos sexos", "Ocupados", "Valor absoluto"),
+    }),
     "temporary_rate": dict(table=65194, nult=40, file="temporary_rate_raw.csv", series={
         "rate": _s("EPA416256", "Asalariados", "Total Nacional", "Ambos sexos", "Temporal", "Porcentaje"),
     }),
@@ -245,7 +248,6 @@ def codes(indicator: str) -> dict:
 # Keys are the old indicator names, kept so published metadata do not change.
 TABLE_IDS = {name: spec["table"] for name, spec in INDICATORS.items()}
 TABLE_IDS.update({
-    "employed": 65109,             # EPA; the published level comes from the seasonally adjusted spreadsheet (ine_epa_sa.py)
     "cpi_ecoicop_groups": 76125,   # IPC Índices nacionales de grupos ECOICOP ver.2 (published as the source of the contributions chart)
     "cpi_special_weights": 76161,  # IPC Ponderaciones de grupos especiales
 })

@@ -10,7 +10,6 @@ import logging
 
 from .series_ops import diff_by_date, pct_change_by_date, sum_by_date
 from ..fetchers.ine_series import CPI_GROUP_LABELS, INDICATORS, code as ine_code, codes
-from ..fetchers.ine_epa_sa import EPA_SA_CODE, EPA_SA_FILE, EPA_SA_NULT
 
 logger = logging.getLogger(__name__)
 
@@ -187,24 +186,9 @@ class INEProcessor:
         return result
 
     def process_employed(self) -> pd.DataFrame:
-        """
-        EPA employed persons, thousands, seasonally adjusted (INE spreadsheet "Series
-        desestacionalizadas EPA", src/fetchers/ine_epa_sa.py). yoy is computed from the adjusted
-        level: INE publishes no annual rate of the adjusted series.
-        """
-        print("Processing Employed Persons (seasonally adjusted)...")
-        try:
-            raw = self._load_raw(EPA_SA_FILE)
-        except FileNotFoundError as exc:
-            raise SeriesNotFound(f"employed: raw file {EPA_SA_FILE} not found; fetch INE first") from exc
-        raw = raw[raw["series_code"] == EPA_SA_CODE]
-        if raw.empty:
-            raise SeriesNotFound(f"employed: {EPA_SA_CODE} not in {EPA_SA_FILE}")
-        _check_time_gaps(raw, "Q", "employed")
-        # Same 40-quarter window as the other EPA series (as before, yoy is null in the first year of the window)
-        raw = raw.sort_values("date").drop_duplicates(subset=["date"]).tail(EPA_SA_NULT)
-        result = self._calculate_yoy_change(raw)[["date", "year", "value", "yoy_change"]]
-        result = result.rename(columns={"value": "employed"})
+        """EPA employed persons, thousands, original data (EPA387796)."""
+        print("Processing Employed Persons...")
+        result = self._level("employed", "level", "employed")
         self._save_processed(result, "employed.csv")
         return result
 

@@ -53,7 +53,8 @@ SPEC = [
     ("ine.employment_rate", "es", "value", "EPA441060", "level", ["Total Nacional", "Tasa de empleo", "Ambos sexos", "Total."]),
     ("ine.activity_rate", "es", "value", "EPA388079", "level", ["Total Nacional", "Tasa de actividad", "Ambos sexos", "Total."]),
     ("ine.temporary_rate", "es", "value", "EPA416256", "level", ["Asalariados", "Total Nacional", "Ambos sexos", "Temporal", "Porcentaje"]),
-    # ine.employed: seasonally adjusted level from INE's EPA workbook (not in Tempus), checked in check_epa_sa() below.
+    # ine.employed stays on original data: INE's adjusted EPA level exists only in a workbook (treated as unavailable).
+    ("ine.employed", "es", "value", "EPA387796", "level", ["Total Nacional", "Ambos sexos", "Ocupados", "Valor absoluto"]),
     ("ine.parttime_rate", "es", "value", "EPA404363", "official", ["Ocupados", "Total Nacional", "Ambos sexos", "Total.", "tiempo parcial", "Porcentaje"]),
     # Seasonal-adjustment pass: ETCL68/67/925 (original) -> SA+calendar ETCL13714/13712/13732, with INE's own yoy.
     ("ine.labor_cost", "es", "value", "ETCL13714", "level", ["Total Nacional", SA, "Coste total por trabajador", "Euros"]),
@@ -224,7 +225,6 @@ def run(rep: Report) -> dict:
             rep.add(ds, "identity", "PASS", "INE series names match the definition")
     derived(rep, got)
     labels(rep)
-    check_epa_sa(rep)
     return got
 
 
@@ -239,61 +239,6 @@ def labels(rep: Report):
     for ds, skey, ok, why in LABEL_RULES:
         lab = next(s["label_es"] for s in load(ds)["series"] if s["key"] == skey)
         rep.add(ds, "meta", "PASS" if ok(lab) else "FAIL", f"label of {skey} = '{lab}': {why}")
-
-
-EPA_SA_URL = "https://www.ine.es/daco/daco42/daco4211/epa_desestacional.xlsx"
-
-
-def _xlsx_rows(content: bytes) -> dict:
-    """{sheet: [[cell texts of a row] ...]} of an .xlsx, standard library only (independent of src/)."""
-    import io
-    import xml.etree.ElementTree as ET
-    import zipfile
-    ns = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
-    z = zipfile.ZipFile(io.BytesIO(content))
-    shared = [''.join(t.text or '' for t in si.iter(ns + 't')) for si in ET.fromstring(z.read('xl/sharedStrings.xml')).iter(ns + 'si')]
-    out = {}
-    for name in z.namelist():
-        if not name.startswith('xl/worksheets/sheet'):
-            continue
-        rows = []
-        for r in ET.fromstring(z.read(name)).iter(ns + 'row'):
-            vals = []
-            for c in r.iter(ns + 'c'):
-                v = c.find(ns + 'v')
-                vals.append(None if v is None else (shared[int(v.text)] if c.get('t') == 's' else v.text))
-            rows.append(vals)
-        out[name] = rows
-    return out
-
-
-def check_epa_sa(rep: Report):
-    """ine.employed = 'Ocupación' of INE's 'Series desestacionalizadas EPA. Totales (miles de personas)'."""
-    import requests
-    ds = "ine.employed"
-    r = requests.get(EPA_SA_URL, timeout=60, headers={"User-Agent": "CdE-audit/1.0"})
-    r.raise_for_status()
-    found = None
-    for name, rows in _xlsx_rows(r.content).items():
-        flat = [str(x) for row in rows for x in row if x]
-        if any("Series desestacionalizadas EPA" in x for x in flat) and any(x.strip().startswith("Totales (miles de personas)") for x in flat):
-            found = (name, rows)
-    if not found:
-        rep.add(ds, "identity", "FAIL", "EPA workbook: no sheet 'Series desestacionalizadas EPA / Totales (miles de personas)'")
-        return
-    name, rows = found
-    head = next((row for row in rows if row and row[0] == "Periodo"), None)
-    if not head or "Ocupación" not in head:
-        rep.add(ds, "identity", "FAIL", f"EPA workbook {name}: header lacks 'Ocupación': {head}")
-        return
-    col = head.index("Ocupación")
-    data = {}
-    for row in rows:
-        if row and row[0] and str(row[0]).startswith("T") and len(row) > col and row[col] not in (None, ""):
-            q, y = str(row[0])[1], str(row[0]).split("-")[1]
-            data[quarter_start(int(y), int(q))] = float(row[col])
-    rep.add(ds, "identity", "PASS", f"{EPA_SA_URL}: Series desestacionalizadas EPA, Totales (miles de personas), Ocupación")
-    rep.compare(ds, "values", series(ds, "es", "value"), data, tol=1e-4, label="value<-EPA desestacionalizada Ocupación", last_n=24)
 
 
 def derived(rep: Report, got: dict):
