@@ -18,6 +18,7 @@ Conventions for the `yoy` field:
 """
 
 from ..fetchers.eurostat_indicators import DATASET_CODES
+from .adjustment import ANNUAL, NSA, SA, SCA, note
 from .core import Dataset, Field, Series
 
 EUROSTAT_URL = "https://ec.europa.eu/eurostat/databrowser/view/{}/default/table"
@@ -77,7 +78,7 @@ DATASETS = [
         "Variación trimestral del PIB real, corregida de estacionalidad y calendario. España frente a UE-27.",
         "Q", "gdp_growth_qoq",
         Field("qoq", "Variación trimestral", "pct_change", 1, column="gdp_growth_qoq",
-              note_es="Volúmenes encadenados, datos corregidos de estacionalidad y calendario"),
+              note_es=note(SCA, "Volúmenes encadenados")),
         None,
     ),
     Dataset(
@@ -90,7 +91,7 @@ DATASETS = [
         source_url=_url(DATASET_CODES["gdp_growth"]),
         frequency="Q",
         fields=[Field("value", "Índice (1T 2019 = 100)", "index", 1,
-                      note_es="Base 1T 2019 = 100. Volúmenes encadenados, corregido de estacionalidad y calendario")],
+                      note_es=note(SCA, "Base 1T 2019 = 100. Volúmenes encadenados"))],
         series=[
             Series("es", ES, columns={"value": "gdp_index_spain"}),
             Series("eu27", EU, columns={"value": "gdp_index_eu27"}),
@@ -105,8 +106,8 @@ DATASETS = [
         "Índice de producción industrial (industria sin construcción). España frente a UE-27.",
         "M", "ipi_index",
         Field("value", "Índice (2021 = 100)", "index", 1,
-              note_es="Base 2021 = 100. Datos corregidos de estacionalidad y calendario"),
-        Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change"),
+              note_es=note(SCA, "Base 2021 = 100")),
+        Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change", note_es=SCA),
     ),
     _comparison(
         "economic_sentiment", "economic_sentiment",
@@ -114,18 +115,18 @@ DATASETS = [
         "Indicador de Sentimiento Económico de la Comisión Europea (media de largo plazo = 100). España frente a UE-27.",
         "M", "esi",
         Field("value", "Índice (media largo plazo = 100)", "index", 1,
-              note_es="Media de largo plazo = 100. Datos corregidos de estacionalidad"),
-        Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change"),
+              note_es=note(SA, "Media de largo plazo = 100")),
+        Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change", note_es=SA),
     ),
     # ---- Mercado laboral -------------------------------------------------
     _comparison(
         "unemployment", "unemployment",
         "Tasa de paro (Eurostat)",
-        "Tasa de paro armonizada de la población de 25 a 74 años. España frente a UE-27.",
+        "Tasa de paro armonizada de la población de 15 a 74 años. España frente a UE-27.",
         "M", "unemployment_rate",
         Field("value", "Tasa de paro", "pct", 1,
-              note_es="Población activa de 25 a 74 años. Datos corregidos de estacionalidad"),
-        Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change"),
+              note_es=note(SA, "Población activa de 15 a 74 años")),
+        Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change", note_es=SA),
     ),
     _comparison(
         "employment_growth", "employment_growth",
@@ -133,7 +134,7 @@ DATASETS = [
         "Variación trimestral del empleo total (concepto de cuentas nacionales). España frente a UE-27.",
         "Q", "employment_growth",
         Field("qoq", "Variación trimestral", "pct_change", 1, column="employment_growth",
-              note_es="Datos corregidos de estacionalidad y calendario"),
+              note_es=SCA),
         None,
     ),
     _comparison(
@@ -142,8 +143,8 @@ DATASETS = [
         "Población activa de 15 a 64 años como porcentaje de la población de esa edad. España frente a UE-27.",
         "Q", "participation_rate",
         Field("value", "Tasa de actividad", "pct", 1,
-              note_es="Población de 15 a 64 años. Datos corregidos de estacionalidad"),
-        Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change"),
+              note_es=note(SA, "Población de 15 a 64 años")),
+        Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change", note_es=SA),
     ),
     # ---- Precios ---------------------------------------------------------
     _comparison(
@@ -153,7 +154,7 @@ DATASETS = [
         "M", "hicp_inflation",
         None,
         Field("yoy", "Variación anual", "pct_change", 1, column="hicp_inflation",
-              note_es="Clasificación ECOICOP 2. Serie histórica reconstruida por Eurostat con la nueva clasificación"),
+              note_es=note(NSA, "Clasificación ECOICOP 2. Serie histórica reconstruida por Eurostat con la nueva clasificación")),
     ),
     _comparison(
         "core_inflation", "core_inflation",
@@ -162,7 +163,7 @@ DATASETS = [
         "M", "core_inflation",
         None,
         Field("yoy", "Variación anual", "pct_change", 1, column="core_inflation",
-              note_es="IPCA excluidos energía, alimentos, alcohol y tabaco (TOT_X_NRG_FOOD). Clasificación ECOICOP 2"),
+              note_es=note(NSA, "IPCA excluidos energía, alimentos, alcohol y tabaco (TOT_X_NRG_FOOD). Clasificación ECOICOP 2")),
     ),
     _comparison(
         "producer_prices", "producer_prices",
@@ -170,8 +171,8 @@ DATASETS = [
         "Índice de precios de producción industrial para el mercado interior (industria sin construcción). España frente a UE-27.",
         "M", "ppi_index",
         Field("value", "Índice (2021 = 100)", "index", 1,
-              note_es="Base 2021 = 100. Datos sin corregir de estacionalidad"),
-        Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change"),
+              note_es=note(NSA, "Base 2021 = 100")),
+        Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change", note_es=NSA),
     ),
     # ---- Sector exterior -------------------------------------------------
     Dataset(
@@ -179,15 +180,15 @@ DATASETS = [
         indicator="trade_balance",
         csv="eurostat/trade_balance_spain.csv",
         title_es="Comercio exterior de bienes de España",
-        description_es="Exportaciones, importaciones y saldo comercial de bienes de España con el resto del mundo (millones de euros).",
+        description_es="Exportaciones, importaciones y saldo comercial de bienes de España con el resto del mundo (millones de euros), corregidos de efectos estacionales y de calendario.",
         source_dataset=DATASET_CODES["trade_balance"],
         source_url=_url(DATASET_CODES["trade_balance"]),
         frequency="M",
         fields=[
             Field("balance", "Saldo comercial", "currency", 0, column="trade_balance", currency="EUR", scale=6,
-                  note_es="Exportaciones menos importaciones. Datos sin corregir de estacionalidad"),
-            Field("exports", "Exportaciones", "currency", 0, currency="EUR", scale=6),
-            Field("imports", "Importaciones", "currency", 0, currency="EUR", scale=6),
+                  note_es=note(SCA, "Exportaciones menos importaciones")),
+            Field("exports", "Exportaciones", "currency", 0, currency="EUR", scale=6, note_es=SCA),
+            Field("imports", "Importaciones", "currency", 0, currency="EUR", scale=6, note_es=SCA),
         ],
         series=[Series("es", ES)],
     ),
@@ -197,8 +198,8 @@ DATASETS = [
         "Deuda pública (% del PIB)",
         "Deuda bruta de las Administraciones Públicas en porcentaje del PIB. España frente a UE-27.",
         "Q", "debt_to_gdp",
-        Field("value", "Deuda pública (% del PIB)", "pct", 1, note_es="Deuda bruta consolidada de las Administraciones Públicas (S13)"),
-        Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change"),
+        Field("value", "Deuda pública (% del PIB)", "pct", 1, note_es=note(NSA, "Deuda bruta consolidada de las Administraciones Públicas (S13)")),
+        Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change", note_es=NSA),
     ),
     _comparison(
         "budget_deficit", "budget_deficit",
@@ -206,7 +207,7 @@ DATASETS = [
         "Capacidad (+) o necesidad (-) de financiación de las Administraciones Públicas, en porcentaje del PIB. Dato anual. España frente a UE-27.",
         "A", "deficit_gdp",
         Field("value", "Saldo de las AAPP (% del PIB)", "pct", 1,
-              note_es="Capacidad o necesidad de financiación de las Administraciones Públicas (S13). Dato anual"),
+              note_es=note(ANNUAL, "Capacidad o necesidad de financiación de las Administraciones Públicas (S13)")),
         None,
     ),
     # ---- Consumo y hogares -----------------------------------------------
@@ -215,8 +216,8 @@ DATASETS = [
         "Confianza del consumidor",
         "Indicador de confianza del consumidor de la Comisión Europea (saldo de respuestas). España frente a UE-27.",
         "M", "consumer_confidence",
-        Field("value", "Saldo de respuestas", "points", 1, note_es="Saldo de respuestas. Datos corregidos de estacionalidad"),
-        Field("yoy_diff", "Variación anual (puntos)", "points", 1, column="yoy_change"),
+        Field("value", "Saldo de respuestas", "points", 1, note_es=note(SA, "Saldo de respuestas")),
+        Field("yoy_diff", "Variación anual (puntos)", "points", 1, column="yoy_change", note_es=SA),
     ),
     _comparison(
         "retail_trade", "retail_trade",
@@ -224,16 +225,16 @@ DATASETS = [
         "Índice de volumen de ventas del comercio al por menor, excluido el de vehículos. España frente a UE-27.",
         "M", "retail_index",
         Field("value", "Índice (2021 = 100)", "index", 1,
-              note_es="Base 2021 = 100. Volumen de ventas (deflactado), corregido de estacionalidad y calendario"),
-        Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change"),
+              note_es=note(SCA, "Base 2021 = 100. Volumen de ventas (deflactado)")),
+        Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change", note_es=SCA),
     ),
     _comparison(
         "house_prices", "house_prices",
         "Precios de la vivienda",
         "Índice de precios de la vivienda (todas las viviendas). España frente a UE-27.",
         "Q", "hpi_index",
-        Field("value", "Índice (2015 = 100)", "index", 1, note_es="Base 2015 = 100. Datos sin corregir de estacionalidad"),
-        Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change"),
+        Field("value", "Índice (2015 = 100)", "index", 1, note_es=note(NSA, "Base 2015 = 100")),
+        Field("yoy", "Variación anual", "pct_change", 1, column="yoy_change", note_es=NSA),
     ),
 ]
 
@@ -273,7 +274,7 @@ DATASETS += [
         "PIB per cápita en paridad de poder adquisitivo",
         "PIB por habitante en estándares de poder adquisitivo (PPS), índice UE-27 = 100. España, Alemania, Francia, Italia y Portugal.",
         "A", DATASET_CODES["gdp_per_capita_pps"],
-        [Field("value", "Índice (UE-27 = 100)", "index", 1, note_es="UE-27 = 100")],
+        [Field("value", "Índice (UE-27 = 100)", "index", 1, note_es=note(ANNUAL, "UE-27 = 100"))],
         _PEERS,
     ),
     _multi(
@@ -282,7 +283,7 @@ DATASETS += [
         "Productividad nominal del trabajo por hora trabajada, en PPS, índice UE-27 = 100. España, Alemania, Francia, Italia y Portugal.",
         "A", DATASET_CODES["labour_productivity_pps"],
         [Field("value", "Índice (UE-27 = 100)", "index", 1,
-               note_es="UE-27 = 100. PIB por hora trabajada en PPS (concepto de cuentas nacionales)")],
+               note_es=note(ANNUAL, "UE-27 = 100. PIB por hora trabajada en PPS (concepto de cuentas nacionales)"))],
         _PEERS,
     ),
     _multi(
@@ -291,7 +292,7 @@ DATASETS += [
         "Gasto interno bruto en investigación y desarrollo, todos los sectores, en porcentaje del PIB. España, UE-27, Alemania, Francia e Italia.",
         "A", DATASET_CODES["rd_expenditure"],
         [Field("value", "Gasto en I+D (% del PIB)", "pct", 1,
-               note_es="Gasto interno bruto en I+D, todos los sectores. Los últimos años pueden ser provisionales o estimados")],
+               note_es=note(ANNUAL, "Gasto interno bruto en I+D, todos los sectores. Los últimos años pueden ser provisionales o estimados"))],
         [("es", ES), ("eu27", EU), ("de", "Alemania"), ("fr", "Francia"), ("it", "Italia")],
     ),
     _multi(
@@ -300,8 +301,8 @@ DATASETS += [
         "Tasa de paro de los menores de 25 años. España frente a UE-27.",
         "M", DATASET_CODES["youth_unemployment"],
         [Field("value", "Tasa de paro juvenil", "pct", 1,
-               note_es="Población activa menor de 25 años. Datos corregidos de estacionalidad"),
-         Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change")],
+               note_es=note(SA, "Población activa menor de 25 años")),
+         Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change", note_es=SA)],
         [("es", ES), ("eu27", EU)], yoy_col="yoy_change",
     ),
     _multi(
@@ -310,8 +311,8 @@ DATASETS += [
         "Parados de 12 meses o más como porcentaje de la población activa de 15 a 74 años. España frente a UE-27.",
         "Q", DATASET_CODES["long_term_unemployment"],
         [Field("value", "Paro de larga duración (% de la población activa)", "pct", 1,
-               note_es="Parados desde hace 12 meses o más, población de 15 a 74 años. Datos corregidos de estacionalidad"),
-         Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change")],
+               note_es=note(SA, "Parados desde hace 12 meses o más, población de 15 a 74 años")),
+         Field("yoy_pp", "Variación anual (puntos porcentuales)", "pp", 1, column="yoy_change", note_es=SA)],
         [("es", ES), ("eu27", EU)], yoy_col="yoy_change",
     ),
     _multi(
@@ -319,7 +320,7 @@ DATASETS += [
         "Inflación de la energía (IPCA)",
         "Tasa de variación anual del componente de energía del IPCA. España frente a UE-27.",
         "M", DATASET_CODES["hicp_energy"],
-        [Field("yoy", "Variación anual", "pct_change", 1, note_es="Componente energía (ECOICOP 2) del IPCA")],
+        [Field("yoy", "Variación anual", "pct_change", 1, note_es=note(NSA, "Componente energía (ECOICOP 2) del IPCA"))],
         [("es", ES), ("eu27", EU)],
     ),
 ]
