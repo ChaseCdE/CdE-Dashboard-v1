@@ -11,6 +11,7 @@ The wide `*_comparison.csv` files and `bde_summary.csv` are not exported: the
 frontend combines datasets itself and the manifest replaces the summary.
 """
 
+from .adjustment import NSA, note
 from .core import Dataset, Field, Series
 from ..fetchers.bde_indicators import BDE_INDICATORS, BDE_EXPORT_META, BDE_DERIVED, BDE_DERIVED_META
 
@@ -59,7 +60,27 @@ _CREDIT_GROWTH_CODE = {
 }
 
 
+# Seasonal adjustment (docs/audit/seasonal-adjustment.md). The Banco de España publishes none of
+# these series seasonally adjusted (the SDMX keys carry adjustment "N"; e.g. "Ajuste: Sin ajuste de
+# estacionalidad"), so every statistical series is original data and period-on-period changes are
+# not published: the monthly change of the credit stocks is dropped, and the bank interest rates
+# and debt ratios show the change on a year earlier instead of the previous month / quarter.
+# Market prices (Euribor, €STR, government bond yields) have no adjustment concept: no note.
+_MARKET_KINDS = {"rate_daily", "rate_daily_chg", "rate_monthly"}
+# Being changed in parallel by the lead: their fields are left exactly as they were.
+_NOT_IN_SCOPE = {"social_security_affiliates", "registered_unemployment"}
+
+
 def _fields(key: str, meta: dict, decimals: int) -> list:
+    fields = _base_fields(key, meta, decimals)
+    if meta["kind"] in _MARKET_KINDS or key in _NOT_IN_SCOPE:
+        return fields
+    for f in fields:
+        f.note_es = note(NSA, f.note_es)
+    return fields
+
+
+def _base_fields(key: str, meta: dict, decimals: int) -> list:
     kind = meta["kind"]
     money = {"currency": meta.get("currency"), "scale": meta.get("scale", 0)}
     value_unit = ("currency" if kind in ("credit_stock", "balance", "receipts", "debt_stock")
@@ -76,16 +97,12 @@ def _fields(key: str, meta: dict, decimals: int) -> list:
             Field("chg_1y", "Variación en 1 año", "pp", decimals, column="yoy_change_abs"),
         ]
     elif kind == "rate_monthly_chg":
-        fields.append(Field("mom_pp", "Variación mensual", "pp", decimals, column="change_abs"))
+        fields.append(Field("yoy_pp", "Variación interanual", "pp", decimals, column="yoy_change_abs"))
     elif kind == "credit_stock":
-        fields += [
-            Field("mom", "Variación mensual del saldo", "pct_change", 1, column="change_pct",
-                  note_es="Variación del saldo: incluye reclasificaciones, fallidos y titulizaciones"),
-            Field("yoy", "Variación interanual", "pct_change", 1, column="yoy_change_pct",
-                  note_es=_CREDIT_GROWTH_NOTE[key]),
-        ]
+        fields.append(Field("yoy", "Variación interanual", "pct_change", 1, column="yoy_change_pct",
+                            note_es=_CREDIT_GROWTH_NOTE[key]))
     elif kind == "ratio":
-        fields.append(Field("qoq_pp", "Variación trimestral", "pp", 1, column="change_abs"))
+        fields.append(Field("yoy_pp", "Variación interanual", "pp", 1, column="yoy_change_abs"))
     elif kind == "balance":
         fields.append(Field("sum_12m", "Acumulado 12 meses", "currency", 0, column="rolling_12m_sum", **money))
     elif kind == "npl":

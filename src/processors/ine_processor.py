@@ -145,10 +145,11 @@ class INEProcessor:
         return result
 
     def process_gdp(self) -> pd.DataFrame:
-        """GDP, volume index, seasonally and calendar adjusted (CNTR6652), with yoy and qoq."""
+        """GDP, volume index, seasonally and calendar adjusted (CNTR6652), with INE's published
+        yoy (CNTR6654) and qoq (CNTR6653) of the same adjusted series."""
         print("Processing GDP...")
-        result = self._level("gdp", "value", "gdp_index", gaps="Q")
-        result["qoq_change"] = pct_change_by_date(result, "gdp_index", 3)
+        result = self._level("gdp", "value", "gdp_index", gaps="Q", yoy_role="yoy")
+        result["qoq_change"] = self._official("gdp", "qoq", result["date"])
         self._save_processed(result, "gdp.csv")
         return result
 
@@ -185,7 +186,7 @@ class INEProcessor:
         return result
 
     def process_employed(self) -> pd.DataFrame:
-        """EPA employed persons, thousands (EPA387796)."""
+        """EPA employed persons, thousands, original data (EPA387796)."""
         print("Processing Employed Persons...")
         result = self._level("employed", "level", "employed")
         self._save_processed(result, "employed.csv")
@@ -230,23 +231,24 @@ class INEProcessor:
         return result
 
     def process_labor_cost(self) -> pd.DataFrame:
-        """ETCL labor cost per worker, total (ETCL68)."""
+        """ETCL labor cost per worker, total, seasonally and calendar adjusted (ETCL13714), INE's yoy (ETCL13713)."""
         print("Processing Labor Cost per Worker...")
-        result = self._level("labor_cost", "total", "labor_cost")
+        result = self._level("labor_cost", "total", "labor_cost", yoy_role="yoy_total")
         self._save_processed(result, "labor_cost.csv")
         return result
 
     def process_labor_cost_components(self) -> pd.DataFrame:
         """
-        ETCL labor cost per worker split into total (ETCL68) and wages (ETCL67), long format,
-        with QoQ, YoY and an index rebased to 2019Q1=100.
+        ETCL labor cost per worker split into total (ETCL13714) and wages (ETCL13712), both
+        seasonally and calendar adjusted, long format, with INE's yoy (ETCL13713/13711), the
+        QoQ of the adjusted level and an index rebased to 2019Q1=100.
         """
         print("Processing Labor Cost Components (Total + Coste Salarial)...")
         frames = []
         for component_key in ("total", "salarial"):
             sub = self._pick("labor_cost", component_key)
             sub = sub.sort_values("date").drop_duplicates(subset=["date"])
-            sub["yoy_change"] = pct_change_by_date(sub, "value", 12)
+            sub["yoy_change"] = self._official("labor_cost", f"yoy_{component_key}", sub["date"])
             sub["qoq_change"] = pct_change_by_date(sub, "value", 3)
             base_row = sub[sub["date"] == pd.Timestamp("2019-01-01")]
             if not base_row.empty:
@@ -266,9 +268,9 @@ class INEProcessor:
         return result
 
     def process_labor_cost_hour(self) -> pd.DataFrame:
-        """ETCL labor cost per hour worked, total (ETCL925)."""
+        """ETCL labor cost per hour worked, total, seasonally and calendar adjusted (ETCL13732), INE's yoy (ETCL13731)."""
         print("Processing Labor Cost per Hour...")
-        result = self._level("labor_cost_hour", "total", "labor_cost_hour")
+        result = self._level("labor_cost_hour", "total", "labor_cost_hour", yoy_role="yoy")
         self._save_processed(result, "labor_cost_hour.csv")
         return result
 
@@ -302,14 +304,14 @@ class INEProcessor:
         return result.sort_values("date").drop_duplicates(subset=["date"])
 
     def process_industry_turnover(self) -> pd.DataFrame:
-        """Industrial turnover index, total industry, INE's yoy (ICN2412)."""
+        """Industrial turnover index, total industry, seasonally and calendar adjusted, INE's yoy (ICN2920)."""
         print("Processing Industry Turnover...")
         result = self._published_rate("industry_turnover", "yoy", "turnover_yoy")
         self._save_processed(result, "industry_turnover.csv")
         return result
 
     def process_services_turnover(self) -> pd.DataFrame:
-        """Services turnover, calendar adjusted, general index, INE's yoy (IAS3856)."""
+        """Services turnover (IASS), general index, seasonally and calendar adjusted, INE's yoy (IAS4004)."""
         print("Processing Services Turnover...")
         result = self._published_rate("services_turnover", "yoy", "turnover_yoy")
         self._save_processed(result, "services_turnover.csv")

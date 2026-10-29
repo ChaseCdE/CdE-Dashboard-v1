@@ -186,7 +186,7 @@ Phase 2 and Phase 3 ran in parallel, so the field keys proposed above were guess
 | Tipos de interés table | `chg_30d, chg_ytd, chg_1y` (bp) | Use `chg_1m`, `chg_ytd`, `chg_1y`, unit `pp` (displayed "p. p."). BdE `chg_1m` is 30 calendar days; Yahoo (US Treasuries) `chg_1m` is 21 sessions; the field `note_es` says which |
 | Tipos de cambio | `ret_30d, ytd, ret_1y` | Use `ret_1m`, `ret_ytd`, `ret_1y` |
 | Diferencial España − UE-27 (paro, inflación) | series `gap` NEEDS PIPELINE FIELD | **Not exported.** Phase 4 shows both series on one chart instead. If a gap chart is wanted later, ws/eurostat adds a `gap` series |
-| Changes of rates (paro, actividad, deuda/PIB) | `yoy` | Contract v1.1: differences of rates are `yoy_pp` (INE EPA rates, `eurostat.unemployment`, `eurostat.labor_participation`, `eurostat.government_debt`); `eurostat.consumer_confidence` uses `yoy_diff` (points); BdE monthly/quarterly rate changes are `mom_pp` / `qoq_pp` |
+| Changes of rates (paro, actividad, deuda/PIB) | `yoy` | Contract v1.1: differences of rates are `yoy_pp` (INE EPA rates, `eurostat.unemployment`, `eurostat.labor_participation`, `eurostat.government_debt`); `eurostat.consumer_confidence` uses `yoy_diff` (points); BdE bank interest rates and debt ratios show `yoy_pp` (their `mom_pp` / `qoq_pp` on unadjusted data were removed, see `docs/audit/seasonal-adjustment.md`) |
 | `ine.cntr_employment`, `ine.population` | dataset ids | Not exported; their information is in `ine.gdp_productivity` (series `pib`, `pib_per_capita`, `pib_per_working_age`, `pib_per_employed`, `pib_per_hour`) |
 | Series key for global/US markets | `es`/`eu27` | Yahoo FX uses `global`; US instruments `us`; BdE euro-area rates (`ester_daily`, Euribor) use `ea` |
 

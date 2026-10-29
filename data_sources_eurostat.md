@@ -429,7 +429,7 @@ The pipeline previously used the annual `ext_lt_intratrd` (ends in 2025, and car
 | `geo` | `ES` | Spain |
 | `partner` | `WORLD` | World (total trade) |
 | `bclas_bec` | `TOTAL` | All products |
-| `indic_et` | `TRD_VAL` | Trade value, million EUR, not seasonally adjusted |
+| `indic_et` | `TRD_VAL_SCA` | Trade value, million EUR, seasonally and calendar adjusted (was `TRD_VAL`, unadjusted, until the seasonal-adjustment pass) |
 | `stk_flow` | `EXP`, `IMP` | Exports, imports (`BAL_RT` is a ratio, not used) |
 
 **Python Example:**
@@ -442,7 +442,7 @@ filter_pars = {
     'geo': ['ES'],
     'partner': ['WORLD'],
     'bclas_bec': ['TOTAL'],
-    'indic_et': ['TRD_VAL'],
+    'indic_et': ['TRD_VAL_SCA'],
     'stk_flow': ['EXP', 'IMP'],
 }
 trade = eurostat.get_data_df('ext_st_27_2020msbec', filter_pars=filter_pars)
@@ -777,7 +777,7 @@ def get_trade_balance():
         'geo': ['ES'],
         'partner': ['WORLD'],
         'bclas_bec': ['TOTAL'],
-        'indic_et': ['TRD_VAL'],
+        'indic_et': ['TRD_VAL_SCA'],
         'stk_flow': ['EXP', 'IMP'],
     }
     return eurostat.get_data_df('ext_st_27_2020msbec', filter_pars=filter_pars)

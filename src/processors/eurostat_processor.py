@@ -453,7 +453,7 @@ class EurostatProcessor:
     # === External Sector ===
 
     def process_trade_balance(self) -> Dict[str, pd.DataFrame]:
-        """Process trade in goods (Spain only, monthly, million EUR, NSA)."""
+        """Process trade in goods (Spain only, monthly, million EUR, seasonally and calendar adjusted)."""
         print("Processing Trade Balance...")
         df = self._load_raw("trade_balance_raw.csv")
 
@@ -465,6 +465,10 @@ class EurostatProcessor:
             return {}
 
         df = df[df["geo"] == self.GEO_SPAIN]
+        # Seasonal-adjustment rule: only the seasonally and calendar adjusted values. A raw file from
+        # before the switch (indic_et TRD_VAL) must not be published as adjusted data.
+        if "indic_et" not in df.columns or set(df["indic_et"].unique()) != {"TRD_VAL_SCA"}:
+            raise ValueError("trade_balance_raw.csv: expected only indic_et=TRD_VAL_SCA; refetch Eurostat")
         wide = df.pivot_table(index="date", columns="stk_flow", values="value", aggfunc="first")
         wide = wide.rename(columns={"EXP": "exports", "IMP": "imports"})
         # Only months where both flows are published (the balance needs both)
