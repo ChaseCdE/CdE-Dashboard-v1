@@ -72,6 +72,27 @@ periodTable($('c-tabla'), {
   last: 12,
 });
 
+const sectores = (field) => [
+  ['agricultura', 'Agricultura'], ['industria', 'Industria'],
+  ['construccion', 'Construcción'], ['servicios', 'Servicios'],
+].map(([k]) => ({ dataset: 'ine.employed_sectors', series: k, field }));
+lineChart($('c-sectores'), {
+  title: 'Ocupados por sector económico',
+  toggle: [
+    { id: 'yoy', label: 'Interanual (%)', series: sectores('yoy') },
+    { id: 'value', label: 'Nivel (miles)', series: sectores('value') },
+  ],
+  range: { default: '5A' },
+});
+lineChart($('c-vacantes'), {
+  title: 'Las vacantes en España y en la UE-27',
+  series: [
+    { dataset: 'eurostat.job_vacancy_rate', series: 'es', field: 'value' },
+    { dataset: 'eurostat.job_vacancy_rate', series: 'eu27', field: 'value' },
+  ],
+  range: { default: '5A' },
+});
+
 kpiGrid($('kpis-calidad'), [
   { dataset: 'ine.temporary_rate', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: false },
   { dataset: 'ine.youth_unemployment', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: false },

@@ -116,3 +116,40 @@ lineChart($('npl'), {
   series: [{ dataset: 'bde.npl_ratio', series: 'es', field: 'value' }],
   range: { default: 'max' },
 });
+
+const newLoans = (ids, labels) => ['sum_12m', 'yoy'].map((f) => ({
+  id: f,
+  label: f === 'sum_12m' ? 'Suma 12 meses' : 'Variación anual',
+  series: ids.map((d, i) => ({ dataset: d, series: 'es', field: f, label: labels[i] })),
+  ref: f === 'yoy' ? { y: 0 } : undefined,
+}));
+
+lineChart($('newhh'), {
+  title: 'Nuevo crédito a los hogares para vivienda y consumo',
+  subtitle: 'Volumen de operaciones nuevas, incluidas las renegociaciones. Suma móvil de 12 meses para evitar la estacionalidad.',
+  toggle: newLoans(['bde.new_housing_loans', 'bde.new_consumer_loans'], ['Vivienda', 'Consumo']),
+  range: { default: '5A' },
+});
+
+lineChart($('newcorp'), {
+  title: 'Nuevo crédito a las sociedades no financieras',
+  subtitle: 'Volumen de operaciones nuevas, incluidas las renegociaciones. Suma móvil de 12 meses para evitar la estacionalidad.',
+  toggle: newLoans(['bde.new_corporate_loans'], ['Sociedades no financieras']),
+  range: { default: '5A' },
+});
+
+barChart($('deficit'), {
+  title: 'Déficit público trimestral de España y la UE-27',
+  series: [
+    { dataset: 'eurostat.gov_deficit_quarterly', series: 'es', field: 'value' },
+    { dataset: 'eurostat.gov_deficit_quarterly', series: 'eu27', field: 'value' },
+  ],
+  ref: { y: 0 },
+  range: { default: '5A' },
+});
+
+lineChart($('interest'), {
+  title: 'Gasto en intereses de la deuda pública',
+  series: ['es', 'eu27', 'de', 'fr', 'it'].map((k) => ({ dataset: 'eurostat.interest_expenditure', series: k, field: 'value' })),
+  range: { default: 'max' },
+});

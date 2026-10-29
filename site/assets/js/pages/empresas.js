@@ -10,6 +10,7 @@ kpiGrid($('kpis'), [
   { dataset: 'ine.hotel_overnight_stays', series: 'total', field: 'sum_12m', change: { field: 'yoy', label: 'interanual (mes)' }, positiveIsGood: true },
   { dataset: 'ine.companies', series: 'created', field: 'sum_12m', change: { field: 'yoy', label: 'interanual (mes)' }, positiveIsGood: true },
   { dataset: 'ine.companies', series: 'dissolved', field: 'sum_12m', change: { field: 'yoy', label: 'interanual (mes)' }, positiveIsGood: false },
+  { dataset: 'eurostat.bankruptcies', series: 'es', field: 'value', change: { field: 'yoy', label: 'interanual (trimestre)' }, positiveIsGood: false },
 ]);
 
 lineChart($('c-llegadas'), {
@@ -65,5 +66,39 @@ barChart($('c-soc-yoy'), {
   title: 'Sociedades mercantiles creadas, variación interanual mensual',
   series: [{ dataset: 'ine.companies', series: 'created', field: 'yoy' }],
   colorBySign: 'neutral',
+  range: { default: '5A' },
+});
+
+lineChart($('c-precios-hotel'), {
+  title: 'Precios hoteleros en España',
+  toggle: [
+    { id: 'value', label: 'Nivel del índice', series: [{ dataset: 'ine.hotel_prices', series: 'es', field: 'value' }] },
+    { id: 'yoy', label: 'Variación interanual', series: [{ dataset: 'ine.hotel_prices', series: 'es', field: 'yoy' }] },
+  ],
+  range: { default: '5A' },
+});
+
+lineChart($('c-quiebras'), {
+  title: 'Declaraciones de quiebra en España y en la UE-27',
+  toggle: [
+    { id: 'value', label: 'Índice 2021 = 100', series: [
+      { dataset: 'eurostat.bankruptcies', series: 'es', field: 'value' },
+      { dataset: 'eurostat.bankruptcies', series: 'eu27', field: 'value' } ] },
+    { id: 'yoy', label: 'Variación interanual', series: [
+      { dataset: 'eurostat.bankruptcies', series: 'es', field: 'yoy' },
+      { dataset: 'eurostat.bankruptcies', series: 'eu27', field: 'yoy' } ] },
+  ],
+  range: { default: '5A' },
+});
+lineChart($('c-altas'), {
+  title: 'Altas de empresas en España y en la UE-27',
+  toggle: [
+    { id: 'value', label: 'Índice 2021 = 100', series: [
+      { dataset: 'eurostat.business_registrations', series: 'es', field: 'value' },
+      { dataset: 'eurostat.business_registrations', series: 'eu27', field: 'value' } ] },
+    { id: 'yoy', label: 'Variación interanual', series: [
+      { dataset: 'eurostat.business_registrations', series: 'es', field: 'yoy' },
+      { dataset: 'eurostat.business_registrations', series: 'eu27', field: 'yoy' } ] },
+  ],
   range: { default: '5A' },
 });

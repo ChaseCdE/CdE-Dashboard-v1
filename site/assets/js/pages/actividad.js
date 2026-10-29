@@ -44,6 +44,21 @@ lineChart($('productivity'), {
   endLabels: false,
   range: { default: 'max' },
 });
+const gva = (f) => [
+  { dataset: 'ine.gva_sectors', series: 'agricultura', field: f, label: 'Agricultura' },
+  { dataset: 'ine.gva_sectors', series: 'industria', field: f, label: 'Industria' },
+  { dataset: 'ine.gva_sectors', series: 'construccion', field: f, label: 'Construcción' },
+  { dataset: 'ine.gva_sectors', series: 'servicios', field: f, label: 'Servicios' },
+  { dataset: 'ine.gva_sectors', series: 'pib', field: f, label: 'PIB', dash: 'dot' },
+];
+lineChart($('gva-sectors'), {
+  title: 'Valor añadido de los grandes sectores',
+  toggle: [
+    { id: 'yoy', label: 'Interanual', series: gva('yoy') },
+    { id: 'qoq', label: 'Trimestral', series: gva('qoq') },
+  ],
+  range: { default: '5A' },
+});
 
 /* Producción y confianza */
 const prod = (f) => [
@@ -82,6 +97,19 @@ lineChart($('confidence'), {
   series: [{ dataset: 'ine.business_confidence', series: 'ice', field: 'value' }],
   markers: true,
   range: { default: 'max' },
+});
+lineChart($('construction'), {
+  title: 'Producción en la construcción: España frente a la UE-27',
+  toggle: [
+    { id: 'value', label: 'Índice', series: ['es', 'eu27'].map((s) => ({ dataset: 'eurostat.construction_production', series: s, field: 'value' })) },
+    { id: 'yoy', label: 'Interanual', series: ['es', 'eu27'].map((s) => ({ dataset: 'eurostat.construction_production', series: s, field: 'yoy' })) },
+  ],
+  range: { default: '5A' },
+});
+lineChart($('capacity'), {
+  title: 'Utilización de la capacidad productiva: España frente a la UE-27',
+  series: ['es', 'eu27'].map((s) => ({ dataset: 'eurostat.capacity_utilization', series: s, field: 'value' })),
+  range: { default: '5A' },
 });
 
 /* Consumo y hogares */

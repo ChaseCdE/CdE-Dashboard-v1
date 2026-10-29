@@ -109,6 +109,25 @@ lineChart($('house'), {
   range: { default: 'max' },
 });
 
+lineChart($('house-rent'), {
+  title: 'Compra y alquiler de vivienda: variación anual',
+  series: [
+    { dataset: 'ine.house_prices', series: 'es', field: 'yoy', label: 'Precio de la vivienda' },
+    { dataset: 'ine.cpi_rent', series: 'es', field: 'yoy', label: 'Alquiler' },
+  ],
+  range: { default: 'max' },
+});
+
+// Precios de exportación e importación
+lineChart($('trade-prices'), {
+  title: 'Precios industriales de exportación e importación',
+  toggle: ['yoy', 'value'].map((f) => ({
+    id: f, label: { yoy: 'Anual', value: 'Índice' }[f],
+    series: ['exportacion', 'importacion'].map((s) => ({ dataset: 'ine.trade_prices', series: s, field: f })),
+  })),
+  range: { default: '5A' },
+});
+
 // UE
 lineChart($('hicp'), {
   title: 'Inflación armonizada: España frente a la UE-27',
