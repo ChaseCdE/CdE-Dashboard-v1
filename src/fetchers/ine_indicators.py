@@ -50,6 +50,10 @@ def validate_series(code: str, tokens: Iterable[str], item) -> None:
     missing = [t for t in tokens if _norm(t) not in name]
     if missing:
         raise SeriesError(f"{code}: name {item.get('Nombre')!r} lacks {missing} (INE redefined the series?)")
+    # "ajustados de estacionalidad" is also a substring of "no ajustados de estacionalidad":
+    # a series declared adjusted must not be the unadjusted variant.
+    if any("ajustados de estacionalidad" in _norm(t) for t in tokens) and "no ajustados" in name:
+        raise SeriesError(f"{code}: declared seasonally adjusted but INE names it {item.get('Nombre')!r}")
 
 
 class INEIndicatorFetcher:
