@@ -58,7 +58,7 @@ INDICATORS = {
         "inventories": _s("CNTR7262", SA, "existencias", "Aportación anual"),
         "external_demand": _s("CNTR7264", SA, "Demanda externa", "Aportación anual"),
     }),
-    "industrial_production": dict(table=60280, nult=72, file="industrial_production_raw.csv", series={
+    "industrial_production": dict(table=60280, nult=132, file="industrial_production_raw.csv", series={
         "index": _s("IPI15360", "Total Nacional", "Índice", SA, "Total industria"),
         "yoy": _s("IPI15374", "Total Nacional", "Variación anual", SA, "Total industria"),
         "mom": _s("IPI15381", "Total Nacional", "Variación mensual", SA, "Total industria"),
@@ -72,15 +72,14 @@ INDICATORS = {
         "ytd_intermedios": _s("IPI15362", "Total Nacional", "media en lo que va de año", SA, "Bienes intermedios"),
         "ytd_energia": _s("IPI15361", "Total Nacional", "media en lo que va de año", SA, "Energía"),
     }),
-    "industry_turnover": dict(table=61701, nult=60, file="industry_turnover_raw.csv", series={
+    "industry_turnover": dict(table=61701, nult=120, file="industry_turnover_raw.csv", series={
         "yoy": _s("ICN2412", "Nacional", "Total industria", "Variación anual"),
     }),
-    "services_turnover": dict(table=60289, nult=60, file="services_turnover_raw.csv", series={
+    "services_turnover": dict(table=60289, nult=120, file="services_turnover_raw.csv", series={
         "yoy": _s("IAS3856", "Cifra de negocio", "ajustados de calendario", "Índice General", "Nacional", "Variación anual"),
     }),
-    # since: table 60732 starts in 2021-01, but the series endpoint also returns 2020-09..12.
-    # The published window is kept as it was (value-neutral); drop `since` to publish the 4 extra months.
-    "services_production": dict(table=60732, nult=72, since="2021-01-01", file="services_production_raw.csv", series={
+    # The series endpoint returns history before the table's own 2021-01 start; it is published.
+    "services_production": dict(table=60732, nult=132, file="services_production_raw.csv", series={
         "index": _s("IPSS380", "precios corrientes", SA, "Índice General", "Total Nacional", "Índice"),
         "yoy": _s("IPSS490", SA, "Índice General", "Variación anual"),
         "mom": _s("IPSS491", SA, "Índice general", "Variación mensual"),
@@ -119,11 +118,11 @@ INDICATORS = {
         "total": _s("ETCL925", "Industria, construcción y servicios", "Coste laboral total por hora", "Total Nacional", "Euros"),
     }),
     # Prices
-    "cpi": dict(table=79181, nult=60, file="cpi_raw.csv", series={
+    "cpi": dict(table=79181, nult=120, file="cpi_raw.csv", series={
         "index": _s("IPC290751", "Nacional", "Índice general", "Índice"),
         "yoy": _s("IPC290750", "Nacional", "Índice general", "Variación anual"),
     }),
-    "cpi_special_groups": dict(table=76130, nult=60, file="cpi_special_groups_raw.csv", series={
+    "cpi_special_groups": dict(table=76130, nult=120, file="cpi_special_groups_raw.csv", series={
         "headline": _s("IPC290750", "Nacional", "Índice general", "Variación anual"),
         "core": _s("IPC292510", "Nacional", "Subyacente", "Variación anual"),
         "alimentos_bebidas_y_tabaco": _s("IPC292534", "Nacional", "Alimentos, bebidas y tabaco", "Variación anual"),
@@ -147,7 +146,7 @@ INDICATORS = {
         "prev_servicios": _s("IPC233252", "Nacional", "Servicios", "Ponderación"),
         "prev_bienes_industriales_sin_productos_energeticos": _s("IPC233249", "Nacional", "Bienes industriales sin productos energéticos", "Ponderación"),
     }),
-    "retail_sales": dict(table=67178, nult=60, file="retail_sales_raw.csv", series={
+    "retail_sales": dict(table=67178, nult=120, file="retail_sales_raw.csv", series={
         "index": _s("ICM4062", "Total Nacional", "precios constantes", "47 sin 473", "General", "Índice", SA),
         "yoy": _s("ICM4079", "precios constantes", "47 sin 473", "General", "Variación anual", SA),
         "mom": _s("ICM4080", "precios constantes", "47 sin 473", "General", "Variación mensual", SA),
@@ -156,7 +155,7 @@ INDICATORS = {
         "index": _s("IPV1209", "Nacional", "General", "Índice"),
         "yoy": _s("IPV1376", "Nacional", "General", "Variación anual"),
     }),
-    "ipri": dict(table=76655, nult=60, file="ipri_raw.csv", series={
+    "ipri": dict(table=76655, nult=120, file="ipri_raw.csv", series={
         f"{part}_{k}": _s(f"IPR{code}", "Nacional", "Mercado interior", n, what)
         for k, (idx, yoy, mom, n) in {
             "total": (34522, 34953, 34954, "Total industria."), "total_sin_energia": (34515, 34932, 34933, "Total industria sin energía"),
@@ -174,11 +173,11 @@ INDICATORS = {
         **{f"age_{a}_{b}": _s(f"EPA{c}", "Total Nacional", "Ambos sexos", f"De {a} a {b} años", "Valor absoluto")
            for c, a, b in zip(range(384363, 384382, 2), (16, 20, 25, 30, 35, 40, 45, 50, 55, 60), (19, 24, 29, 34, 39, 44, 49, 54, 59, 64))},
     }),
-    "cpi_ccaa": dict(table=76136, nult=24, file="cpi_ccaa_raw.csv", series={
+    "cpi_ccaa": dict(table=76136, nult=84, file="cpi_ccaa_raw.csv", series={
         **{f"yoy_{k}": _s(f"IPC{c}", n, "Índice general", "Variación anual") for k, (c, n) in _CCAA.items()},
         **{f"mom_{k}": _s(f"IPC{c + 2}", n, "Índice general", "Variación mensual") for k, (c, n) in _CCAA.items()},
     }),
-    "business_confidence": dict(table=8027, nult=24, file="business_confidence_raw.csv", series={
+    "business_confidence": dict(table=8027, nult=44, file="business_confidence_raw.csv", series={
         "ice": _s("ICE1", "Total Nacional", "Índice", "Base 2013"),
         "situacion": _s("ICE54", "Total Nacional", "Situación del trimestre anterior"),
         "expectativas": _s("ICE53", "Total Nacional", "Expectativas del trimestre entrante"),

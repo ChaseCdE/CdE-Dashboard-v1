@@ -567,7 +567,8 @@ class INEProcessor:
             base = base_row["gdp_index"] / base_row[col]
             result[out] = ((result["gdp_index"] / result[col]) / base * 100).round(2)
 
-        result = result[result["date"] >= "2019-01-01"]
+        # Base stays 2019Q1 = 100; earlier quarters are kept (5 more years of history).
+        result = result[result["date"] >= "2014-01-01"]
         result = result[["date", "pib_index", "pib_per_capita_index", "pib_per_working_age_index",
                          "pib_per_employed_index", "pib_per_hour_index"]]
         self._save_processed(result, "gdp_productivity.csv")
@@ -616,7 +617,8 @@ class INEProcessor:
         result["yoy_change"] = float("nan")
         ice = result["indicator"] == "ice"
         result.loc[ice, "yoy_change"] = pct_change_by_date(result[ice], "value", 12)
-        result = result[result["date"] >= "2021-01-01"]
+        # From 2017: 2016 is fetched only to compute the first year-on-year rates.
+        result = result[result["date"] >= "2017-01-01"]
         print(f"  Found {result['indicator'].nunique()} Business Confidence indicators")
         self._save_processed(result, "business_confidence.csv")
         return result

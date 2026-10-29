@@ -12,6 +12,11 @@ from .http_session import map_bounded
 
 BATCH_SIZE = 20   # series per request (the API takes many; one time range per request)
 MAX_WORKERS = 2   # concurrent requests to app.bde.es
+# Years of history kept for every BdE series. The API only offers fixed ranges: monthly and
+# quarterly series are fetched with MAX and trimmed; daily series allow at most 36M, so the
+# earlier years are requested one calendar year at a time (rango=YYYY) and merged.
+HISTORY_YEARS = 10
+DAILY_RECENT = "36M"
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -661,45 +666,98 @@ class BdeIndicatorFetcher:
         """
         Fetch several indicators with as few requests as possible.
 
-        The BdE API accepts many series in one request (one time range per request), so the
-        indicators are grouped by range (daily series 36M, the others 60M, unless `time_range`
-        overrides) and requested in batches. A series missing from the response, or a failed
+        The BdE API accepts many series in one request (one time range per request). Every
+        series keeps HISTORY_YEARS of history: monthly/quarterly with MAX (trimmed); daily with
+        36M plus earlier calendar years (rango=YYYY) from the series' first date, merged. A series missing from the response, or a failed
         request, keeps the previous raw file and logs an error (audit H1).
         """
         results: Dict[str, pd.DataFrame] = {}
-        by_range: Dict[str, List[str]] = {}
+        valid = []
         for key in keys:
             if key not in BDE_INDICATORS:
                 logger.warning(f"Unknown indicator key: {key}")
                 results[key] = pd.DataFrame()
-                continue
-            freq = BDE_INDICATORS[key].get("frequency", "M")
-            by_range.setdefault(time_range or self._get_time_range(freq), []).append(key)
+            else:
+                valid.append(key)
 
-        batches = [(rng, ks[i:i + BATCH_SIZE]) for rng, ks in by_range.items() for i in range(0, len(ks), BATCH_SIZE)]
-        logger.info(f"Fetching {sum(len(b[1]) for b in batches)} BdE series in {len(batches)} request(s)")
+        today = pd.Timestamp.today().normalize()
+        cutoff = today - pd.DateOffset(years=HISTORY_YEARS)
+        first_recent_year = (today - pd.DateOffset(months=36)).year
 
-        def run(batch):
-            rng, ks = batch
-            return self.client.get_series([BDE_INDICATORS[k]["series_code"] for k in ks], rng)
+        def is_daily(key):
+            return BDE_INDICATORS[key].get("frequency", "M") == "D"
 
-        for (rng, ks), (data, exc) in zip(batches, map_bounded(run, batches, MAX_WORKERS)):
-            by_code = {item.get("serie"): item for item in (data or [])}
-            for key in ks:
-                config = BDE_INDICATORS[key]
-                item = by_code.get(config["series_code"])
-                df = self.client.series_to_dataframe(item) if item else pd.DataFrame()
-                if df.empty:
-                    logger.error(f"BdE {key} ({config['series_code']}): fetch failed or no data; "
-                                 f"keeping the previous {key}_raw.csv" + (f" ({exc})" if exc else ""))
-                    results[key] = df
+        def fetch(groups):
+            """groups: {range: [keys]} -> ({key: [df]}, {key: reason}, {key: first date})"""
+            batches = [(rng, ks[i:i + BATCH_SIZE]) for rng, ks in groups.items()
+                       for i in range(0, len(ks), BATCH_SIZE)]
+
+            def run(batch):
+                rng, ks = batch
+                return self.client.get_series([BDE_INDICATORS[k]["series_code"] for k in ks], rng)
+
+            got, bad, start = {}, {}, {}
+            for (rng, ks), (data, exc) in zip(batches, map_bounded(run, batches, MAX_WORKERS)):
+                by_code = {item.get("serie"): item for item in (data or []) if isinstance(item, dict)}
+                for key in ks:
+                    item = by_code.get(BDE_INDICATORS[key]["series_code"])
+                    df = self.client.series_to_dataframe(item) if item else pd.DataFrame()
+                    if df.empty:
+                        bad[key] = f"range {rng}" + (f" ({exc})" if exc else "")
+                        continue
+                    got.setdefault(key, []).append(df.assign(_recent=(rng == DAILY_RECENT)))
+                    if item.get("fechaInicio"):
+                        start[key] = pd.Timestamp(item["fechaInicio"]).tz_localize(None)
+            return got, bad, start
+
+        # Phase 1: the recent range for every series (36M daily; MAX otherwise, trimmed below).
+        groups = {}
+        for key in valid:
+            rng = time_range or (DAILY_RECENT if is_daily(key) else "MAX")
+            groups.setdefault(rng, []).append(key)
+        parts, failed, inception = fetch(groups)
+        logger.info(f"BdE phase 1: {len(valid)} series")
+
+        # Phase 2: earlier calendar years for daily series (the API caps daily ranges at 36M),
+        # only for years in which the series exists (asking for a year before a series starts
+        # makes the API reject the whole batch with 412).
+        if not time_range:
+            groups = {}
+            for key in valid:
+                if not is_daily(key) or key in failed:
                     continue
-                df["indicator"] = key
-                df["name"] = config["name"]
-                df["category"] = config.get("category", "")
-                self._save_csv(df, f"{key}_raw.csv")
-                logger.info(f"Fetched {key}: {len(df)} rows")
-                results[key] = df
+                first_year = max(cutoff.year, inception.get(key, cutoff).year)
+                for y in range(first_year, first_recent_year + 1):
+                    groups.setdefault(str(y), []).append(key)
+            if groups:
+                more, more_failed, _ = fetch(groups)
+                for key, dfs in more.items():
+                    parts.setdefault(key, []).extend(dfs)
+                failed.update(more_failed)
+                logger.info(f"BdE phase 2: {sum(len(v) for v in groups.values())} series-years")
+
+        for key in valid:
+            config = BDE_INDICATORS[key]
+            if key in failed or key not in parts:
+                # Any missing piece keeps the whole previous file: a partial history is not published.
+                logger.error(f"BdE {key} ({config['series_code']}): fetch failed or no data "
+                             f"({failed.get(key, 'no response')}); keeping the previous {key}_raw.csv")
+                results[key] = pd.DataFrame()
+                continue
+            # On overlapping dates the most recent request (36M) wins.
+            df = (pd.concat(parts[key], ignore_index=True)
+                  .sort_values(["date", "_recent"])
+                  .drop_duplicates(subset=["date"], keep="last")
+                  .drop(columns="_recent"))
+            if not time_range:
+                df = df[df["date"] >= cutoff]
+            df = df.sort_values("date").reset_index(drop=True)
+            df["indicator"] = key
+            df["name"] = config["name"]
+            df["category"] = config.get("category", "")
+            self._save_csv(df, f"{key}_raw.csv")
+            logger.info(f"Fetched {key}: {len(df)} rows")
+            results[key] = df
         return results
 
     def fetch_indicator(self, key: str, time_range: Optional[str] = None) -> pd.DataFrame:

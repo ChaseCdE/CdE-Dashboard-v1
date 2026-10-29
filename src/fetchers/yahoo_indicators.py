@@ -477,7 +477,7 @@ class YahooIndicatorFetcher:
 
         Args:
             output_dir: Directory to save CSV files
-            start_date: Start date for data (YYYY-MM-DD). Defaults to 5 years ago.
+            start_date: Start date for data (YYYY-MM-DD). Defaults to 10 years ago.
             end_date: End date for data (YYYY-MM-DD). Defaults to today.
         """
         self.client = YahooFinanceClient(start_date=start_date, end_date=end_date)

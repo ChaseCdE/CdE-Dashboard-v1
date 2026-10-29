@@ -21,11 +21,11 @@ class YahooFinanceClient:
         Initialize the Yahoo Finance client.
 
         Args:
-            start_date: Start date for data fetching (YYYY-MM-DD format). Defaults to 5 years ago.
+            start_date: Start date for data fetching (YYYY-MM-DD format). Defaults to 10 years ago.
             end_date: End date for data fetching (YYYY-MM-DD format). Defaults to today.
         """
         if start_date is None:
-            self.start_date = (datetime.now() - timedelta(days=5*365)).strftime('%Y-%m-%d')
+            self.start_date = (datetime.now() - timedelta(days=10*365 + 3)).strftime('%Y-%m-%d')  # 10 years
         else:
             self.start_date = start_date
 

@@ -337,8 +337,8 @@ class EurostatProcessor:
 
         merged = merged.sort_values("date").reset_index(drop=True)
 
-        # Filter from 2019 onward
-        merged = merged[merged["date"] >= "2019-01-01"]
+        # Base stays 2019Q1 = 100; earlier quarters are kept (5 more years of history).
+        merged = merged[merged["date"] >= "2014-01-01"]
 
         self._save_processed(merged, "gdp_index_comparison.csv")
         return merged

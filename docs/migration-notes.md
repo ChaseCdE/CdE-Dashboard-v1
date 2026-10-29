@@ -119,3 +119,14 @@ Factory (lead): download buttons on every chart and table card (PNG with title/u
 Lead re-test: 8 pages at 375 and 1440 px, 101 charts, 0 console errors, 0 failed requests, no overflow; downloads tested on 5 pages.
 
 Declined: a line + bar combo chart with a secondary axis (style guide avoids dual axes).
+
+## 2026-10-29 Longer history (+5 years)
+
+Most series started in 2021 (5-year fetch windows) and BdE daily series in 2023 (36 months, the API maximum for daily data). Now about ten years:
+- INE: larger `nult` for the series that started in 2020 or later (`src/fetchers/ine_series.py`); `business_confidence` from 2017.
+- BdE: `HISTORY_YEARS = 10` (`src/fetchers/bde_indicators.py`). Monthly/quarterly series use `rango=MAX`, trimmed. Daily series use 36M plus the earlier calendar years (`rango=YYYY`), requested only from each series' `fechaInicio` (asking for a year before a series starts makes the API reject the whole batch with 412). Any missing piece keeps the previous file (H1).
+- Yahoo: 10 years.
+- `eurostat.gdp_index` and `ine.gdp_productivity`: from 2014 or the first available quarter; base still 2019Q1 = 100.
+- Source limits, unchanged: €STR starts 2019-10; INE services by sector start 2022-01; `ine.cpi_weights` shows the current basket.
+
+Check: 80 datasets extend further back; 0 previously published values changed; 13,307 previously empty values now filled (first-year rates, 12-month sums, moving averages). Audit oracle PASS 988, FAIL 0. `site/data` 3.2 MB → 6.2 MB (largest files: 10 years of daily index data, ~185 KB each).
