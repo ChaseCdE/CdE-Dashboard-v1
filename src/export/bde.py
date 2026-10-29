@@ -92,6 +92,15 @@ def _fields(key: str, meta: dict, decimals: int) -> list:
         fields.append(Field("yoy_pp", "Variación interanual", "pp", decimals, column="yoy_change_abs"))
     elif kind in ("receipts", "persons", "debt_stock"):
         fields.append(Field("yoy", "Variación interanual", "pct_change", 1, column="yoy_change_pct"))
+        if kind == "persons":
+            # Monthly change of an unadjusted end-of-month count: it includes seasonal swings
+            # (no seasonally adjusted series is available from the BdE API).
+            nsa = "Datos originales a fin de mes, sin corregir de estacionalidad: incluye efectos estacionales"
+            fields += [
+                Field("mom", "Variación mensual", "pct_change", 2, column="change_pct", note_es=nsa),
+                Field("mom_diff", "Variación mensual (miles de personas)", "persons", 1,
+                      column="change_abs_k", scale=3, note_es=nsa),
+            ]
     return fields
 
 

@@ -181,6 +181,7 @@ class BdeProcessor:
         # so shifts never span a gap.
         df['change_pct'] = df[value_col].pct_change(fill_method=None) * 100
         df['change_abs'] = df[value_col].diff()
+        df['change_abs_k'] = df['change_abs'] / 1000  # thousands, for person counts
 
         if frequency == "D":
             # Daily data has no fixed number of observations per year: compare

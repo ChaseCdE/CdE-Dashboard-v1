@@ -35,13 +35,14 @@ function currencyUnit(currency, scale) {
   return scale === 0 || !scale ? `${NBSP}${sym}` : `${NBSP}${pre.trim() ? pre.trim() : ''}${sym}`.replace('mil' + sym, 'mil' + NBSP + sym);
 }
 
-function compactPersons(v, scale, noun) {
+function compactPersons(v, scale, noun, opts = {}) {
   const actual = v * Math.pow(10, scale || 0);
   const abs = Math.abs(actual);
+  const o = { sign: !!opts.sign };
   // Number and magnitude stay together (NBSP); the noun may wrap to the next line.
-  if (abs >= 1e6) return `${fmtNumber(actual / 1e6, 1)}${NBSP}M ${noun}`;
-  if (abs >= 1e3) return `${fmtNumber(actual / 1e3, 0)}${NBSP}mil ${noun}`;
-  return `${fmtNumber(actual, 0)}${NBSP}${noun}`;
+  if (abs >= 1e6) return `${fmtNumber(actual / 1e6, 1, o)}${NBSP}M ${noun}`;
+  if (abs >= 1e3) return `${fmtNumber(actual / 1e3, abs >= 1e5 ? 0 : 1, o)}${NBSP}mil ${noun}`;
+  return `${fmtNumber(actual, 0, o)}${NBSP}${noun}`;
 }
 
 /**
@@ -73,7 +74,7 @@ export function fmtValue(v, field, opts = {}) {
         const suffix = sc === 3 ? 'miles' : sc === 6 ? 'millones' : '';
         return fmtNumber(v, dec, opts) + (showUnit ? `${NBSP}${suffix || noun}`.trimEnd() : '');
       }
-      return showUnit ? compactPersons(v, f.scale || 0, noun) : fmtNumber(v, dec, opts);
+      return showUnit ? compactPersons(v, f.scale || 0, noun, opts) : fmtNumber(v, dec, opts);
     }
     case 'years':
       return fmtNumber(v, dec, opts) + (showUnit ? `${NBSP}${v === 1 ? 'año' : 'años'}` : '');

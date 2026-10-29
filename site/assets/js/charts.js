@@ -726,21 +726,30 @@ export function lineChart(el, spec) {
 
 /**
  * Time-series bars. One series (optionally coloured by sign) or several (grouped).
- * spec: {title?, subtitle?, series: [...], colorBySign?: true|'neutral', ref?, range?, height?}
+ * spec: {title?, subtitle?, series: [...], colorBySign?: true|'neutral', ref?, range?, height?,
+ *        toggle?: [{id, label, series, ref?}]}
  */
 export function barChart(el, spec) {
   return guard(el, spec, async () => {
     placeholder(el, spec);
-    const gAll = await gather(spec.overlay ? [...spec.series, { ...spec.overlay, _overlay: true }] : spec.series);
-    const overlay = gAll.traces.find((t) => t.spec._overlay);
-    const g = { ...gAll, traces: gAll.traces.filter((t) => !t.spec._overlay) };
-    if (bailIfEmpty(el, spec, g)) return { ok: false };
-    const ui = makeUi(el, spec, g.traces);
-    noteProblems(ui, g.problems);
-    const traces = g.traces;
-    assignColors(traces);
+    // Optional toggle between alternative measures, e.g. % vs thousands:
+    // spec.toggle = [{id, label, series: [...], ref?}], like lineChart.
+    const toggle = spec.toggle ? { id: spec.toggle[0].id } : null;
+    const optFor = () => (toggle ? spec.toggle.find((o) => o.id === toggle.id) : null);
+    const seriesFor = () => (toggle ? optFor().series : spec.series);
+    const withOverlay = (ser) => (spec.overlay ? [...ser, { ...spec.overlay, _overlay: true }] : ser);
+    const split = (gx) => ({ ...gx, overlay: gx.traces.find((t) => t.spec._overlay), traces: gx.traces.filter((t) => !t.spec._overlay) });
+    const g0 = split(await gather(withOverlay(seriesFor())));
+    if (bailIfEmpty(el, spec, g0)) return { ok: false };
+    const ui = makeUi(el, spec, g0.traces);
+    noteProblems(ui, g0.problems);
     const range = normalizeRange(spec.range, spec.range && spec.range.default);
     const render = async () => {
+      const g = toggle ? split(await gather(withOverlay(seriesFor()))) : g0;
+      const traces = g.traces;
+      const overlay = g.overlay;
+      if (!traces.length) { ui.body.replaceChildren(h('p', { class: 'empty-msg', text: 'Sin datos para esta medida.' })); return; }
+      assignColors(traces);
       const start = windowStartIso(traces, range);
       const multi = traces.length > 1;
       const data = traces.map((t) => {
@@ -761,17 +770,21 @@ export function barChart(el, spec) {
         data.push({ type: 'scatter', mode: 'lines', x: so.x, y: so.y, name: overlay.label,
           line: { color: COLORS.ink, width: 2 }, text: texts(so.y, overlay.field), hovertemplate: hoverTpl(overlay.field, overlay.label) });
       }
-      const ref = refShapes(spec.ref);
+      const opt = optFor();
+      const ref = refShapes(opt && opt.ref !== undefined ? opt.ref : spec.ref);
       const layout = baseLayout({
         height: spec.height, legend: multi || !!overlay, freq: traces[0].freq, yField: traces[0].field, zero: true,
         extra: { barmode: 'group', bargap: CHART.barGap, shapes: ref.shapes, annotations: ref.annotations },
       });
       await redraw(ui, data, layout);
-      fillFooter(ui.foot, [...g.loaded.values()].filter((d) => traces.concat(overlay ? [overlay] : []).some((t) => t.ds === d)), observedOf(traces.concat(overlay ? [overlay] : [])), { stale: spec.stale });
+      if (toggle) ui.setSubtitle(spec.subtitle !== undefined ? spec.subtitle : autoSubtitle(traces));
+      const all = traces.concat(overlay ? [overlay] : []);
+      fillFooter(ui.foot, [...g.loaded.values()].filter((d) => all.some((t) => t.ds === d)), observedOf(all), { stale: spec.stale });
+      ariaLabel(ui, spec.title || autoTitle(traces), spec.subtitle || autoSubtitle(traces), observedOf(traces));
     };
+    if (toggle) buildToggle(ui, spec.toggle, toggle, render);
     buildRangeButtons(ui, range, render);
     loadingBody(ui);
-    ariaLabel(ui, spec.title || autoTitle(traces), spec.subtitle || autoSubtitle(traces), observedOf(traces));
     await render();
     return { ok: true };
   });

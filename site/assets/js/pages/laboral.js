@@ -5,7 +5,7 @@ mountLayout({ active: 'laboral' });
 const $ = (id) => document.getElementById(id);
 
 kpiGrid($('kpis'), [
-  { dataset: 'bde.social_security_affiliates', series: 'es', field: 'value', change: { field: 'yoy', label: 'interanual' }, positiveIsGood: true },
+  { dataset: 'bde.social_security_affiliates', series: 'es', field: 'value', change: { field: 'mom_diff', label: 'en el mes' }, positiveIsGood: true },
   { dataset: 'bde.registered_unemployment', series: 'es', field: 'value', change: { field: 'yoy', label: 'interanual' }, positiveIsGood: false },
   { dataset: 'ine.unemployment', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: false },
   { dataset: 'ine.employment_rate', series: 'es', field: 'value', change: { field: 'yoy_pp', label: 'interanual' }, positiveIsGood: true },
@@ -18,9 +18,16 @@ lineChart($('c-afil'), {
   series: [{ dataset: 'bde.social_security_affiliates', series: 'es', field: 'value' }],
   range: { default: '5A' },
 });
+// Monthly changes are of unadjusted end-of-month data (no seasonally adjusted series is
+// available): they include seasonal swings; the field note says so.
+const varToggle = (ds) => [
+  { id: 'yoy', label: 'Interanual (%)', series: [{ dataset: ds, series: 'es', field: 'yoy' }] },
+  { id: 'mom', label: 'Mensual (%)', series: [{ dataset: ds, series: 'es', field: 'mom' }] },
+  { id: 'mom_diff', label: 'Mensual (miles)', series: [{ dataset: ds, series: 'es', field: 'mom_diff' }] },
+];
 barChart($('c-afil-var'), {
-  title: 'Variación interanual de los afiliados, último día del mes',
-  series: [{ dataset: 'bde.social_security_affiliates', series: 'es', field: 'yoy' }],
+  title: 'Variación de los afiliados, último día del mes',
+  toggle: varToggle('bde.social_security_affiliates'),
   colorBySign: 'neutral',
   range: { default: '5A' },
 });
@@ -30,8 +37,8 @@ lineChart($('c-pr'), {
   range: { default: '5A' },
 });
 barChart($('c-pr-var'), {
-  title: 'Variación interanual del paro registrado',
-  series: [{ dataset: 'bde.registered_unemployment', series: 'es', field: 'yoy' }],
+  title: 'Variación del paro registrado',
+  toggle: varToggle('bde.registered_unemployment'),
   colorBySign: 'neutral',
   range: { default: '5A' },
 });
