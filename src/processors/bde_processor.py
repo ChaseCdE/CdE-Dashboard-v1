@@ -559,7 +559,8 @@ class BdeProcessor:
             processed = self.process_interest_rate(df, key, name)
         elif category == "debt_ratios":
             processed = self.process_ratio_data(df, key, name)
-        elif category == "external_sector":
+        elif category in ("external_sector", "new_business"):
+            # Monthly flows: value, rolling 12m sum (NaN unless 12 consecutive months), yoy of the value
             processed = self.process_balance_data(df, key, name)
         elif category == "financial_stability":
             # Ratio in %: value and differences in pp (change_abs, yoy_change_abs)
