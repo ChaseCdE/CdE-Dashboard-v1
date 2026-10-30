@@ -4,11 +4,13 @@ name: Refresh data
 
 on:
   schedule:
-    # Weekdays, twice (cron is UTC; Madrid is UTC+1 in winter, UTC+2 in summer):
-    # 08:13 UTC (09:13 / 10:13 Madrid): INE and Banco de España releases of 09:00.
-    # 12:23 UTC (13:23 / 14:23 Madrid): Eurostat (11:00) and the previous day's market closes.
-    - cron: "13 8 * * 1-5"
-    - cron: "23 12 * * 1-5"
+    # Weekdays at 09:05 and 13:05 Madrid time, all year. Cron is UTC and Madrid is UTC+1 in
+    # winter and UTC+2 in summer, so each time is scheduled at both UTC hours and the `gate`
+    # job lets through only the run that falls in the right Madrid hour.
+    # 09:05: INE and Banco de España releases of 09:00.
+    # 13:05: Eurostat (11:00) and the previous day's market closes.
+    - cron: "5 7,8 * * 1-5"
+    - cron: "5 11,12 * * 1-5"
   workflow_dispatch:
 
 concurrency:
@@ -16,7 +18,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        run: |
+          hour=$(TZ=Europe/Madrid date +%H)
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$hour" = "09" ] || [ "$hour" = "13" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Madrid time $(TZ=Europe/Madrid date +%H:%M): not a refresh slot (09:05 / 13:05), skipping."
+          fi
+
   refresh:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
