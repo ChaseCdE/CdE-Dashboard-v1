@@ -6,7 +6,7 @@ The site is static (`site/`) and is published with GitHub Pages. Data is refresh
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `.github/workflows/refresh-data.yml` | Weekdays 12:23 UTC; manual ("Run workflow") | Installs `requirements.txt`, restores the previous `data/` from the Actions cache, runs `python run_pipeline.py` (fetch, process, export, validate), writes the validation report to the run summary, commits `site/data/` if it changed, then deploys |
+| `.github/workflows/refresh-data.yml` | Weekdays 08:13 and 12:23 UTC; manual ("Run workflow") | Installs `requirements.txt`, restores the previous `data/` from the Actions cache, runs `python run_pipeline.py` (fetch, process, export, validate), writes the validation report to the run summary, commits `site/data/` if it changed, then deploys |
 | `.github/workflows/deploy.yml` | Push to `main` touching `site/`; manual; called by the refresh | Validates `site/data/`, copies `site/` without `site/dev/` to the Pages artifact, publishes |
 
 Failure behaviour:

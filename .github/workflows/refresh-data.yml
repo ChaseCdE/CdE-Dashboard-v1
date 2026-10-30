@@ -4,8 +4,10 @@ name: Refresh data
 
 on:
   schedule:
-    # Weekdays 12:23 UTC (13:23 Madrid in winter, 14:23 in summer): after INE (09:00)
-    # and Eurostat (11:00) releases and after the previous day's market closes.
+    # Weekdays, twice (cron is UTC; Madrid is UTC+1 in winter, UTC+2 in summer):
+    # 08:13 UTC (09:13 / 10:13 Madrid): INE and Banco de España releases of 09:00.
+    # 12:23 UTC (13:23 / 14:23 Madrid): Eurostat (11:00) and the previous day's market closes.
+    - cron: "13 8 * * 1-5"
     - cron: "23 12 * * 1-5"
   workflow_dispatch:
 
