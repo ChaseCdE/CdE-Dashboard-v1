@@ -12,7 +12,7 @@ const S = (...pairs) => pairs.map(([id, label]) => ({ id, label }));
 const G = (id, label, ...subs) => ({ id, label, sub: subs.map(([sid, l]) => ({ id: `${id}-${sid}`, label: l })) });
 export const NAV = [
   { id: 'portada', label: 'Portada', path: 'index.html', sections: S(
-    ['ultimos-datos', 'Últimos datos'], ['actividad-y-precios', 'Actividad y precios'], ['espana-frente-a-la-ue-27', 'España frente a la UE-27'],
+    ['ultimos-datos', 'Últimos datos'], ['proximas-publicaciones', 'Próximas publicaciones'], ['actividad-y-precios', 'Actividad y precios'], ['espana-frente-a-la-ue-27', 'España frente a la UE-27'],
     ['tipos-de-interes-y-mercados', 'Tipos de interés y mercados']) },
   { id: 'actividad', label: 'Actividad', path: 'pages/actividad.html', sections: S(
     ['pib-y-demanda', 'PIB y demanda'], ['coyuntura', 'Coyuntura'], ['clima-economico', 'Clima económico'],
@@ -49,6 +49,7 @@ export const NAV = [
     ['situacion-actual', 'Situación actual'], ['convergencia-con-europa', 'Convergencia con Europa'], ['crecimiento', 'Crecimiento'],
     ['mercado-de-trabajo', 'Mercado de trabajo'], ['precios', 'Precios'], ['finanzas-publicas', 'Finanzas públicas'],
     ['actividad-y-demanda', 'Actividad y demanda'], ['sentimiento', 'Sentimiento'], ['comercio-exterior-de-espana', 'Comercio exterior de España']) },
+  { id: 'calendario', label: 'Calendario', path: 'pages/calendario.html' },
 ];
 
 const SOURCES = [

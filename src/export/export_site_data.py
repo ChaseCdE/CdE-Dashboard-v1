@@ -17,9 +17,11 @@ import argparse
 import json
 import shutil
 import sys
+from datetime import date
 from pathlib import Path
 
 from .core import PROCESSED_DIR, SITE_DATA_DIR, CONTRACT_VERSION, build_dataset, manifest_entry, now_utc
+from . import calendar as release_calendar
 from . import releases
 from .registry import DATASETS
 
@@ -103,6 +105,16 @@ def main(argv=None) -> int:
                 shutil.copy(previous, target / "releases.json")
         else:
             write_json(target / "releases.json", rel)
+        # Release calendar (src/export/calendar.py): from the processed events, or the previous file.
+        try:
+            events = json.loads(release_calendar.PROCESSED.read_text(encoding="utf-8"))
+            write_json(target / "calendar.json", release_calendar.for_site(
+                events, date.fromisoformat(releases.today_madrid()), generated_at))
+        except Exception as e:  # noqa: BLE001 - never block the data refresh on the calendar
+            print(f"  [WARN] calendar.json not updated: {type(e).__name__}: {e}")
+            previous = SITE_DATA_DIR / "calendar.json"
+            if previous.exists():
+                shutil.copy(previous, target / "calendar.json")
             new = [e for e in rel["events"] if e["detected"] == releases.today_madrid()]
             print(f"  releases.json: {len(rel['events'])} events, {len(new)} new today"
                   + (": " + ", ".join(f"{e['id']} {e['period']} ({e['status']})" for e in new) if new else ""))

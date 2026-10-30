@@ -9,4 +9,5 @@ yfinance==1.7.0
 pandas==2.3.3
 numpy==2.2.6
 openpyxl==3.1.5   # Excel files (AEAT Observatorio de Márgenes Empresariales)
+pdfplumber==0.11.10   # PDF release calendars (Banco de España, Trabajo e Inclusión)
 python-dateutil==3.0.0

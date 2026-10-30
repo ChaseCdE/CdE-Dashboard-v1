@@ -88,9 +88,9 @@ main > h2 + h3, main > h2 + div + h3 { margin-top: var(--space-4); }
   .nav-mega { display: grid; grid-template-columns: repeat(2, minmax(230px, auto)); gap: var(--space-3) var(--space-2); }
   .nav-sec-head { font-weight: 700; font-size: .95rem; color: #fff; padding-bottom: 4px; }
   .nav-mega .nav-secs { padding-right: var(--space-3); }
-  /* Eleven top-level items: tighter spacing keeps them on one line from about 1200 px. */
+  /* Twelve top-level items: tighter spacing keeps them on one line from about 1240 px. */
   .nav-list { gap: 0; }
-  .nav-list > li > .nav-link { padding-left: 10px; padding-right: 10px; font-size: .92rem; }
+  .nav-list > li > .nav-link { padding-left: 8px; padding-right: 8px; font-size: .9rem; }
 }
 
 @media (max-width: 859px) {
@@ -262,3 +262,37 @@ code { background: var(--beige-100); padding: 0 4px; border-radius: 3px; }
 .lt-when { font-size: .75rem; color: var(--muted); }
 .lt-when.is-new { color: #1F6F4A; font-weight: 600; }
 .lt-sentence { font-size: 1rem; color: var(--ink); margin: 0 0 var(--space-3); }
+
+/* ------------------------------------------------------------------ Calendario de publicaciones */
+.cal-controls { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-bottom: var(--space-4); }
+.cal-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--beige); border-radius: var(--radius); overflow: hidden; }
+.cal-check { font-size: .9rem; display: inline-flex; gap: 6px; align-items: center; }
+.cal-check input { width: 18px; height: 18px; accent-color: var(--navy); }
+.cal-week { margin-bottom: var(--space-5); }
+.cal-week-title { font-size: 1rem; color: var(--navy); margin: 0 0 var(--space-2); padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.cal-day { display: grid; grid-template-columns: 110px 1fr; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
+.cal-day.is-today { background: #F3F0EA; }
+.cal-date { font-weight: 700; color: var(--navy); font-size: .9rem; display: flex; flex-direction: column; gap: 2px; padding-left: 4px; }
+.cal-today { font-size: .75rem; color: #1F6F4A; }
+.cal-items { list-style: none; margin: 0; padding: 0; }
+.cal-item { display: grid; grid-template-columns: 46px 130px 1fr auto; gap: var(--space-2); align-items: baseline; padding: 3px 0; font-size: .9rem; }
+.cal-item.is-past .cal-what a, .cal-item.is-past .cal-what > span:first-child { color: var(--ink-soft, #4B5563); }
+.cal-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.cal-src { font-size: .75rem; font-weight: 600; color: var(--navy); background: #EEF1F8; border-radius: 3px; padding: 1px 6px; justify-self: start; white-space: nowrap; }
+.cal-src[data-src="INE"] { background: #EEF1F8; }
+.cal-src[data-src="Eurostat"] { background: #E8F1EC; color: #1F5A3D; }
+.cal-src[data-src="Banco de España"] { background: #F6EEE2; color: #6B4A1E; }
+.cal-src[data-src="Trabajo e Inclusión"] { background: #F1E9F3; color: #5A2E66; }
+.cal-what a { color: var(--navy); font-weight: 600; }
+.cal-period { color: var(--muted); }
+.cal-value { font-weight: 700; color: var(--navy); white-space: nowrap; }
+.cal-foot { font-size: .8125rem; color: var(--muted); margin-top: var(--space-4); }
+.cal-compact .cal-item { grid-template-columns: 84px 46px 130px 1fr; }
+.cal-date-sm { font-weight: 700; color: var(--navy); font-size: .875rem; }
+@media (max-width: 640px) {
+  .cal-day { grid-template-columns: 1fr; gap: 4px; }
+  .cal-item, .cal-compact .cal-item { grid-template-columns: auto auto 1fr; row-gap: 2px; }
+  .cal-item .cal-what { grid-column: 1 / -1; }
+  .cal-item .cal-value { grid-column: 1 / -1; }
+  .cal-compact .cal-date-sm { grid-column: 1; }
+}

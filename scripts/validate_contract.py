@@ -308,7 +308,7 @@ def validate(data_dir: Path) -> Report:
     files = {}
     for p in sorted(data_dir.rglob("*.json")):
         rel = p.relative_to(data_dir).as_posix()
-        if rel in ("manifest.json", "releases.json"):
+        if rel in ("manifest.json", "releases.json", "calendar.json"):
             continue
         if rel.count("/") != 1:
             r.err(rel, "dataset files must be exactly site/data/<source>/<indicator>.json")
