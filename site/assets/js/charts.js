@@ -190,7 +190,7 @@ function fillFooter(foot, datasets, observed, opts = {}) {
   if (obs.length) {
     const periods = new Map();
     for (const o of obs) {
-      const p = fmtPeriod(o.iso, o.freq);
+      const p = fmtPeriod(o.iso, o.freq) + (o.flash ? ' (avance)' : '');
       if (!periods.has(p)) periods.set(p, []);
       periods.get(p).push(o.label);
     }
@@ -316,11 +316,16 @@ function autoSubtitle(traces) {
   return [head, ...notes].filter(Boolean).join(' · ');
 }
 
+/** True if the observation at `iso` is a flash estimate ("avance", contract: dataset.provisional). */
+export function isFlash(ds, iso) {
+  return !!(ds && ds.provisional && Array.isArray(ds.provisional.dates) && ds.provisional.dates.includes(iso));
+}
+
 function observedOf(traces) {
   return traces.map((t) => {
     if (t.freq === 'X') return { label: t.label, iso: t.ser.as_of || null, freq: 'D' };   // snapshot date
     const lp = lastPoint(t.col);
-    return { label: t.label, iso: lp ? lp[0] : null, freq: t.freq };
+    return { label: t.label, iso: lp ? lp[0] : null, freq: t.freq, flash: lp ? isFlash(t.ds, lp[0]) : false };
   });
 }
 
@@ -1276,6 +1281,9 @@ export function kpiTile(el, spec) {
       : (main ? fmtPeriod(main[0], ds.frequency) : null);
     const meta = [when, ds.source && ds.source.name].filter(Boolean).join(' · ');
     const metaEl = h('p', { class: 'kpi-meta', text: meta });
+    if (main && isFlash(ds, main[0])) {
+      metaEl.append(' ', h('span', { class: 'badge badge-flash', title: ds.provisional.note_es || '', text: ds.provisional.label_es || 'Avance' }));
+    }
     if (staleInfo(ds).stale) metaEl.append(' ', h('span', { class: 'badge badge-stale', text: 'Desactualizado' }));
     kids.push(metaEl);
     const tile = h('article', { class: 'kpi' }, ...kids);

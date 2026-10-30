@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 from .core import PROCESSED_DIR, SITE_DATA_DIR, CONTRACT_VERSION, build_dataset, manifest_entry, now_utc
+from . import releases
 from .registry import DATASETS
 
 
@@ -86,11 +87,25 @@ def main(argv=None) -> int:
     else:
         entries.sort(key=lambda e: ids.index(e["id"]))
 
-    write_json(target / "manifest.json", {
-        "contract_version": CONTRACT_VERSION,
-        "generated_at": generated_at,
-        "datasets": entries,
-    })
+    manifest = {"contract_version": CONTRACT_VERSION, "generated_at": generated_at, "datasets": entries}
+    write_json(target / "manifest.json", manifest)
+
+    # "Últimos datos" log (src/export/releases.py): compares with the manifest being replaced.
+    # A partial export (--only) leaves it unchanged.
+    if not args.only:
+        try:
+            rel = releases.build(releases.read_json(SITE_DATA_DIR / "manifest.json"), manifest,
+                                 releases.read_json(SITE_DATA_DIR / "releases.json"), generated_at)
+        except Exception as e:  # noqa: BLE001 - never block the data refresh on the highlights
+            print(f"  [WARN] releases.json not updated: {type(e).__name__}: {e}")
+            previous = SITE_DATA_DIR / "releases.json"
+            if previous.exists():
+                shutil.copy(previous, target / "releases.json")
+        else:
+            write_json(target / "releases.json", rel)
+            new = [e for e in rel["events"] if e["detected"] == releases.today_madrid()]
+            print(f"  releases.json: {len(rel['events'])} events, {len(new)} new today"
+                  + (": " + ", ".join(f"{e['id']} {e['period']} ({e['status']})" for e in new) if new else ""))
 
     if not args.only:
         if SITE_DATA_DIR.exists():

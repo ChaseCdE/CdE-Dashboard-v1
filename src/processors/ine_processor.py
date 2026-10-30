@@ -278,6 +278,12 @@ class INEProcessor:
         """CPI, national general index (IPC290751), with yoy."""
         print("Processing CPI...")
         result = self._level("cpi", "index", "cpi_index", gaps="M", yoy_role="yoy")
+        # The flash estimate (avance) publishes the yoy rate only, with no index: keep those
+        # months too (cpi_index empty), so the headline rate shows the latest figure.
+        rate = self._published_rate("cpi", "yoy", "yoy_change")
+        flash = rate[rate["date"] > result["date"].max()]
+        if not flash.empty:
+            result = pd.concat([result, flash.assign(cpi_index=float("nan"))[result.columns]], ignore_index=True)
         result = result.rename(columns={"yoy_change": "inflation_rate"})
         result["yoy_change"] = result["inflation_rate"]
         self._save_processed(result, "cpi.csv")

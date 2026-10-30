@@ -1,10 +1,13 @@
 // Portada: instantánea de la economía española. Todo el contenido sale de los JSON vía la fábrica de gráficos.
 import { mountLayout } from '../layout.js';
 import { kpiGrid, lineChart, barChart, groupedBarChart } from '../charts.js';
+import { latestData } from '../latest.js';
 
 mountLayout({ active: 'portada' });
 
 const $ = (id) => document.getElementById(id);
+
+latestData($('latest'));
 
 kpiGrid($('kpis'), [
   { dataset: 'ine.gdp', series: 'es', field: 'yoy', title: 'PIB, variación anual', change: { field: 'qoq', label: 'trimestral' }, positiveIsGood: true, href: 'pages/actividad.html' },

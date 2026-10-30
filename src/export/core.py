@@ -7,6 +7,7 @@ src/export/<source>.py using the classes below.
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -19,6 +20,36 @@ CONTRACT_VERSION = "1.2"
 ROOT = Path(__file__).resolve().parent.parent.parent
 PROCESSED_DIR = ROOT / "data" / "processed"
 SITE_DATA_DIR = ROOT / "site" / "data"
+INE_FLASH_FILE = ROOT / "data" / "raw" / "ine" / "flash.json"  # written by src/fetchers/ine_indicators.py
+
+# Exported INE datasets whose name is not an indicator of src/fetchers/ine_series.py: the
+# indicators they are built from (for the flash-estimate flags).
+INE_FLASH_SOURCES = {
+    "gdp_productivity": ["gdp", "cntr_employment", "population_age"],
+    "ipi_sectors": ["industrial_production"],
+    "ipss_sectors": ["services_production"],
+    "labor_cost_components": ["labor_cost"],
+}
+PROVISIONAL_NOTE = ("Estimación adelantada (avance) publicada por el INE antes del dato definitivo, "
+                    "que puede diferir.")
+
+
+def ine_flash_dates(ds: "Dataset") -> set:
+    """Dates flagged as INE flash estimates ("avance") in any series the dataset is built from."""
+    if ds.source != "ine" or not INE_FLASH_FILE.exists():
+        return set()
+    from src.fetchers.ine_series import INDICATORS, codes
+    try:
+        flash = json.loads(INE_FLASH_FILE.read_text(encoding="utf-8"))
+    except ValueError:
+        return set()
+    names = INE_FLASH_SOURCES.get(ds.indicator, [ds.indicator])
+    out = set()
+    for n in names:
+        if n in INDICATORS:
+            for c in codes(n).values():
+                out.update(flash.get(c, []))
+    return out
 
 UNITS = {"pct", "pct_change", "pp", "index", "points", "currency", "rate", "persons", "hours", "years", "count"}
 FREQUENCIES = {"D", "W", "M", "Q", "A", "X"}
@@ -244,6 +275,11 @@ def build_dataset(ds: Dataset, generated_at: str) -> dict:
     })
     if ds.stale_after_days is not None:
         obj["stale_after_days"] = int(ds.stale_after_days)
+    if ds.x_type == "date":
+        present = {r[0] for s in out_series for r in s["data"]}
+        flash = sorted(ine_flash_dates(ds) & present)
+        if flash:
+            obj["provisional"] = {"label_es": "Avance", "dates": flash, "note_es": PROVISIONAL_NOTE}
     return obj
 
 
@@ -272,6 +308,7 @@ def manifest_entry(ds: Dataset, obj: dict) -> dict:
         "last_observation": obj["last_observation"],
         "fields": [f["key"] for f in obj["fields"]],
         "series": latest_values(obj),
+        **({"provisional": obj["provisional"]["dates"]} if obj.get("provisional") else {}),
     }
 
 

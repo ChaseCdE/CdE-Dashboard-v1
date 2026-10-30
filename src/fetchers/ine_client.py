@@ -190,3 +190,19 @@ def parse_ine_data(raw_data: List[Dict]) -> pd.DataFrame:
     df = df[[c for c in cols if c in df.columns]]
 
     return df
+
+
+# FK_TipoDato in the INE API: 1 definitive, 2 provisional, 3 "avance" (flash estimate, e.g. the
+# CPI flash published at the end of the month). Only 3 is flagged on the site: provisional data
+# (2) is the normal state of most recent INE figures for months or years.
+FLASH_TIPO_DATO = 3
+
+
+def flash_dates(item: Dict) -> List[str]:
+    """ISO dates (local Spanish date, as parse_ine_data) of the flash-estimate points of a series."""
+    out = []
+    for point in (item or {}).get("Data", []) or []:
+        if point.get("FK_TipoDato") == FLASH_TIPO_DATO and point.get("Fecha") is not None:
+            d = pd.to_datetime(point["Fecha"], unit="ms", utc=True).tz_convert("Europe/Madrid")
+            out.append(d.strftime("%Y-%m-%d"))
+    return sorted(set(out))

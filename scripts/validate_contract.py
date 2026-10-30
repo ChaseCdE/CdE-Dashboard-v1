@@ -111,7 +111,18 @@ def validate_dataset(path: Path, rel: str, obj: dict, r: Report) -> dict | None:
     if missing:
         r.err(w, f"missing keys {missing}")
         return None
-    allowed = set(required) | {"description_es", "stale_after_days"}
+    allowed = set(required) | {"description_es", "stale_after_days", "provisional"}
+    prov = obj.get("provisional")
+    if prov is not None:
+        ok = (isinstance(prov, dict) and set(prov) <= {"label_es", "dates", "note_es"}
+              and isinstance(prov.get("label_es"), str) and isinstance(prov.get("dates"), list) and prov["dates"])
+        if not ok:
+            r.err(w, "provisional must be {label_es, dates: [non-empty], note_es?}")
+        else:
+            present = {row[0] for s in obj.get("series", []) for row in s.get("data", []) if row}
+            missing = [d for d in prov["dates"] if d not in present]
+            if missing:
+                r.err(w, f"provisional dates not in the data: {missing[:3]}")
     sad = obj.get("stale_after_days")
     if sad is not None and (not isinstance(sad, int) or isinstance(sad, bool) or sad <= 0):
         r.err(w, "stale_after_days must be a positive integer")
@@ -297,7 +308,7 @@ def validate(data_dir: Path) -> Report:
     files = {}
     for p in sorted(data_dir.rglob("*.json")):
         rel = p.relative_to(data_dir).as_posix()
-        if rel == "manifest.json":
+        if rel in ("manifest.json", "releases.json"):
             continue
         if rel.count("/") != 1:
             r.err(rel, "dataset files must be exactly site/data/<source>/<indicator>.json")
@@ -366,7 +377,7 @@ def main() -> int:
         print(f"[WARN] {wmsg}")
     for emsg in r.errors:
         print(f"[ERROR] {emsg}")
-    n_files = len(list(args.dir.rglob("*.json"))) - 1 if args.dir.exists() else 0
+    n_files = len([p for p in args.dir.rglob("*.json") if "/" in p.relative_to(args.dir).as_posix()]) if args.dir.exists() else 0
     failed = bool(r.errors) or (args.strict and bool(r.warnings))
     print(f"\n{'FAIL' if failed else 'OK'}: {n_files} dataset file(s), {len(r.errors)} error(s), {len(r.warnings)} warning(s)"
           + (" [strict]" if args.strict else ""))

@@ -14,6 +14,7 @@ Failure semantics:
 - A raw file is rewritten only when its content changed.
 """
 
+import json
 import logging
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -22,7 +23,7 @@ import pandas as pd
 
 from .ine_series import INDICATORS, TABLE_IDS
 from .http_session import CircuitBreaker, map_bounded
-from .ine_client import INEClient, parse_ine_data
+from .ine_client import INEClient, flash_dates, parse_ine_data
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,9 @@ def validate_series(code: str, tokens: Iterable[str], item) -> None:
         raise SeriesError(f"{code}: declared seasonally adjusted but INE names it {item.get('Nombre')!r}")
 
 
+FLASH_FILE = "flash.json"  # read by src/export/core.py
+
+
 class INEIndicatorFetcher:
     """Fetcher for INE economic indicators."""
 
@@ -79,6 +83,20 @@ class INEIndicatorFetcher:
         filepath.write_text(text, encoding="utf-8", newline="")
         logger.info(f"Saved: {filepath}")
         return filepath
+
+    def _save_flash(self, by_code: Dict[str, List[str]]) -> None:
+        """Record which observations are INE flash estimates ("avance") in flash.json, by series
+        code. Codes fetched in this run replace their previous entry; the others are kept."""
+        path = self.output_dir / FLASH_FILE
+        try:
+            current = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        except ValueError:
+            current = {}
+        current.update(by_code)
+        current = {k: v for k, v in sorted(current.items()) if v}
+        path.write_text(json.dumps(current, indent=1) + "\n", encoding="utf-8")
+        if any(by_code.values()):
+            logger.info("INE flash estimates: " + ", ".join(f"{k} {v[-1]}" for k, v in by_code.items() if v))
 
     # ------------------------------------------------------------------ fetch
     def _fetch_series(self, job: Tuple[str, int, tuple]):
@@ -113,6 +131,7 @@ class INEIndicatorFetcher:
         logger.info(f"Fetching {len(keys)} INE series for {len(names)} indicators ({MAX_WORKERS} at a time)...")
         outcomes = map_bounded(lambda k: self._fetch_series((k[0], k[1], jobs[k])), keys, MAX_WORKERS)
         fetched = {k: out for k, out in zip(keys, outcomes)}
+        self._save_flash({code: flash_dates(item) for (code, _), (item, exc) in fetched.items() if exc is None})
 
         results = {}
         for n in names:
