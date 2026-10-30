@@ -29,6 +29,7 @@ INE_FLASH_SOURCES = {
     "ipi_sectors": ["industrial_production"],
     "ipss_sectors": ["services_production"],
     "labor_cost_components": ["labor_cost"],
+    "cpi_ecoicop_groups": ["cpi_special_groups", "cpi_special_weights"],
 }
 PROVISIONAL_NOTE = ("Estimación adelantada (avance) publicada por el INE antes del dato definitivo, "
                     "que puede diferir.")
