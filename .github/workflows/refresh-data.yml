@@ -6,11 +6,14 @@ on:
   schedule:
     # Weekdays at 09:05 and 13:05 Madrid time, all year. Cron is UTC and Madrid is UTC+1 in
     # winter and UTC+2 in summer, so each time is scheduled at both UTC hours and the `gate`
-    # job lets through only the run that falls in the right Madrid hour.
+    # job keeps the cron that matches today's Madrid offset. It decides by the cron that fired,
+    # not by the clock: GitHub can start scheduled runs hours late, and a late run still runs.
     # 09:05: INE and Banco de España releases of 09:00.
     # 13:05: Eurostat (11:00) and the previous day's market closes.
-    - cron: "5 7,8 * * 1-5"
-    - cron: "5 11,12 * * 1-5"
+    - cron: "5 7 * * 1-5"    # 09:05 summer
+    - cron: "5 8 * * 1-5"    # 09:05 winter
+    - cron: "5 11 * * 1-5"   # 13:05 summer
+    - cron: "5 12 * * 1-5"   # 13:05 winter
   workflow_dispatch:
 
 concurrency:
@@ -24,14 +27,15 @@ jobs:
       run: ${{ steps.check.outputs.run }}
     steps:
       - id: check
+        env:
+          CRON: ${{ github.event.schedule }}
         run: |
-          hour=$(TZ=Europe/Madrid date +%H)
-          if [ "${{ github.event_name }}" != "schedule" ] || [ "$hour" = "09" ] || [ "$hour" = "13" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "Madrid time $(TZ=Europe/Madrid date +%H:%M): not a refresh slot (09:05 / 13:05), skipping."
-          fi
+          offset=$(TZ=Europe/Madrid date +%z)   # +0100 winter, +0200 summer
+          case "$offset:$CRON" in
+            "+0100:5 8 "*|"+0100:5 12 "*|"+0200:5 7 "*|"+0200:5 11 "*|*:) echo "run=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "run=false" >> "$GITHUB_OUTPUT"
+               echo "Cron '$CRON' is for the other UTC offset (Madrid is $offset today): skipping." ;;
+          esac
 
   refresh:
     needs: gate
