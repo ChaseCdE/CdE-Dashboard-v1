@@ -98,7 +98,17 @@ jobs:
             echo "No data changes."
           else
             git commit -m "Data refresh $(date -u +%Y-%m-%d)"
-            git push
+            # main may have moved since checkout (a manual push during the run).
+            # Rebase onto it before pushing; on a conflict in site/data keep the fresh
+            # data (-X theirs = the commit being replayed, i.e. ours). Retry a few times.
+            for attempt in 1 2 3; do
+              git fetch origin main
+              git rebase -X theirs origin/main
+              if git push origin HEAD:main; then break; fi
+              if [ "$attempt" -eq 3 ]; then echo "::error::Push rejected after 3 attempts."; exit 1; fi
+              echo "Push rejected (main moved again); retrying..."
+              sleep 10
+            done
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
